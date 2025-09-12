@@ -14,7 +14,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
   
   // Level data - you can expand this
   final List<GameLevel> levels = [
-    GameLevel(1, "City Streets", "Easy cruise through the city", LevelDifficulty.Easy, true),
+    GameLevel(1, "Junctions", "The hardest junctions you have ever faced", LevelDifficulty.Easy, true),
     GameLevel(2, "Highway Rush", "Fast-paced highway racing", LevelDifficulty.Medium, true),
     GameLevel(3, "Mountain Pass", "Challenging mountain curves", LevelDifficulty.Medium, false),
     GameLevel(4, "Desert Storm", "Survive the desert heat", LevelDifficulty.Hard, false),

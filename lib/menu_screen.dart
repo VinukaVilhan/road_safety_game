@@ -97,7 +97,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                           SizedBox(height: 20),
                           // Game Title
                           Text(
-                            'CAR RACING',
+                            'Road Rules',
                             style: TextStyle(
                               fontSize: 32,
                               fontWeight: FontWeight.bold,

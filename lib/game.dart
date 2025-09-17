@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class RealisticCarGame extends FlameGame with KeyboardHandler, TapCallbacks {
-  late Car car;
+  late Car car; // Make car accessible
   late SpriteComponent roadBackground;
   double roadSpeed = 200.0;
   List<SpriteComponent> roadTiles = [];

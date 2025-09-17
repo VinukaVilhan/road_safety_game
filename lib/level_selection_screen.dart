@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'game_screen.dart';
 import 'models/game_level.dart';
 
@@ -25,6 +26,13 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
   @override
   void initState() {
     super.initState();
+    
+    // Force landscape orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
     _animationController = AnimationController(
       duration: Duration(milliseconds: 1200),
       vsync: this,
@@ -74,8 +82,8 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
           child: Column(
             children: [
               // Header
-              Padding(
-                padding: EdgeInsets.all(20),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 child: Row(
                   children: [
                     IconButton(
@@ -89,7 +97,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
                           child: Text(
                             'SELECT LEVEL',
                             style: TextStyle(
-                              fontSize: 28,
+                              fontSize: 24,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               letterSpacing: 2,
@@ -103,20 +111,20 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
                 ),
               ),
               
-              // Level Grid
+              // Level Grid - Optimized for landscape
               Expanded(
                 child: FadeTransition(
                   opacity: _fadeAnimation,
                   child: ScaleTransition(
                     scale: _scaleAnimation,
                     child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      padding: EdgeInsets.symmetric(horizontal: 40),
                       child: GridView.builder(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.85,
-                          crossAxisSpacing: 15,
-                          mainAxisSpacing: 15,
+                          crossAxisCount: 3, // 3 columns for landscape
+                          childAspectRatio: 1.1, // Adjusted aspect ratio for landscape
+                          crossAxisSpacing: 20,
+                          mainAxisSpacing: 20,
                         ),
                         itemCount: levels.length,
                         itemBuilder: (context, index) {
@@ -129,15 +137,15 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
               ),
               
               // Bottom info
-              Padding(
-                padding: EdgeInsets.all(20),
+              Container(
+                padding: EdgeInsets.all(15),
                 child: FadeTransition(
                   opacity: _fadeAnimation,
                   child: Text(
                     'Complete levels to unlock new challenges!',
                     style: TextStyle(
                       color: Colors.white54,
-                      fontSize: 14,
+                      fontSize: 12,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -159,7 +167,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
       child: AnimatedContainer(
         duration: Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(15),
           gradient: level.isUnlocked 
             ? LinearGradient(
                 begin: Alignment.topLeft,
@@ -175,29 +183,29 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
             if (level.isUnlocked)
               BoxShadow(
                 color: cardColor.withOpacity(0.3),
-                blurRadius: 10,
+                blurRadius: 8,
                 spreadRadius: 2,
               ),
           ],
         ),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Level number
               Container(
-                width: 50,
-                height: 50,
+                width: 35,
+                height: 35,
                 decoration: BoxDecoration(
                   color: level.isUnlocked ? Colors.white.withOpacity(0.2) : Colors.grey.shade600,
-                  borderRadius: BorderRadius.circular(25),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Center(
                   child: Text(
                     '${level.number}',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: textColor,
                     ),
@@ -206,31 +214,36 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
               ),
               
               // Level info
-              Column(
-                children: [
-                  Text(
-                    level.name,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      level.name,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    level.description,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: textColor.withOpacity(0.8),
+                    SizedBox(height: 4),
+                    Text(
+                      level.description,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: textColor.withOpacity(0.8),
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  SizedBox(height: 8),
-                  _buildDifficultyIndicator(level.difficulty, level.isUnlocked),
-                ],
+                    SizedBox(height: 6),
+                    _buildDifficultyIndicator(level.difficulty, level.isUnlocked),
+                  ],
+                ),
               ),
               
               // Lock indicator
@@ -238,7 +251,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
                 Icon(
                   Icons.lock,
                   color: Colors.grey.shade500,
-                  size: 20,
+                  size: 16,
                 ),
             ],
           ),
@@ -257,7 +270,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> with Ticker
         return Icon(
           index < stars ? Icons.star : Icons.star_border,
           color: starColor,
-          size: 16,
+          size: 12,
         );
       }),
     );

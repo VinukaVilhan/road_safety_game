@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'level_selection_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -14,6 +15,13 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
+    
+    // Force landscape orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    
     _animationController = AnimationController(
       duration: Duration(milliseconds: 1500),
       vsync: this,
@@ -60,9 +68,9 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
           ),
         ),
         child: SafeArea(
-          child: Column(
+          child: Row(
             children: [
-              // Title Section
+              // Left side - Title Section
               Expanded(
                 flex: 3,
                 child: Center(
@@ -75,8 +83,8 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                         children: [
                           // Game Icon/Logo
                           Container(
-                            width: 120,
-                            height: 120,
+                            width: 100,
+                            height: 100,
                             decoration: BoxDecoration(
                               color: Color(0xFFe94560),
                               borderRadius: BorderRadius.circular(20),
@@ -90,7 +98,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                             ),
                             child: Icon(
                               Icons.directions_car,
-                              size: 60,
+                              size: 50,
                               color: Colors.white,
                             ),
                           ),
@@ -99,7 +107,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                           Text(
                             'Road Rules',
                             style: TextStyle(
-                              fontSize: 32,
+                              fontSize: 28,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
                               letterSpacing: 3,
@@ -115,7 +123,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                           Text(
                             'GAME',
                             style: TextStyle(
-                              fontSize: 24,
+                              fontSize: 20,
                               fontWeight: FontWeight.w300,
                               color: Colors.white70,
                               letterSpacing: 2,
@@ -128,52 +136,54 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                 ),
               ),
               
-              // Menu Buttons Section
+              // Right side - Menu Buttons and Footer
               Expanded(
                 flex: 2,
                 child: FadeTransition(
                   opacity: _fadeAnimation,
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildMenuButton(
-                        'PLAY',
-                        Icons.play_arrow,
-                        Color(0xFF4CAF50),
-                        () => _startGame(context),
+                      // Menu Buttons Section
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildMenuButton(
+                              'PLAY',
+                              Icons.play_arrow,
+                              Color(0xFF4CAF50),
+                              () => _startGame(context),
+                            ),
+                            SizedBox(height: 12),
+                            _buildMenuButton(
+                              'OPTIONS',
+                              Icons.settings,
+                              Color(0xFF2196F3),
+                              () => _showOptions(context),
+                            ),
+                            SizedBox(height: 12),
+                            _buildMenuButton(
+                              'QUIT',
+                              Icons.exit_to_app,
+                              Color(0xFFe94560),
+                              () => _quitGame(context),
+                            ),
+                          ],
+                        ),
                       ),
-                      SizedBox(height: 15),
-                      _buildMenuButton(
-                        'OPTIONS',
-                        Icons.settings,
-                        Color(0xFF2196F3),
-                        () => _showOptions(context),
-                      ),
-                      SizedBox(height: 15),
-                      _buildMenuButton(
-                        'QUIT',
-                        Icons.exit_to_app,
-                        Color(0xFFe94560),
-                        () => _quitGame(context),
+                      
+                      // Footer
+                      Padding(
+                        padding: EdgeInsets.only(bottom: 20),
+                        child: Text(
+                          'Use WASD or Arrow Keys to play',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     ],
-                  ),
-                ),
-              ),
-              
-              // Footer
-              Expanded(
-                flex: 1,
-                child: Center(
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: Text(
-                      'Use WASD or Arrow Keys to play',
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 14,
-                      ),
-                    ),
                   ),
                 ),
               ),
@@ -186,15 +196,15 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
 
   Widget _buildMenuButton(String text, IconData icon, Color color, VoidCallback onPressed) {
     return Container(
-      width: 250,
-      height: 55,
+      width: 200,
+      height: 45,
       child: ElevatedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: 24),
+        icon: Icon(icon, size: 20),
         label: Text(
           text,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
             letterSpacing: 1,
           ),
@@ -298,8 +308,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
               onPressed: () {
                 // Close the app
                 Navigator.of(context).pop();
-                // You might want to use SystemNavigator.pop() here
-                // but it requires import 'package:flutter/services.dart';
+                SystemNavigator.pop();
               },
               child: Text(
                 'QUIT',

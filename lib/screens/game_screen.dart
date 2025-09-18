@@ -16,6 +16,7 @@ class GameScreenState extends State<GameScreen> {
   late RealisticCarGame game;
   int _currentGear = 1; // Track current gear (P=0, 1,2,3,4,5,R=-1)
   final List<String> _gears = ['P', '1', '2', '3', '4', '5', 'R'];
+  double _steeringRotation = 0.0;
 
   @override
   void initState() {
@@ -175,13 +176,6 @@ class GameScreenState extends State<GameScreen> {
         height: 120,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              Colors.grey[800]!,
-              Colors.grey[900]!,
-            ],
-          ),
-          border: Border.all(color: Colors.grey[600]!, width: 3),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.5),
@@ -190,40 +184,16 @@ class GameScreenState extends State<GameScreen> {
             ),
           ],
         ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Steering wheel spokes
-            Container(
-              width: 60,
-              height: 4,
-              color: Colors.grey[700],
+        child: Transform.rotate(
+          angle: _steeringRotation, // Apply the rotation
+          child: ClipOval(
+            child: Image.asset(
+              'assets/images/SteeringWheel.png',
+              width: 120,
+              height: 120,
+              fit: BoxFit.cover,
             ),
-            Container(
-              width: 4,
-              height: 60,
-              color: Colors.grey[700],
-            ),
-            // Center hub
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.grey[600],
-                border: Border.all(color: Colors.grey[500]!, width: 1),
-              ),
-            ),
-            // Direction indicator
-            const Positioned(
-              top: 10,
-              child: Icon(
-                Icons.keyboard_arrow_up,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -482,16 +452,28 @@ class GameScreenState extends State<GameScreen> {
   }
 
   void _handleSteeringUpdate(DragUpdateDetails details) {
-    // Calculate steering based on horizontal drag
-    final deltaX = details.delta.dx;
-    if (deltaX > 2) {
+    setState(() {
+      // Calculate rotation based on horizontal drag
+      final deltaX = details.delta.dx;
+      _steeringRotation += deltaX * 0.02; // Adjust sensitivity as needed
+      
+      // Limit rotation to realistic range (e.g., -1.5 to 1.5 radians)
+      _steeringRotation = _steeringRotation.clamp(-1.5, 1.5);
+    });
+    
+    // Apply steering to car
+    if (details.delta.dx > 2) {
       game.car.steerRight();
-    } else if (deltaX < -2) {
+    } else if (details.delta.dx < -2) {
       game.car.steerLeft();
     }
   }
 
   void _handleSteeringEnd() {
+    setState(() {
+      // Gradually return steering wheel to center
+      _steeringRotation = 0.0;
+    });
     game.car.resetSteering();
   }
 

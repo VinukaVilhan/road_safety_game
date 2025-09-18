@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; 
 import 'package:flame/game.dart';
 import '../models/game_level.dart';
 import '../game/realistic_car_game.dart';
+import '../widgets/gearbox.dart';
+import '../widgets/steeringWheel.dart';
+import '../widgets/pedals.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLevel level;
@@ -81,13 +85,22 @@ class GameScreenState extends State<GameScreen> {
                           
                           const SizedBox(height: 10),
                           
-                          // Pedals row
-                          _buildPedalsRow(),
+                          // Pedals row - Using widget
+                          PedalsWidget(
+                            onAcceleratorDown: _startAccelerating,
+                            onAcceleratorUp: _stopAccelerating,
+                            onBrakeDown: _startBraking,
+                            onBrakeUp: _stopBraking,
+                          ),
                           
                           const SizedBox(height: 15),
                           
-                          // Gearbox
-                          _buildGearbox(),
+                          // Gearbox - Using widget
+                          GearboxWidget(
+                            currentGear: _currentGear,
+                            gears: _gears,
+                            onGearSelected: _onGearSelected,
+                          ),
                         ],
                       ),
                       
@@ -107,8 +120,13 @@ class GameScreenState extends State<GameScreen> {
                         ),
                       ),
                       
-                      // Steering Wheel in top right
-                      _buildSteeringWheel(),
+                      // Steering Wheel - Using widget
+                      SteeringWheelWidget(
+                        rotation: _steeringRotation,
+                        onPanStart: _handleSteeringStart,
+                        onPanUpdate: _handleSteeringUpdate,
+                        onPanEnd: _handleSteeringEnd,
+                      ),
                     ],
                   ),
                   
@@ -160,275 +178,16 @@ class GameScreenState extends State<GameScreen> {
     }
   }
 
-  Widget _buildSteeringWheel() {
-    return GestureDetector(
-      onPanStart: (details) {
-        _handleSteeringStart(details);
-      },
-      onPanUpdate: (details) {
-        _handleSteeringUpdate(details);
-      },
-      onPanEnd: (details) {
-        _handleSteeringEnd();
-      },
-      child: Container(
-        width: 120,
-        height: 120,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.5),
-              blurRadius: 10,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Transform.rotate(
-          angle: _steeringRotation, // Apply the rotation
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/SteeringWheel.png',
-              width: 120,
-              height: 120,
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPedalsRow() {
-    return Row(
-      children: [
-        // Accelerator (Gas)
-        GestureDetector(
-          onTapDown: (_) => _startAccelerating(),
-          onTapUp: (_) => _stopAccelerating(),
-          onTapCancel: () => _stopAccelerating(),
-          child: Container(
-            width: 50,
-            height: 60,
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.green[600]!,
-                  Colors.green[800]!,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.green[400]!, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.keyboard_arrow_up,
-                  color: Colors.white,
-                  size: 18,
-                ),
-                Text(
-                  'GAS',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        // Brake
-        GestureDetector(
-          onTapDown: (_) => _startBraking(),
-          onTapUp: (_) => _stopBraking(),
-          onTapCancel: () => _stopBraking(),
-          child: Container(
-            width: 50,
-            height: 60,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.red[600]!,
-                  Colors.red[800]!,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.red[400]!, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.keyboard_arrow_down,
-                  color: Colors.white,
-                  size: 18,
-                ),
-                Text(
-                  'BRAKE',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 8,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGearbox() {
-    return Container(
-      width: 110,
-      height: 160,
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey[600]!, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Gearbox header
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey[800],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(13),
-                topRight: Radius.circular(13),
-              ),
-            ),
-            child: const Text(
-              'GEAR',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          
-          // Current gear display
-          Expanded(
-            child: Center(
-              child: Text(
-                _gears[_currentGear],
-                style: TextStyle(
-                  color: _currentGear == 0 ? Colors.orange : // Park
-                         _currentGear == 6 ? Colors.red :    // Reverse
-                         Colors.green,                       // Forward gears
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          
-          // Gear shift buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Gear down button
-              GestureDetector(
-                onTap: _shiftDown,
-                child: Container(
-                  width: 35,
-                  height: 30,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[500]!, width: 1),
-                  ),
-                  child: const Icon(
-                    Icons.remove,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-              
-              // Gear up button
-              GestureDetector(
-                onTap: _shiftUp,
-                child: Container(
-                  width: 35,
-                  height: 30,
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[500]!, width: 1),
-                  ),
-                  child: const Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Gear shifting methods
-  void _shiftUp() {
+  // Gear selection handler
+  void _onGearSelected(int gearIndex) {
     setState(() {
-      if (_currentGear < _gears.length - 1) {
-        _currentGear++;
-        _applyGearChange();
-      }
+      _currentGear = gearIndex;
+      _applyGearChange();
     });
   }
 
-  void _shiftDown() {
-    setState(() {
-      if (_currentGear > 0) {
-        _currentGear--;
-        _applyGearChange();
-      }
-    });
-  }
-
+  // Enhanced gear change application with smooth transitions
   void _applyGearChange() {
-    // Apply gear change to the game
     String currentGearString = _gears[_currentGear];
     
     if (currentGearString == 'P') {
@@ -441,14 +200,15 @@ class GameScreenState extends State<GameScreen> {
       game.car.isInPark = false;
     } else {
       // Forward gears (1-5)
-      game.car.currentGear = int.parse(currentGearString);
+      int gear = int.parse(currentGearString);
+      game.car.currentGear = gear;
       game.car.isInPark = false;
     }
   }
 
   // Steering wheel control methods
   void _handleSteeringStart(DragStartDetails details) {
-    // Handle steering start
+    // Handle steering start - you can add initialization logic here
   }
 
   void _handleSteeringUpdate(DragUpdateDetails details) {
@@ -469,7 +229,7 @@ class GameScreenState extends State<GameScreen> {
     }
   }
 
-  void _handleSteeringEnd() {
+  void _handleSteeringEnd(DragEndDetails details) {
     setState(() {
       // Gradually return steering wheel to center
       _steeringRotation = 0.0;

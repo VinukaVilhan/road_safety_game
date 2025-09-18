@@ -89,9 +89,6 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     return true;
   }
-  
-  // REMOVED: onTapDown and onTapUp methods to disable tap steering
-  // Now only steering wheel and keyboard controls will work
 }
 
 class Car extends SpriteComponent {
@@ -108,6 +105,25 @@ class Car extends SpriteComponent {
   double maxSteerAngle = 150.0; // degrees per second
   double steerReturnSpeed = 300.0; // how fast steering returns to center
   
+  // Control flags to maintain acceleration/braking states
+  bool isAccelerating = false;
+  bool isBraking = false;
+  
+  // Gear system properties
+  int currentGear = 1; // P=0, 1-5=forward gears, R=-1
+  bool isInPark = false;
+  
+  // Gear ratios for different performance characteristics
+  final Map<int, double> gearRatios = {
+    -1: 0.8,  // Reverse
+    0: 0.0,   // Park
+    1: 1.0,   // 1st gear
+    2: 0.85,  // 2nd gear
+    3: 0.7,   // 3rd gear
+    4: 0.55,  // 4th gear
+    5: 0.4,   // 5th gear
+  };
+  
   @override
   Future<void> onLoad() async {
     super.onLoad();
@@ -118,7 +134,6 @@ class Car extends SpriteComponent {
     // Set car size and anchor
     size = Vector2(90, 90);
     anchor = Anchor.center;
-
     angle = -math.pi / 2;
   }
   
@@ -142,23 +157,52 @@ class Car extends SpriteComponent {
     if (parent == null) return;
     final game = parent as RealisticCarGame;
     
-    // Apply acceleration to velocity
-    velocity += acceleration * dt;
+    // Don't allow movement if in park
+    if (isInPark) {
+      velocity = Vector2.zero();
+      acceleration = Vector2.zero();
+      return;
+    }
     
-    // Apply friction
-    if (acceleration.length == 0) {
-      final frictionForce = velocity.normalized() * -friction * dt;
-      if (frictionForce.length < velocity.length) {
-        velocity += frictionForce;
+    // Calculate effective acceleration based on current gear
+    double effectiveAcceleration = accelerationForce * (gearRatios[currentGear] ?? 1.0);
+    
+    // Apply continuous acceleration/braking based on button states
+    if (isAccelerating) {
+      if (currentGear == -1) {
+        // Reverse gear - accelerate backwards
+        acceleration.y = effectiveAcceleration;
+      } else if (currentGear > 0) {
+        // Forward gears - accelerate forwards
+        acceleration.y = -effectiveAcceleration;
+      }
+    } else if (isBraking) {
+      if (velocity.length > 0) {
+        acceleration = velocity.normalized() * -brakeForce;
+      }
+    } else {
+      // Apply friction when coasting
+      if (velocity.length > 0) {
+        final frictionForce = velocity.normalized() * -friction;
+        acceleration = frictionForce;
       } else {
-        velocity = Vector2.zero();
+        acceleration = Vector2.zero();
       }
     }
     
-    // Limit max speed
-    if (velocity.length > maxSpeed) {
-      velocity = velocity.normalized() * maxSpeed;
+    // Apply acceleration to velocity
+    velocity += acceleration * dt;
+    
+    // Calculate effective max speed based on gear
+    double effectiveMaxSpeed = maxSpeed * (gearRatios[currentGear]?.abs() ?? 1.0);
+    
+    // Limit max speed based on current gear
+    if (velocity.length > effectiveMaxSpeed) {
+      velocity = velocity.normalized() * effectiveMaxSpeed;
     }
+    
+    // Apply velocity to position
+    position += velocity * dt;
     
     // Apply steering (affects horizontal movement)
     position.x += steerAngle * dt;
@@ -181,11 +225,17 @@ class Car extends SpriteComponent {
       position.x = game.size.x - margin;
     }
     
+    // Keep car within vertical bounds (prevent going off screen)
+    if (position.y < size.y / 2) {
+      position.y = size.y / 2;
+      velocity.y = math.max(0, velocity.y); // Stop upward movement
+    } else if (position.y > game.size.y - size.y / 2) {
+      position.y = game.size.y - size.y / 2;
+      velocity.y = math.min(0, velocity.y); // Stop downward movement
+    }
+    
     // Visual rotation based on steering
     angle = -math.pi / 2 + (steerAngle * 0.001);
-    // Reset acceleration for next frame
-
-    acceleration = Vector2.zero();
   }
   
   void steerLeft() {
@@ -201,18 +251,18 @@ class Car extends SpriteComponent {
   }
   
   void accelerate() {
-    acceleration.y = -accelerationForce; // Negative Y for upward movement
+    isAccelerating = true;
+    isBraking = false;
   }
   
   void brake() {
-    if (velocity.length > 0) {
-      acceleration = velocity.normalized() * -brakeForce;
-    }
+    isBraking = true;
+    isAccelerating = false;
   }
   
   void coast() {
-    // Let friction handle deceleration
-    acceleration = Vector2.zero();
+    isAccelerating = false;
+    isBraking = false;
   }
   
   double getCurrentSpeed() {

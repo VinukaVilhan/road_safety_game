@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'level_selection_screen.dart';
+import 'screens/level_selection_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   @override

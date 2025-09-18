@@ -54,40 +54,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   
   @override
   bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
-    // Handle keyboard input for car movement
-    if (keysPressed.contains(LogicalKeyboardKey.arrowLeft) || 
-        keysPressed.contains(LogicalKeyboardKey.keyA)) {
-      car.steerLeft();
-    } else if (keysPressed.contains(LogicalKeyboardKey.arrowRight) || 
-               keysPressed.contains(LogicalKeyboardKey.keyD)) {
-      car.steerRight();
-    }
-    
-    if (keysPressed.contains(LogicalKeyboardKey.arrowUp) || 
-        keysPressed.contains(LogicalKeyboardKey.keyW)) {
-      car.accelerate();
-    } else if (keysPressed.contains(LogicalKeyboardKey.arrowDown) || 
-               keysPressed.contains(LogicalKeyboardKey.keyS)) {
-      car.brake();
-    }
-    
-    // Reset steering when no horizontal keys are pressed
-    if (!keysPressed.contains(LogicalKeyboardKey.arrowLeft) &&
-        !keysPressed.contains(LogicalKeyboardKey.arrowRight) &&
-        !keysPressed.contains(LogicalKeyboardKey.keyA) &&
-        !keysPressed.contains(LogicalKeyboardKey.keyD)) {
-      car.resetSteering();
-    }
-    
-    // Coast when no vertical keys are pressed
-    if (!keysPressed.contains(LogicalKeyboardKey.arrowUp) &&
-        !keysPressed.contains(LogicalKeyboardKey.arrowDown) &&
-        !keysPressed.contains(LogicalKeyboardKey.keyW) &&
-        !keysPressed.contains(LogicalKeyboardKey.keyS)) {
-      car.coast();
-    }
-    
-    return true;
+    return false;
   }
 }
 

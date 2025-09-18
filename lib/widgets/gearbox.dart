@@ -33,20 +33,11 @@ class GearboxWidget extends StatelessWidget {
           // Background gearbox image
           ClipRRect(
             borderRadius: BorderRadius.circular(15),
-            child: Container(
-              width: 140,
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.grey[800], // Fallback color
-                borderRadius: BorderRadius.circular(15),
-              ),
+            child: Center(  // Add Center widget here
               child: Image.asset(
-                'assets/images/Gearbox.PNG', // Your gearbox image
-                width: 140,
-                height: 200,
-                fit: BoxFit.cover,
+                'assets/images/Gearbox.PNG',
+                fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  // Fallback UI if image fails to load
                   return _buildFallbackGearbox();
                 },
               ),
@@ -98,8 +89,8 @@ class GearboxWidget extends StatelessWidget {
         // Reverse (R) - Top Left
         _buildGearHotspot(
           gear: 6, // R position in array
-          left: 25,
-          top: 50,
+          left: 28,
+          top: 45,
           label: 'R',
         ),
         
@@ -132,22 +123,14 @@ class GearboxWidget extends StatelessWidget {
           gear: 4,
           left: 85,
           top: 110,
-          label: '4',
-        ),
-        
-        // Fifth Gear (5) - Bottom Right
-        _buildGearHotspot(
-          gear: 5,
-          left: 85,
-          top: 140,
-          label: '5',
-        ),
+          label: 'D',
+        ),      
         
         // Park (P) - Bottom Center
         _buildGearHotspot(
           gear: 0, // P position
-          left: 55,
-          top: 160,
+          left: 28,
+          top: 120,
           label: 'P',
         ),
       ],

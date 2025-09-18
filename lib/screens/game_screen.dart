@@ -56,7 +56,7 @@ class GameScreenState extends State<GameScreen> {
           // The game widget
           GameWidget(game: game),
           
-          // UI overlay (pause button, score, etc.)
+          // UI overlay
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(20.0),
@@ -132,35 +132,98 @@ class GameScreenState extends State<GameScreen> {
                   
                   const Spacer(),
                   
-                  // Bottom - Speed Display (centered)
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Speed', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                          StreamBuilder<double>(
-                            stream: _getSpeedStream(),
-                            builder: (context, snapshot) {
-                              final speed = snapshot.data ?? 0;
-                              return Text(
-                                '${speed.toInt()}',
-                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                              );
-                            },
+                  // Bottom row - Speed/Score section moved to bottom right
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.3),
+                            width: 1,
                           ),
-                          const SizedBox(height: 8),
-                          const Text('Target', style: TextStyle(color: Colors.white70, fontSize: 12)),
-                          Text('${widget.level.number * 500}', 
-                              style: const TextStyle(color: Colors.yellow, fontSize: 14, fontWeight: FontWeight.bold)),
-                        ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Speed section
+                            const Text(
+                              'SPEED',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            StreamBuilder<double>(
+                              stream: _getSpeedStream(),
+                              builder: (context, snapshot) {
+                                final speed = snapshot.data ?? 0;
+                                return Text(
+                                  '${speed.toInt()}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                );
+                              },
+                            ),
+                            const Text(
+                              'km/h',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 12),
+                            
+                            // Divider
+                            Container(
+                              width: 60,
+                              height: 1,
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                            
+                            const SizedBox(height: 12),
+                            
+                            // Target section
+                            const Text(
+                              'TARGET',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${widget.level.number * 500}',
+                              style: const TextStyle(
+                                color: Colors.yellow,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Text(
+                              'km/h',
+                              style: TextStyle(
+                                color: Colors.yellow,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
+import 'package:flame/camera.dart';
 import 'package:flutter/services.dart';
 
 class RealisticCarGame extends FlameGame with KeyboardHandler {
@@ -9,8 +10,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   double roadSpeed = 200.0;
   List<SpriteComponent> roadTiles = [];
   
+  // Set the base virtual resolution to 640x360
+  @override
+  Vector2 get size => Vector2(640, 360);
+  
   @override
   Future<void> onLoad() async {
+    // Use MaxViewport to fill screen while maintaining 16:9 aspect ratio (no stretching, no black bars)
+    // MaxViewport scales the game size to fill the screen proportionally
+    camera.viewport = MaxViewport();
+    
     super.onLoad();
     
     // Load and setup scrolling road background
@@ -24,7 +33,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   
   Future<void> _setupRoad() async {
     // Create multiple road tiles for seamless scrolling
-    final roadSprite = await Sprite.load('Road.png');
+    final roadSprite = await Sprite.load('road sprite.png');
     
     for (int i = 0; i < 3; i++) {
       final roadTile = SpriteComponent(

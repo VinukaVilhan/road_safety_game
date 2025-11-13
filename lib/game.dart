@@ -24,7 +24,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   
   Future<void> _setupRoad() async {
     // Create multiple road tiles for seamless scrolling
-    final roadSprite = await Sprite.load('Road.png');
+    final roadSprite = await Sprite.load('road sprite.png');
     
     for (int i = 0; i < 3; i++) {
       final roadTile = SpriteComponent(

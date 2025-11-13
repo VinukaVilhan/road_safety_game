@@ -20,7 +20,8 @@ class GameScreenState extends State<GameScreen> {
   late RealisticCarGame game;
   int _currentGear = 1; // Track current gear (P=0, 1,2,3,4,5,R=-1)
   final List<String> _gears = ['P', '1', '2', '3', '4', '5', 'R'];
-  double _steeringRotation = 0.0;
+  final ValueNotifier<double> _steeringRotation = ValueNotifier<double>(0.0);
+  DateTime? _lastSteeringUpdate;
 
   @override
   void initState() {
@@ -28,6 +29,12 @@ class GameScreenState extends State<GameScreen> {
     game = RealisticCarGame();
     // Configure the game based on the level
     _configureGameForLevel();
+  }
+
+  @override
+  void dispose() {
+    _steeringRotation.dispose();
+    super.dispose();
   }
 
   void _configureGameForLevel() {
@@ -56,177 +63,185 @@ class GameScreenState extends State<GameScreen> {
           // The game widget
           GameWidget(game: game),
           
-          // UI overlay
+          // UI overlay - Using Positioned widgets for better control
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                children: [
-                  // Top UI
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Stack(
+              children: [
+                // Top-left: Controls (Pause, Pedals, Gearbox)
+                Positioned(
+                  top: 20,
+                  left: 20,
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Left side controls column
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Pause/Back button
-                          IconButton(
-                            onPressed: () {
-                              _showPauseDialog();
-                            },
-                            icon: const Icon(
-                              Icons.pause,
-                              color: Colors.white,
-                              size: 32,
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 10),
-                          
-                          // Pedals row - Using widget
-                          PedalsWidget(
-                            onAcceleratorDown: _startAccelerating,
-                            onAcceleratorUp: _stopAccelerating,
-                            onBrakeDown: _startBraking,
-                            onBrakeUp: _stopBraking,
-                          ),
-                          
-                          const SizedBox(height: 15),
-                          
-                          // Gearbox - Using widget
-                          GearboxWidget(
-                            currentGear: _currentGear,
-                            gears: _gears,
-                            onGearSelected: _onGearSelected,
-                          ),
-                        ],
-                      ),
-                      
-                      // Level info (center)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Text(
-                          '${widget.level.name} - Level ${widget.level.number}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      // Pause/Back button
+                      IconButton(
+                        onPressed: () {
+                          _showPauseDialog();
+                        },
+                        icon: const Icon(
+                          Icons.pause,
+                          color: Colors.white,
+                          size: 32,
                         ),
                       ),
                       
-                      // Steering Wheel - Using widget
-                      SteeringWheelWidget(
-                        rotation: _steeringRotation,
+                      const SizedBox(height: 10),
+                      
+                      // Pedals row
+                      PedalsWidget(
+                        onAcceleratorDown: _startAccelerating,
+                        onAcceleratorUp: _stopAccelerating,
+                        onBrakeDown: _startBraking,
+                        onBrakeUp: _stopBraking,
+                      ),
+                      
+                      const SizedBox(height: 15),
+                      
+                      // Gearbox
+                      GearboxWidget(
+                        currentGear: _currentGear,
+                        gears: _gears,
+                        onGearSelected: _onGearSelected,
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Top-center: Level info
+                Positioned(
+                  top: 20,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Text(
+                        '${widget.level.name} - Level ${widget.level.number}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Top-right: Steering Wheel
+                Positioned(
+                  top: 20,
+                  right: 20,
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: _steeringRotation,
+                    builder: (context, rotation, child) {
+                      return SteeringWheelWidget(
+                        rotation: rotation,
                         onPanStart: _handleSteeringStart,
                         onPanUpdate: _handleSteeringUpdate,
                         onPanEnd: _handleSteeringEnd,
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                  
-                  const Spacer(),
-                  
-                  // Bottom row - Speed/Score section moved to bottom right
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.3),
-                            width: 1,
+                ),
+                
+                // Bottom-right: Speed/Score section
+                Positioned(
+                  bottom: 20,
+                  right: 20,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Speed section
+                        const Text(
+                          'SPEED',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
                           ),
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            // Speed section
-                            const Text(
-                              'SPEED',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            StreamBuilder<double>(
-                              stream: _getSpeedStream(),
-                              builder: (context, snapshot) {
-                                final speed = snapshot.data ?? 0;
-                                return Text(
-                                  '${speed.toInt()}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                );
-                              },
-                            ),
-                            const Text(
-                              'km/h',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 10,
-                              ),
-                            ),
-                            
-                            const SizedBox(height: 12),
-                            
-                            // Divider
-                            Container(
-                              width: 60,
-                              height: 1,
-                              color: Colors.white.withValues(alpha: 0.3),
-                            ),
-                            
-                            const SizedBox(height: 12),
-                            
-                            // Target section
-                            const Text(
-                              'TARGET',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${widget.level.number * 500}',
+                        const SizedBox(height: 4),
+                        StreamBuilder<double>(
+                          stream: _getSpeedStream(),
+                          builder: (context, snapshot) {
+                            final speed = snapshot.data ?? 0;
+                            return Text(
+                              '${speed.toInt()}',
                               style: const TextStyle(
-                                color: Colors.yellow,
-                                fontSize: 18,
+                                color: Colors.white,
+                                fontSize: 24,
                                 fontWeight: FontWeight.bold,
                               ),
-                            ),
-                            const Text(
-                              'km/h',
-                              style: TextStyle(
-                                color: Colors.yellow,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
+                            );
+                          },
                         ),
-                      ),
-                    ],
+                        const Text(
+                          'km/h',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Divider
+                        Container(
+                          width: 60,
+                          height: 1,
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
+                        
+                        const SizedBox(height: 12),
+                        
+                        // Target section
+                        const Text(
+                          'TARGET',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${widget.level.number * 500}',
+                          style: const TextStyle(
+                            color: Colors.yellow,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text(
+                          'km/h',
+                          style: TextStyle(
+                            color: Colors.yellow,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -275,28 +290,31 @@ class GameScreenState extends State<GameScreen> {
   }
 
   void _handleSteeringUpdate(DragUpdateDetails details) {
-    setState(() {
-      // Calculate rotation based on horizontal drag
-      final deltaX = details.delta.dx;
-      _steeringRotation += deltaX * 0.02; // Adjust sensitivity as needed
-      
-      // Limit rotation to realistic range (e.g., -1.5 to 1.5 radians)
-      _steeringRotation = _steeringRotation.clamp(-1.5, 1.5);
-    });
+    // Update visual rotation without setState (using ValueNotifier)
+    // This only rebuilds the steering wheel widget, not the entire screen
+    final deltaX = details.delta.dx;
+    _steeringRotation.value = (_steeringRotation.value + deltaX * 0.02).clamp(-1.5, 1.5);
     
-    // Apply steering to car
-    if (details.delta.dx > 2) {
-      game.car.steerRight();
-    } else if (details.delta.dx < -2) {
-      game.car.steerLeft();
+    // Throttle car steering updates to avoid lag (max once every 16ms ~ 60fps)
+    final now = DateTime.now();
+    if (_lastSteeringUpdate == null || 
+        now.difference(_lastSteeringUpdate!).inMilliseconds >= 16) {
+      _lastSteeringUpdate = now;
+      
+      // Apply proportional steering to car (smooth control)
+      // Convert drag delta to steering angle (proportional control)
+      final steeringInput = deltaX.clamp(-10.0, 10.0);
+      if (steeringInput.abs() > 0.5) {
+        // Proportional steering: map drag delta to steering angle
+        final proportionalAngle = steeringInput * (game.car.maxSteerAngle / 10.0);
+        game.car.steerAngle = proportionalAngle.clamp(-game.car.maxSteerAngle, game.car.maxSteerAngle);
+      }
     }
   }
 
   void _handleSteeringEnd(DragEndDetails details) {
-    setState(() {
-      // Gradually return steering wheel to center
-      _steeringRotation = 0.0;
-    });
+    // Gradually return steering wheel to center
+    _steeringRotation.value = 0.0;
     game.car.resetSteering();
   }
 

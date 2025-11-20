@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../theme/swiss_theme.dart';
 import '../models/game_level.dart';
 import 'game_screen.dart';
 
@@ -10,6 +13,28 @@ class LevelSelectionScreen extends StatefulWidget {
 }
 
 class LevelSelectionScreenState extends State<LevelSelectionScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Force portrait orientation for level selection
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
+
+  @override
+  void dispose() {
+    // Allow all orientations when leaving
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    super.dispose();
+  }
+  
   final List<GameLevel> levels = [
     GameLevel(1, "City Drive", "Navigate through busy city streets with moderate traffic.", LevelDifficulty.Easy, true),
     GameLevel(2, "Highway Rush", "High-speed highway driving with fast-moving vehicles.", LevelDifficulty.Medium, true),
@@ -20,98 +45,62 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1a1a2e),
-              Color(0xFF16213e),
-              Color(0xFF0f3460),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back, color: Colors.white, size: 28),
+      backgroundColor: SwissTheme.backgroundWhite,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(
+                      Icons.arrow_back_sharp,
+                      color: SwissTheme.textPrimary,
+                      size: 24,
                     ),
-                    const SizedBox(width: 10),
-                    const Text(
-                      'Select Level',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Level Grid
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 15,
-                      mainAxisSpacing: 15,
-                      childAspectRatio: 0.85,
-                    ),
-                    itemCount: levels.length,
-                    itemBuilder: (context, index) {
-                      final level = levels[index];
-                      return _buildLevelCard(level);
-                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                   ),
-                ),
+                  const SizedBox(width: 16),
+                  Text(
+                    'SELECT MODE',
+                    style: GoogleFonts.inter(
+                      fontSize: 32,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.5,
+                      color: SwissTheme.textPrimary,
+                    ),
+                  ),
+                ],
               ),
+            ),
 
-              // Tips Section
-              Container(
-                margin: const EdgeInsets.all(20),
-                padding: const EdgeInsets.all(15),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '💡 Pro Tips:',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '• Complete earlier levels to unlock new challenges\n'
-                      '• Each level has unique obstacles and traffic patterns\n'
-                      '• Higher difficulty levels offer better rewards',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+            const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
+            
+            // Level Grid
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0), // Outer padding
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 1, // Thin 1px spacing
+                    mainAxisSpacing: 1, // Thin 1px spacing
+                    childAspectRatio: 0.75, // 3:4 rectangle
+                  ),
+                  itemCount: levels.length,
+                  itemBuilder: (context, index) {
+                    final level = levels[index];
+                    return _buildLevelCard(level);
+                  },
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -123,7 +112,6 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     return GestureDetector(
       onTap: () {
         if (!isLocked) {
-          // Navigate to game - you'll need to implement this properly
           _startGame(level);
         } else {
           _showLockedLevelDialog(level);
@@ -131,149 +119,102 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
       },
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isLocked 
-              ? [Colors.grey.withValues(alpha: 0.3), Colors.grey.withValues(alpha: 0.1)]
-              : [
-                  _getDifficultyColor(level.difficulty).withValues(alpha: 0.8),
-                  _getDifficultyColor(level.difficulty).withValues(alpha: 0.4),
-                ],
-          ),
-          borderRadius: BorderRadius.circular(20),
+          color: isLocked ? SwissTheme.backgroundLightGrey : SwissTheme.backgroundWhite,
           border: Border.all(
-            color: isLocked 
-              ? Colors.grey.withValues(alpha: 0.3)
-              : _getDifficultyColor(level.difficulty),
-            width: 2,
+            color: SwissTheme.borderBlack,
+            width: 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: isLocked 
-                ? Colors.black.withValues(alpha: 0.2)
-                : _getDifficultyColor(level.difficulty).withValues(alpha: 0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          borderRadius: BorderRadius.zero, // Sharp corners
         ),
         child: Stack(
           children: [
-            // Lock overlay
+            // Locked overlay pattern
             if (isLocked)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.lock,
-                    color: Colors.white,
-                    size: 40,
-                  ),
+              Opacity(
+                opacity: 0.5,
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: HatchingPainter(),
                 ),
               ),
-
-            // Level content
+            
+            // Card content
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Level number and difficulty
+                  // Top row: Level number and difficulty indicator
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Text(
-                          'Level ${level.number}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
+                      // Giant level number (top left)
+                      Text(
+                        level.number.toString().padLeft(2, '0'),
+                        style: GoogleFonts.inter(
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          color: isLocked 
+                            ? SwissTheme.textSecondary.withOpacity(0.3)
+                            : SwissTheme.textSecondary.withOpacity(0.5),
+                          height: 1.0,
+                          letterSpacing: -1.0,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: _getDifficultyColor(level.difficulty),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          level.difficulty.toString().split('.').last,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
+                      
+                      // Difficulty circle (top right) - only for unlocked levels
+                      if (!isLocked)
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: _getDifficultyColor(level.difficulty),
+                            shape: BoxShape.circle,
                           ),
                         ),
-                      ),
+                      
+                      // Lock icon (center) - only for locked levels
+                      if (isLocked)
+                        Expanded(
+                          child: Center(
+                            child: Icon(
+                              Icons.lock_outline,
+                              color: SwissTheme.textPrimary,
+                              size: 32,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
-
-                  const SizedBox(height: 12),
-
-                  // Level name
+                  
+                  const Spacer(),
+                  
+                  // Title (bottom left)
                   Text(
-                    level.name,
-                    style: TextStyle(
-                      color: isLocked ? Colors.grey : Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    level.name.toUpperCase(),
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isLocked 
+                        ? SwissTheme.textSecondary.withOpacity(0.5)
+                        : SwissTheme.textPrimary,
+                      letterSpacing: 0.5,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-
-                  const SizedBox(height: 8),
-
-                  // Description
-                  Expanded(
-                    child: Text(
-                      level.description,
-                      style: TextStyle(
-                        color: isLocked ? Colors.grey : Colors.white.withValues(alpha: 0.8),
-                        fontSize: 12,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-
-                  // Target score
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Target:',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                          ),
-                        ),
-                        Text(
-                          '${level.number * 500} pts',
-                          style: const TextStyle(
-                            color: Colors.yellow,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                  
+                  const SizedBox(height: 4),
+                  
+                  // Target Score (monospaced, technical data style)
+                  Text(
+                    'PTS: ${level.number * 5000}',
+                    style: SwissTheme.monospacedText.copyWith(
+                      fontSize: 10,
+                      color: isLocked
+                        ? SwissTheme.textSecondary.withOpacity(0.4)
+                        : SwissTheme.textSecondary,
                     ),
                   ),
                 ],
@@ -282,61 +223,136 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  void _startGame(GameLevel level) {
-    // Navigate to the game screen with the selected level
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => GameScreen(level: level),
-      ),
-    );
-  }
-
-
-  void _showLockedLevelDialog(GameLevel level) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1a1a2e),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'Level Locked',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Text(
-            'Complete the previous levels to unlock "${level.name}".',
-            style: const TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text(
-                'OK',
-                style: TextStyle(color: Colors.blue),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 
   Color _getDifficultyColor(LevelDifficulty difficulty) {
     switch (difficulty) {
       case LevelDifficulty.Easy:
-        return const Color(0xFF4CAF50);
+        return SwissTheme.accentGreen;
       case LevelDifficulty.Medium:
-        return const Color(0xFFFF9800);
+        return SwissTheme.accentOrange;
       case LevelDifficulty.Hard:
-        return const Color(0xFFe94560);
+        return SwissTheme.accentRed;
       case LevelDifficulty.Extreme:
-        return const Color(0xFF9C27B0);
+        return SwissTheme.accentRed;
     }
   }
+
+  void _startGame(GameLevel level) {
+    // Navigate to the game screen with the selected level
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => GameScreen(level: level),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+
+          var tween = Tween(begin: begin, end: end).chain(
+            CurveTween(curve: curve),
+          );
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    );
+  }
+
+  void _showLockedLevelDialog(GameLevel level) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: SwissTheme.backgroundWhite,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+            side: BorderSide(color: SwissTheme.borderBlack, width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'LEVEL LOCKED',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: SwissTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 24),
+                Text(
+                  'Complete the previous levels to unlock "${level.name}".',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: SwissTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: SwissTheme.accentBlue,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'OK',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: SwissTheme.accentBlue,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Custom painter for hatching pattern on locked levels
+class HatchingPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = SwissTheme.textSecondary.withOpacity(0.2)
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    // Draw diagonal hatching lines
+    const spacing = 8.0;
+    final diagonalLength = (size.width + size.height);
+    
+    for (double i = -diagonalLength; i < diagonalLength; i += spacing) {
+      canvas.drawLine(
+        Offset(i, 0),
+        Offset(i + size.height, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

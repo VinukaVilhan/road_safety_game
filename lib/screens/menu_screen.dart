@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'level_selection_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../theme/swiss_theme.dart';
+import 'test_selection_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   @override
@@ -10,20 +12,19 @@ class MenuScreen extends StatefulWidget {
 class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
     
-    // Force landscape orientation
+    // Force portrait orientation for menu
     SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
     ]);
     
     _animationController = AnimationController(
-      duration: Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     );
 
@@ -32,15 +33,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
+      curve: Curves.easeInOut, // Documentary feel, no elastic
     ));
 
     _animationController.forward();
@@ -49,139 +42,93 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _animationController.dispose();
+    // Allow all orientations when leaving menu
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF1a1a2e),
-              Color(0xFF16213e),
-              Color(0xFF0f3460),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Row(
+      backgroundColor: SwissTheme.backgroundWhite,
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left side - Title Section
+              // Header Section (Top 40%)
               Expanded(
-                flex: 3,
-                child: Center(
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SlideTransition(
-                      position: _slideAnimation,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Game Icon/Logo
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Color(0xFFe94560),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0xFFe94560).withOpacity(0.3),
-                                  blurRadius: 20,
-                                  spreadRadius: 5,
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.directions_car,
-                              size: 50,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(height: 20),
-                          // Game Title
-                          Text(
-                            'Road Rules',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 3,
-                              shadows: [
-                                Shadow(
-                                  color: Color(0xFFe94560).withOpacity(0.5),
-                                  blurRadius: 10,
-                                  offset: Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            'GAME',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w300,
-                              color: Colors.white70,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ],
+                flex: 4,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 64, 32, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Typographic Logo
+                      Text(
+                        'ROAD\nRULES',
+                        style: GoogleFonts.inter(
+                          fontSize: 80,
+                          fontWeight: FontWeight.w900,
+                          height: 0.9, // Tight line height
+                          letterSpacing: -1.0,
+                          color: SwissTheme.textPrimary,
+                        ),
                       ),
-                    ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Thick horizontal red line
+                      Container(
+                        width: double.infinity,
+                        height: 5,
+                        color: SwissTheme.accentRed,
+                      ),
+                    ],
                   ),
                 ),
               ),
               
-              // Right side - Menu Buttons and Footer
+              // Menu Actions Section (Bottom 60%)
               Expanded(
-                flex: 2,
-                child: FadeTransition(
-                  opacity: _fadeAnimation,
+                flex: 6,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 64),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
-                      // Menu Buttons Section
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            _buildMenuButton(
-                              'PLAY',
-                              Icons.play_arrow,
-                              Color(0xFF4CAF50),
-                              () => _startGame(context),
-                            ),
-                            SizedBox(height: 12),
-                            _buildMenuButton(
-                              'OPTIONS',
-                              Icons.settings,
-                              Color(0xFF2196F3),
-                              () => _showOptions(context),
-                            ),
-                            SizedBox(height: 12),
-                            _buildMenuButton(
-                              'QUIT',
-                              Icons.exit_to_app,
-                              Color(0xFFe94560),
-                              () => _quitGame(context),
-                            ),
-                          ],
-                        ),
+                      const SizedBox(height: 32),
+                      
+                      // Menu Item 01 - PLAY
+                      _buildMenuButton(
+                        '01',
+                        'PLAY',
+                        () => _startGame(context),
                       ),
                       
-                      // Footer
-                      Padding(
-                        padding: EdgeInsets.only(bottom: 20),
-                        child: Text(
-                          'Use WASD or Arrow Keys to play',
-                          style: TextStyle(
-                            color: Colors.white54,
-                            fontSize: 12,
-                          ),
-                        ),
+                      const SizedBox(height: 24),
+                      
+                      // Menu Item 02 - OPTIONS
+                      _buildMenuButton(
+                        '02',
+                        'OPTIONS',
+                        () => _showOptions(context),
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Menu Item 03 - QUIT
+                      _buildMenuButton(
+                        '03',
+                        'QUIT',
+                        () => _quitGame(context),
                       ),
                     ],
                   ),
@@ -194,29 +141,35 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildMenuButton(String text, IconData icon, Color color, VoidCallback onPressed) {
-    return Container(
-      width: 200,
-      height: 45,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 20),
-        label: Text(
-          text,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1,
+  Widget _buildMenuButton(String number, String text, VoidCallback onPressed) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.zero, // Sharp corners
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+          child: Row(
+            children: [
+              Text(
+                number,
+                style: GoogleFonts.inter(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: SwissTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Text(
+                text,
+                style: GoogleFonts.inter(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  color: SwissTheme.textPrimary,
+                ),
+              ),
+            ],
           ),
-        ),
-        style: ElevatedButton.styleFrom(
-          foregroundColor: Colors.white,
-          backgroundColor: color,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          elevation: 8,
-          shadowColor: color.withOpacity(0.4),
         ),
       ),
     );
@@ -225,8 +178,23 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
   void _startGame(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => LevelSelectionScreen(),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const TestSelectionScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+
+          var tween = Tween(begin: begin, end: end).chain(
+            CurveTween(curve: curve),
+          );
+
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
       ),
     );
   }
@@ -235,48 +203,104 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Color(0xFF1a1a2e),
-          title: Text(
-            'Options',
-            style: TextStyle(color: Colors.white),
+        return Dialog(
+          backgroundColor: SwissTheme.backgroundWhite,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+            side: BorderSide(color: SwissTheme.borderBlack, width: 1),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.volume_up, color: Color(0xFFe94560)),
-                title: Text('Sound', style: TextStyle(color: Colors.white)),
-                trailing: Switch(
-                  value: true,
-                  activeColor: Color(0xFFe94560),
-                  onChanged: (bool value) {
-                    // Handle sound toggle
-                  },
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'OPTIONS',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: SwissTheme.textPrimary,
+                  ),
                 ),
-              ),
-              ListTile(
-                leading: Icon(Icons.vibration, color: Color(0xFFe94560)),
-                title: Text('Vibration', style: TextStyle(color: Colors.white)),
-                trailing: Switch(
-                  value: true,
-                  activeColor: Color(0xFFe94560),
-                  onChanged: (bool value) {
-                    // Handle vibration toggle
-                  },
+                const SizedBox(height: 24),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 24),
+                
+                // Sound Toggle
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'SOUND',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: SwissTheme.textPrimary,
+                      ),
+                    ),
+                    Switch(
+                      value: true,
+                      activeColor: SwissTheme.accentRed,
+                      onChanged: (bool value) {
+                        // Handle sound toggle
+                      },
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'CLOSE',
-                style: TextStyle(color: Color(0xFFe94560)),
-              ),
+                
+                const SizedBox(height: 16),
+                
+                // Vibration Toggle
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'VIBRATION',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: SwissTheme.textPrimary,
+                      ),
+                    ),
+                    Switch(
+                      value: true,
+                      activeColor: SwissTheme.accentRed,
+                      onChanged: (bool value) {
+                        // Handle vibration toggle
+                      },
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: 32),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 16),
+                
+                // Close Button
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      foregroundColor: SwissTheme.textPrimary,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'CLOSE',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: SwissTheme.accentRed,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -286,36 +310,88 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Color(0xFF1a1a2e),
-          title: Text(
-            'Quit Game',
-            style: TextStyle(color: Colors.white),
+        return Dialog(
+          backgroundColor: SwissTheme.backgroundWhite,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+            side: BorderSide(color: SwissTheme.borderBlack, width: 1),
           ),
-          content: Text(
-            'Are you sure you want to quit?',
-            style: TextStyle(color: Colors.white70),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'QUIT GAME',
+                  style: GoogleFonts.inter(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: SwissTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 24),
+                Text(
+                  'Are you sure you want to quit?',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: SwissTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 16),
+                
+                // Action Buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        foregroundColor: SwissTheme.textSecondary,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'CANCEL',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                          color: SwissTheme.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        SystemNavigator.pop();
+                      },
+                      style: TextButton.styleFrom(
+                        foregroundColor: SwissTheme.accentRed,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'QUIT',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: SwissTheme.accentRed,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                'CANCEL',
-                style: TextStyle(color: Colors.white54),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                // Close the app
-                Navigator.of(context).pop();
-                SystemNavigator.pop();
-              },
-              child: Text(
-                'QUIT',
-                style: TextStyle(color: Color(0xFFe94560)),
-              ),
-            ),
-          ],
         );
       },
     );

@@ -37,7 +37,7 @@ class SteeringWheelWidget extends StatelessWidget {
           angle: rotation,
           child: ClipOval(
             child: Image.asset(
-              'assets/images/SteeringWheel.png',
+              'assets/images/rescaled/Steering_Wheel.png',
               width: 120,
               height: 120,
               fit: BoxFit.cover,

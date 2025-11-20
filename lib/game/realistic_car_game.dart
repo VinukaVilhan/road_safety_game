@@ -9,40 +9,89 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   late SpriteComponent roadBackground;
   double roadSpeed = 200.0;
   List<SpriteComponent> roadTiles = [];
-  
-  // Set the base virtual resolution to 640x360
-  @override
-  Vector2 get size => Vector2(640, 360);
+  bool _roadInitialized = false;
   
   @override
   Future<void> onLoad() async {
-    // Use MaxViewport to fill screen while maintaining 16:9 aspect ratio (no stretching, no black bars)
-    // MaxViewport scales the game size to fill the screen proportionally
-    camera.viewport = MaxViewport();
-    
     super.onLoad();
     
-    // Load and setup scrolling road background
-    await _setupRoad();
+    // Use MaxViewport to fill screen - road will stretch to fill
+    camera.viewport = MaxViewport();
     
-    // Add the car
+    // Load road sprite first
+    _roadSprite = await Sprite.load('road sprite.png');
+    
+    // Try to setup road if size is already available
+    if (size.x > 0 && size.y > 0) {
+      _setupRoad();
+    }
+    // Otherwise, onGameResize will handle it
+    
+    // Add the car after road so it renders on top
     car = Car();
     await car.onLoad();
+    car.priority = 1; // Higher priority - renders on top of road
     add(car);
   }
   
-  Future<void> _setupRoad() async {
-    // Create multiple road tiles for seamless scrolling
-    final roadSprite = await Sprite.load('road sprite.png');
+  Sprite? _roadSprite;
+  
+  @override
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
     
+    // Initialize or update road tiles when size is known
+    if (_roadSprite != null) {
+      if (!_roadInitialized) {
+        _setupRoad();
+      } else {
+        _updateRoadSize();
+      }
+    }
+  }
+  
+  void _setupRoad() {
+    if (_roadSprite == null) return;
+    
+    // Remove existing tiles if any
+    for (var tile in roadTiles) {
+      remove(tile);
+    }
+    roadTiles.clear();
+    
+    // Use the actual game size (which will be the screen size with MaxViewport)
+    final roadSize = size;
+    
+    // Create multiple road tiles for seamless scrolling
     for (int i = 0; i < 3; i++) {
       final roadTile = SpriteComponent(
-        sprite: roadSprite,
-        size: Vector2(size.x, size.y),
-        position: Vector2(0, -size.y * i),
+        sprite: _roadSprite!,
+        size: roadSize, // Use actual screen size to fill entire screen
+        position: Vector2(0, -roadSize.y * i),
+        priority: 0, // Lower priority - renders behind
       );
       roadTiles.add(roadTile);
+      // Add road tiles first (they render behind)
       add(roadTile);
+    }
+    _roadInitialized = true;
+    
+    // Ensure car is on top by re-adding it if it exists and is loaded
+    try {
+      if (car.isMounted) {
+        remove(car);
+        car.priority = 1; // Higher priority - renders on top
+        add(car);
+      }
+    } catch (e) {
+      // Car not yet loaded, will be added in onLoad
+    }
+  }
+  
+  void _updateRoadSize() {
+    final roadSize = size;
+    for (var tile in roadTiles) {
+      tile.size = roadSize;
     }
   }
   
@@ -50,13 +99,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   void update(double dt) {
     super.update(dt);
     
+    // Use actual game size (screen size)
+    final roadSize = size;
+    
     // Scroll road tiles
     for (var tile in roadTiles) {
       tile.position.y += roadSpeed * dt;
       
       // Reset tile position when it goes off screen
-      if (tile.position.y > size.y) {
-        tile.position.y = -size.y * 2;
+      if (tile.position.y > roadSize.y) {
+        tile.position.y = -roadSize.y * 2;
       }
     }
   }
@@ -80,6 +132,7 @@ class Car extends SpriteComponent {
   double steerAngle = 0;
   double maxSteerAngle = 150.0; // degrees per second
   double steerReturnSpeed = 300.0; // how fast steering returns to center
+  bool isSteering = false; // Track if user is actively steering
   
   // Control flags to maintain acceleration/braking states
   bool isAccelerating = false;
@@ -183,8 +236,8 @@ class Car extends SpriteComponent {
     // Apply steering (affects horizontal movement)
     position.x += steerAngle * dt;
     
-    // Gradually return steering to center when not actively steering
-    if (steerAngle != 0) {
+    // Gradually return steering to center only when NOT actively steering
+    if (!isSteering && steerAngle != 0) {
       final returnAmount = steerReturnSpeed * dt;
       if (steerAngle > 0) {
         steerAngle = math.max(0, steerAngle - returnAmount);
@@ -215,14 +268,22 @@ class Car extends SpriteComponent {
   }
   
   void steerLeft() {
+    isSteering = true;
     steerAngle = -maxSteerAngle;
   }
   
   void steerRight() {
+    isSteering = true;
     steerAngle = maxSteerAngle;
   }
   
+  void setSteeringAngle(double angle) {
+    isSteering = true;
+    steerAngle = angle.clamp(-maxSteerAngle, maxSteerAngle);
+  }
+  
   void resetSteering() {
+    isSteering = false;
     // Steering will gradually return to center in update method
   }
   

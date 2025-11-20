@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class PedalsWidget extends StatelessWidget {
+class PedalsWidget extends StatefulWidget {
   final VoidCallback onAcceleratorDown;
   final VoidCallback onAcceleratorUp;
   final VoidCallback onBrakeDown;
@@ -15,101 +15,94 @@ class PedalsWidget extends StatelessWidget {
   });
 
   @override
+  State<PedalsWidget> createState() => _PedalsWidgetState();
+}
+
+class _PedalsWidgetState extends State<PedalsWidget> {
+  bool _isAcceleratorPressed = false;
+  bool _isBrakePressed = false;
+
+  @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      textDirection: TextDirection.ltr,
       children: [
         // Accelerator (Gas)
         _buildPedal(
-          width: 50,
-          height: 60,
-          colors: [Colors.green[600]!, Colors.green[800]!],
-          borderColor: Colors.green[400]!,
-          imagePath: 'assets/images/Accelerator.png',
-          label: 'GAS',
-          onTapDown: onAcceleratorDown,
-          onTapUp: onAcceleratorUp,
-          marginRight: 8,
+          normalImagePath: 'assets/images/rescaled/gas_normal.png',
+          pressedImagePath: 'assets/images/rescaled/gas_pressed.png',
+          isPressed: _isAcceleratorPressed,
+          onTapDown: () {
+            setState(() => _isAcceleratorPressed = true);
+            widget.onAcceleratorDown();
+          },
+          onTapUp: () {
+            setState(() => _isAcceleratorPressed = false);
+            widget.onAcceleratorUp();
+          },
         ),
         
-        // Brake
-        _buildPedal(
-          width: 50,
-          height: 60,
-          colors: [Colors.red[600]!, Colors.red[800]!],
-          borderColor: Colors.red[400]!,
-          imagePath: 'assets/images/Brake.png',
-          label: 'BRAKE',
-          onTapDown: onBrakeDown,
-          onTapUp: onBrakeUp,
-          labelFontSize: 8,
+        // Brake - negative margin to bring closer
+        Transform.translate(
+          offset: const Offset(-15, 0),
+          child: _buildPedal(
+            normalImagePath: 'assets/images/rescaled/brake_normal.png',
+            pressedImagePath: 'assets/images/rescaled/brake_pressed.png',
+            isPressed: _isBrakePressed,
+            onTapDown: () {
+              setState(() => _isBrakePressed = true);
+              widget.onBrakeDown();
+            },
+            onTapUp: () {
+              setState(() => _isBrakePressed = false);
+              widget.onBrakeUp();
+            },
+          ),
         ),
       ],
     );
   }
 
   Widget _buildPedal({
-    required double width,
-    required double height,
-    required List<Color> colors,
-    required Color borderColor,
-    required String imagePath,
-    required String label,
+    required String normalImagePath,
+    required String pressedImagePath,
+    required bool isPressed,
     required VoidCallback onTapDown,
     required VoidCallback onTapUp,
-    double marginRight = 0,
-    double labelFontSize = 9,
   }) {
+    final imagePath = isPressed ? pressedImagePath : normalImagePath;
+    
     return GestureDetector(
       onTapDown: (_) => onTapDown(),
       onTapUp: (_) => onTapUp(),
       onTapCancel: () => onTapUp(),
       child: Container(
-        width: width,
-        height: height,
-        margin: EdgeInsets.only(right: marginRight),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: colors,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              imagePath,
-              width: 24,
-              height: 24,
-              color: Colors.white,
-              errorBuilder: (context, error, stackTrace) {
-                // Fallback icon if image fails to load
-                return Icon(
-                  label == 'GAS' ? Icons.local_gas_station : Icons.stop,
-                  color: Colors.white,
-                  size: 24,
-                );
-              },
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: labelFontSize,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        margin: EdgeInsets.zero,
+        padding: EdgeInsets.zero,
+        width: 90,  // Increased width for larger touch area
+        height: 80,
+        alignment: Alignment.centerLeft,
+        child: Image.asset(
+          imagePath,
+          width: 70,  // Image stays at 70, but container is 90 for larger touch area
+          height: 80,
+          fit: BoxFit.contain,
+          alignment: Alignment.centerLeft,
+          errorBuilder: (context, error, stackTrace) {
+            // Debug: Show error info to help diagnose
+            debugPrint('Failed to load image: $imagePath');
+            debugPrint('Error: $error');
+            // Return a placeholder container with error indicator
+            return Container(
+              width: 50,
+              height: 60,
+              color: Colors.grey[300],
+              child: const Icon(Icons.error_outline, color: Colors.red),
+            );
+          },
         ),
       ),
     );

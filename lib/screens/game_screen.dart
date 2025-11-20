@@ -26,6 +26,11 @@ class GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
+    // Force landscape orientation for game
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     game = RealisticCarGame();
     // Configure the game based on the level
     _configureGameForLevel();
@@ -34,6 +39,11 @@ class GameScreenState extends State<GameScreen> {
   @override
   void dispose() {
     _steeringRotation.dispose();
+    // Restore portrait orientation when leaving game
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
     super.dispose();
   }
 
@@ -132,26 +142,9 @@ class GameScreenState extends State<GameScreen> {
                   ),
                 ),
                 
-                // Top-right: Steering Wheel
+                // Top-right: Speed/Score section
                 Positioned(
                   top: 20,
-                  right: 20,
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: _steeringRotation,
-                    builder: (context, rotation, child) {
-                      return SteeringWheelWidget(
-                        rotation: rotation,
-                        onPanStart: _handleSteeringStart,
-                        onPanUpdate: _handleSteeringUpdate,
-                        onPanEnd: _handleSteeringEnd,
-                      );
-                    },
-                  ),
-                ),
-                
-                // Bottom-right: Speed/Score section
-                Positioned(
-                  bottom: 20,
                   right: 20,
                   child: Container(
                     padding: const EdgeInsets.all(12),
@@ -241,6 +234,23 @@ class GameScreenState extends State<GameScreen> {
                     ),
                   ),
                 ),
+                
+                // Bottom-right: Steering Wheel
+                Positioned(
+                  bottom: 20,
+                  right: 20,
+                  child: ValueListenableBuilder<double>(
+                    valueListenable: _steeringRotation,
+                    builder: (context, rotation, child) {
+                      return SteeringWheelWidget(
+                        rotation: rotation,
+                        onPanStart: _handleSteeringStart,
+                        onPanUpdate: _handleSteeringUpdate,
+                        onPanEnd: _handleSteeringEnd,
+                      );
+                    },
+                  ),
+                ),
               ],
             ),
           ),
@@ -286,30 +296,23 @@ class GameScreenState extends State<GameScreen> {
 
   // Steering wheel control methods
   void _handleSteeringStart(DragStartDetails details) {
-    // Handle steering start - you can add initialization logic here
+    // Mark that steering is active
+    game.car.isSteering = true;
   }
 
   void _handleSteeringUpdate(DragUpdateDetails details) {
     // Update visual rotation without setState (using ValueNotifier)
-    // This only rebuilds the steering wheel widget, not the entire screen
+    // Increased sensitivity for more responsive steering (0.05 instead of 0.02)
     final deltaX = details.delta.dx;
-    _steeringRotation.value = (_steeringRotation.value + deltaX * 0.02).clamp(-1.5, 1.5);
+    _steeringRotation.value = (_steeringRotation.value + deltaX * 0.05).clamp(-2.5, 2.5);
     
-    // Throttle car steering updates to avoid lag (max once every 16ms ~ 60fps)
-    final now = DateTime.now();
-    if (_lastSteeringUpdate == null || 
-        now.difference(_lastSteeringUpdate!).inMilliseconds >= 16) {
-      _lastSteeringUpdate = now;
-      
-      // Apply proportional steering to car (smooth control)
-      // Convert drag delta to steering angle (proportional control)
-      final steeringInput = deltaX.clamp(-10.0, 10.0);
-      if (steeringInput.abs() > 0.5) {
-        // Proportional steering: map drag delta to steering angle
-        final proportionalAngle = steeringInput * (game.car.maxSteerAngle / 10.0);
-        game.car.steerAngle = proportionalAngle.clamp(-game.car.maxSteerAngle, game.car.maxSteerAngle);
-      }
-    }
+    // Map steering wheel rotation to car steering angle continuously
+    // Increased rotation range for more responsiveness: -2.5 to 2.5 radians
+    final normalizedRotation = _steeringRotation.value / 2.5; // Normalize to -1.0 to 1.0
+    final steeringAngle = normalizedRotation * game.car.maxSteerAngle;
+    
+    // Apply steering angle continuously - car will turn as long as wheel is turned
+    game.car.setSteeringAngle(steeringAngle);
   }
 
   void _handleSteeringEnd(DragEndDetails details) {

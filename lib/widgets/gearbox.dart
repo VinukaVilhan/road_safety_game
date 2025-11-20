@@ -16,69 +16,34 @@ class GearboxWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 140,
-      height: 200,
+      width: 120,
+      height: 180,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
       ),
       child: Stack(
         children: [
           // Background gearbox image
           ClipRRect(
-        borderRadius: BorderRadius.circular(15),
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          child: Image.asset(
-            'assets/images/Gearbox.PNG',
-            fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-          return _buildFallbackGearbox();
-            },
-          ),
-        ),
+            borderRadius: BorderRadius.circular(15),
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Image.asset(
+                'assets/images/rescaled/gearbox_cubic.png',
+                width: 140,
+                height: 200,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  debugPrint('Failed to load gearbox image: assets/images/rescaled/gearbox_cubic.png');
+                  debugPrint('Error: $error');
+                  return _buildFallbackGearbox();
+                },
+              ),
+            ),
           ),
           
           // Gear position overlays
           _buildGearPositionOverlays(),
-          
-          // Current gear indicator (gear stick position)
-          _buildGearStickIndicator(),
-          
-          // Gear label display
-          Positioned(
-            top: 10,
-            left: 10,
-            right: 10,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.8),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _getGearColor(),
-                  width: 2,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  'GEAR: ${gears[currentGear]}',
-                  style: TextStyle(
-                    color: _getGearColor(),
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -90,49 +55,49 @@ class GearboxWidget extends StatelessWidget {
         // Reverse (R) - Top Left
         _buildGearHotspot(
           gear: 6, // R position in array
-          left: 32,
-          top: 85,
-          label: 'R',
+          left: 15,
+          top: 51,
+          label: gears[6],
         ),
         
         // First Gear (1) - Top Right
         _buildGearHotspot(
           gear: 1, // 1st gear position
-          left: 85,
-          top: 50,
-          label: '1',
+          left: 46,
+          top: 51,
+          label: gears[1],
         ),
         
         // Second Gear (2) - Below 1st
         _buildGearHotspot(
           gear: 2,
-          left: 85,
-          top: 80,
-          label: '2',
+          left: 77,
+          top: 51,
+          label: gears[2],
         ),
         
         // Third Gear (3) - Center Left
         _buildGearHotspot(
           gear: 3,
-          left: 45,
-          top: 95,
-          label: '3',
+          left: 15,
+          top: 100,
+          label: gears[3],
         ),
         
         // Fourth Gear (4) - Center Right
         _buildGearHotspot(
           gear: 4,
-          left: 85,
-          top: 110,
-          label: 'D',
-        ),      
+          left: 46,
+          top: 100,
+          label: gears[4],
+        ),
         
         // Park (P) - Bottom Center
         _buildGearHotspot(
           gear: 0, // P position
-          left: 32,
-          top: 140,
-          label: 'P',
+          left: 77,
+          top: 100,
+          label: gears[0],
         ),
       ],
     );
@@ -194,62 +159,6 @@ class GearboxWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildGearStickIndicator() {
-    // Calculate gear stick position based on current gear
-    final gearPosition = _getGearStickPosition();
-    
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      left: gearPosition.dx - 8, // Center the stick
-      top: gearPosition.dy - 15, // Position above the hotspot
-      child: Container(
-        width: 16,
-        height: 30,
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.grey[600]!, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.4),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _getGearColor(),
-                border: Border.all(color: Colors.white, width: 1),
-              ),
-            ),
-            const SizedBox(height: 2),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Helper method to get gear stick position based on current gear
-  Offset _getGearStickPosition() {
-    switch (currentGear) {
-      case 0: return const Offset(55 + 16, 160 + 16); // Park
-      case 1: return const Offset(85 + 16, 50 + 16);  // 1st
-      case 2: return const Offset(85 + 16, 80 + 16);  // 2nd
-      case 3: return const Offset(45 + 16, 95 + 16);  // 3rd
-      case 4: return const Offset(85 + 16, 110 + 16); // 4th
-      case 5: return const Offset(85 + 16, 140 + 16); // 5th
-      case 6: return const Offset(25 + 16, 50 + 16);  // Reverse
-      default: return const Offset(55 + 16, 160 + 16); // Default to Park
-    }
-  }
 
   // Helper method to get gear-specific colors
   Color _getGearColor() {

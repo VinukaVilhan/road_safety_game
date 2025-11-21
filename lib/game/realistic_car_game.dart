@@ -2,14 +2,16 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/camera.dart';
+import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/services.dart';
 
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   late Car car; // Make car accessible
   late SpriteComponent roadBackground;
   double roadSpeed = 200.0;
-  List<SpriteComponent> roadTiles = [];
+  List<TiledComponent> roadTiles = [];
   bool _roadInitialized = false;
+  double? _mapHeight;
   
   @override
   Future<void> onLoad() async {
@@ -18,12 +20,9 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     // Use MaxViewport to fill screen - road will stretch to fill
     camera.viewport = MaxViewport();
     
-    // Load road sprite first
-    _roadSprite = await Sprite.load('road sprite.png');
-    
     // Try to setup road if size is already available
     if (size.x > 0 && size.y > 0) {
-      _setupRoad();
+      await _setupRoad();
     }
     // Otherwise, onGameResize will handle it
     
@@ -34,24 +33,18 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     add(car);
   }
   
-  Sprite? _roadSprite;
-  
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     
-    // Initialize or update road tiles when size is known
-    if (_roadSprite != null) {
-      if (!_roadInitialized) {
-        _setupRoad();
-      } else {
-        _updateRoadSize();
-      }
+    // Initialize road tiles when size is known
+    if (!_roadInitialized && size.x > 0 && size.y > 0) {
+      _setupRoad();
     }
   }
   
-  void _setupRoad() {
-    if (_roadSprite == null) return;
+  Future<void> _setupRoad() async {
+    if (_roadInitialized) return;
     
     // Remove existing tiles if any
     for (var tile in roadTiles) {
@@ -59,21 +52,32 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     }
     roadTiles.clear();
     
-    // Use the actual game size (which will be the screen size with MaxViewport)
-    final roadSize = size;
+    // Load the Tiled map
+    final tiledMap = await TiledComponent.load(
+      'town_tiles.tmx',
+      Vector2.all(16), // Tile size from TMX file (16x16)
+    );
     
-    // Create multiple road tiles for seamless scrolling
-    for (int i = 0; i < 3; i++) {
-      final roadTile = SpriteComponent(
-        sprite: _roadSprite!,
-        size: roadSize, // Use actual screen size to fill entire screen
-        position: Vector2(0, -roadSize.y * i),
-        priority: 0, // Lower priority - renders behind
+    // Calculate map height
+    _mapHeight = tiledMap.tileMap.map.height * 16.0; // 16 is tile height
+    final screenHeight = size.y;
+    final numInstances = (screenHeight / _mapHeight!).ceil() + 2;
+    
+    // Create multiple instances of the map for seamless scrolling
+    for (int i = 0; i < numInstances; i++) {
+      final mapInstance = await TiledComponent.load(
+        'town_tiles.tmx',
+        Vector2.all(16),
       );
-      roadTiles.add(roadTile);
-      // Add road tiles first (they render behind)
-      add(roadTile);
+      
+      // Position each map instance
+      mapInstance.position = Vector2(0, -_mapHeight! * i);
+      mapInstance.priority = 0; // Lower priority - renders behind
+      
+      roadTiles.add(mapInstance);
+      add(mapInstance);
     }
+    
     _roadInitialized = true;
     
     // Ensure car is on top by re-adding it if it exists and is loaded
@@ -88,27 +92,19 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     }
   }
   
-  void _updateRoadSize() {
-    final roadSize = size;
-    for (var tile in roadTiles) {
-      tile.size = roadSize;
-    }
-  }
-  
   @override
   void update(double dt) {
     super.update(dt);
     
-    // Use actual game size (screen size)
-    final roadSize = size;
+    if (!_roadInitialized || _mapHeight == null) return;
     
     // Scroll road tiles
     for (var tile in roadTiles) {
       tile.position.y += roadSpeed * dt;
       
       // Reset tile position when it goes off screen
-      if (tile.position.y > roadSize.y) {
-        tile.position.y = -roadSize.y * 2;
+      if (tile.position.y > size.y) {
+        tile.position.y = -_mapHeight! * (roadTiles.length - 1);
       }
     }
   }

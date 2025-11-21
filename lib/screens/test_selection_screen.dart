@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../theme/swiss_theme.dart';
+import '../utils/app_fonts.dart';
 import 'level_selection_screen.dart';
 
 class TestSelectionScreen extends StatefulWidget {
@@ -12,14 +12,45 @@ class TestSelectionScreen extends StatefulWidget {
 }
 
 class _TestSelectionScreenState extends State<TestSelectionScreen> {
+  // Cache font styles to avoid recreating them on every build
+  late final TextStyle _headerStyle;
+  late final TextStyle _titleStyle;
+  late final TextStyle _descriptionStyle;
+  late final TextStyle _snackbarStyle;
+
   @override
   void initState() {
     super.initState();
-    // Force portrait orientation
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    
+    // Cache font styles once during initialization
+    _headerStyle = AppFonts.inter(
+      fontSize: 32,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.5,
+      color: SwissTheme.textPrimary,
+    );
+    _titleStyle = AppFonts.inter(
+      fontSize: 24,
+      fontWeight: FontWeight.w700,
+      letterSpacing: 0.5,
+    );
+    _descriptionStyle = AppFonts.inter(
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+    );
+    _snackbarStyle = AppFonts.inter(
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      color: SwissTheme.backgroundWhite,
+    );
+    
+    // Defer orientation change to avoid blocking UI initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    });
   }
 
   @override
@@ -60,12 +91,7 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
                   const SizedBox(width: 16),
                   Text(
                     'SELECT MODE',
-                    style: GoogleFonts.inter(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                      color: SwissTheme.textPrimary,
-                    ),
+                    style: _headerStyle,
                   ),
                 ],
               ),
@@ -73,7 +99,7 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
 
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
 
-            // Test Options - Two vertical blocks
+            // Test Options - Two vertical blocks - Optimized with RepaintBoundary
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -81,12 +107,14 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
                   children: [
                     // Block 1: THEORY TEST (MCQ) - White background, black border
                     Expanded(
-                      child: _buildTestOption(
-                        title: 'THEORY TEST',
-                        icon: Icons.crop_square, // Geometric square icon
-                        description: 'Test your knowledge with multiple choice questions',
-                        isBlackBackground: false,
-                        onTap: () => _startMCQTest(context),
+                      child: RepaintBoundary(
+                        child: _buildTestOption(
+                          title: 'THEORY TEST',
+                          icon: Icons.crop_square, // Geometric square icon
+                          description: 'Test your knowledge with multiple choice questions',
+                          isBlackBackground: false,
+                          onTap: () => _startMCQTest(context),
+                        ),
                       ),
                     ),
                     
@@ -94,12 +122,14 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
                     
                     // Block 2: DRIVING TEST (Practical) - Black background, white text
                     Expanded(
-                      child: _buildTestOption(
-                        title: 'DRIVING TEST',
-                        icon: Icons.radio_button_unchecked, // Geometric circle icon
-                        description: 'Practice driving through different levels',
-                        isBlackBackground: true,
-                        onTap: () => _startPracticalTest(context),
+                      child: RepaintBoundary(
+                        child: _buildTestOption(
+                          title: 'DRIVING TEST',
+                          icon: Icons.radio_button_unchecked, // Geometric circle icon
+                          description: 'Practice driving through different levels',
+                          isBlackBackground: true,
+                          onTap: () => _startPracticalTest(context),
+                        ),
                       ),
                     ),
                   ],
@@ -158,12 +188,7 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
                   Expanded(
                     child: Text(
                       title,
-                      style: GoogleFonts.inter(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                        color: textColor,
-                      ),
+                      style: _titleStyle.copyWith(color: textColor),
                     ),
                   ),
                 ],
@@ -174,11 +199,7 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
                 alignment: Alignment.bottomLeft,
                 child: Text(
                   description,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: textColor.withOpacity(0.8),
-                  ),
+                  style: _descriptionStyle.copyWith(color: textColor.withOpacity(0.8)),
                 ),
               ),
             ],
@@ -194,11 +215,7 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
       SnackBar(
         content: Text(
           'MCQ Test feature coming soon!',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
-            color: SwissTheme.backgroundWhite,
-          ),
+          style: _snackbarStyle,
         ),
         backgroundColor: SwissTheme.accentBlue,
         behavior: SnackBarBehavior.fixed,
@@ -207,26 +224,11 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
   }
 
   void _startPracticalTest(BuildContext context) {
-    // Navigate to level selection screen
+    // Use MaterialPageRoute for better performance
     Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const LevelSelectionScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(1.0, 0.0);
-          const end = Offset.zero;
-          const curve = Curves.easeInOut;
-
-          var tween = Tween(begin: begin, end: end).chain(
-            CurveTween(curve: curve),
-          );
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
+      MaterialPageRoute(
+        builder: (context) => const LevelSelectionScreen(),
       ),
     );
   }

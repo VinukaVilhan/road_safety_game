@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../theme/swiss_theme.dart';
+import '../utils/app_fonts.dart';
+import '../services/image_preloader.dart';
 import 'test_selection_screen.dart';
 
 class MenuScreen extends StatefulWidget {
@@ -12,19 +13,74 @@ class MenuScreen extends StatefulWidget {
 class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  
+  // Cache font styles to avoid recreating them on every build
+  late final TextStyle _titleStyle;
+  late final TextStyle _menuButtonNumberStyle;
+  late final TextStyle _menuButtonTextStyle;
+  late final TextStyle _dialogTitleStyle;
+  late final TextStyle _dialogBodyStyle;
+  late final TextStyle _dialogButtonStyle;
+  late final TextStyle _dialogButtonSecondaryStyle;
 
   @override
   void initState() {
     super.initState();
     
-    // Force portrait orientation for menu
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    // Cache font styles once during initialization
+    _titleStyle = AppFonts.inter(
+      fontSize: 80,
+      fontWeight: FontWeight.w900,
+      height: 0.9,
+      letterSpacing: -1.0,
+      color: SwissTheme.textPrimary,
+    );
+    _menuButtonNumberStyle = AppFonts.inter(
+      fontSize: 24,
+      fontWeight: FontWeight.w600,
+      color: SwissTheme.textPrimary,
+    );
+    _menuButtonTextStyle = AppFonts.inter(
+      fontSize: 24,
+      fontWeight: FontWeight.w600,
+      color: SwissTheme.textPrimary,
+    );
+    _dialogTitleStyle = AppFonts.inter(
+      fontSize: 24,
+      fontWeight: FontWeight.w600,
+      color: SwissTheme.textPrimary,
+    );
+    _dialogBodyStyle = AppFonts.inter(
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      color: SwissTheme.textPrimary,
+    );
+    _dialogButtonStyle = AppFonts.inter(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: SwissTheme.accentRed,
+    );
+    _dialogButtonSecondaryStyle = AppFonts.inter(
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      color: SwissTheme.textSecondary,
+    );
+    
+    // Defer orientation change to avoid blocking UI initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+      
+      // Preload images after first frame to avoid blocking UI
+      if (mounted) {
+        ImagePreloader.preloadImages(context);
+      }
+    });
     
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 300), // Reduced for faster perceived performance
       vsync: this,
     );
 
@@ -62,75 +118,73 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Section (Top 40%)
+              // Header Section (Top 40%) - Wrap in RepaintBoundary for performance
               Expanded(
                 flex: 4,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(32, 64, 32, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Typographic Logo
-                      Text(
-                        'ROAD\nRULES',
-                        style: GoogleFonts.inter(
-                          fontSize: 80,
-                          fontWeight: FontWeight.w900,
-                          height: 0.9, // Tight line height
-                          letterSpacing: -1.0,
-                          color: SwissTheme.textPrimary,
+                child: RepaintBoundary(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(32, 64, 32, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Typographic Logo
+                        Text(
+                          'ROAD\nRULES',
+                          style: _titleStyle,
                         ),
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Thick horizontal red line
-                      Container(
-                        width: double.infinity,
-                        height: 5,
-                        color: SwissTheme.accentRed,
-                      ),
-                    ],
+                        
+                        const SizedBox(height: 16),
+                        
+                        // Thick horizontal red line
+                        Container(
+                          width: double.infinity,
+                          height: 5,
+                          color: SwissTheme.accentRed,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
               
-              // Menu Actions Section (Bottom 60%)
+              // Menu Actions Section (Bottom 60%) - Wrap in RepaintBoundary for performance
               Expanded(
                 flex: 6,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(32, 0, 32, 64),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 32),
-                      
-                      // Menu Item 01 - PLAY
-                      _buildMenuButton(
-                        '01',
-                        'PLAY',
-                        () => _startGame(context),
-                      ),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // Menu Item 02 - OPTIONS
-                      _buildMenuButton(
-                        '02',
-                        'OPTIONS',
-                        () => _showOptions(context),
-                      ),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // Menu Item 03 - QUIT
-                      _buildMenuButton(
-                        '03',
-                        'QUIT',
-                        () => _quitGame(context),
-                      ),
-                    ],
+                child: RepaintBoundary(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(32, 0, 32, 64),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 32),
+                        
+                        // Menu Item 01 - PLAY
+                        _buildMenuButton(
+                          '01',
+                          'PLAY',
+                          () => _startGame(context),
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Menu Item 02 - OPTIONS
+                        _buildMenuButton(
+                          '02',
+                          'OPTIONS',
+                          () => _showOptions(context),
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Menu Item 03 - QUIT
+                        _buildMenuButton(
+                          '03',
+                          'QUIT',
+                          () => _quitGame(context),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -153,20 +207,12 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
             children: [
               Text(
                 number,
-                style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color: SwissTheme.textPrimary,
-                ),
+                style: _menuButtonNumberStyle,
               ),
               const SizedBox(width: 16),
               Text(
                 text,
-                style: GoogleFonts.inter(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color: SwissTheme.textPrimary,
-                ),
+                style: _menuButtonTextStyle,
               ),
             ],
           ),
@@ -176,25 +222,11 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
   }
 
   void _startGame(BuildContext context) {
+    // Use MaterialPageRoute for better performance - it's optimized by Flutter
     Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const TestSelectionScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(1.0, 0.0);
-          const end = Offset.zero;
-          const curve = Curves.easeInOut;
-
-          var tween = Tween(begin: begin, end: end).chain(
-            CurveTween(curve: curve),
-          );
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
+      MaterialPageRoute(
+        builder: (context) => const TestSelectionScreen(),
       ),
     );
   }
@@ -217,11 +249,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
               children: [
                 Text(
                   'OPTIONS',
-                  style: GoogleFonts.inter(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: SwissTheme.textPrimary,
-                  ),
+                  style: _dialogTitleStyle,
                 ),
                 const SizedBox(height: 24),
                 const Divider(color: SwissTheme.dividerBlack, thickness: 1),
@@ -233,11 +261,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                   children: [
                     Text(
                       'SOUND',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: SwissTheme.textPrimary,
-                      ),
+                      style: _dialogBodyStyle,
                     ),
                     Switch(
                       value: true,
@@ -257,11 +281,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                   children: [
                     Text(
                       'VIBRATION',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                        color: SwissTheme.textPrimary,
-                      ),
+                      style: _dialogBodyStyle,
                     ),
                     Switch(
                       value: true,
@@ -290,11 +310,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                     ),
                     child: Text(
                       'CLOSE',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: SwissTheme.accentRed,
-                      ),
+                      style: _dialogButtonStyle,
                     ),
                   ),
                 ),
@@ -324,22 +340,14 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
               children: [
                 Text(
                   'QUIT GAME',
-                  style: GoogleFonts.inter(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: SwissTheme.textPrimary,
-                  ),
+                  style: _dialogTitleStyle,
                 ),
                 const SizedBox(height: 24),
                 const Divider(color: SwissTheme.dividerBlack, thickness: 1),
                 const SizedBox(height: 24),
                 Text(
                   'Are you sure you want to quit?',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: SwissTheme.textPrimary,
-                  ),
+                  style: _dialogBodyStyle,
                 ),
                 const SizedBox(height: 32),
                 const Divider(color: SwissTheme.dividerBlack, thickness: 1),
@@ -359,11 +367,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                       ),
                       child: Text(
                         'CANCEL',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w400,
-                          color: SwissTheme.textSecondary,
-                        ),
+                        style: _dialogButtonSecondaryStyle,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -380,11 +384,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                       ),
                       child: Text(
                         'QUIT',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: SwissTheme.accentRed,
-                        ),
+                        style: _dialogButtonStyle,
                       ),
                     ),
                   ],

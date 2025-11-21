@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../theme/swiss_theme.dart';
+import '../utils/app_fonts.dart';
 import '../models/game_level.dart';
 import 'game_screen.dart';
 
@@ -13,14 +13,59 @@ class LevelSelectionScreen extends StatefulWidget {
 }
 
 class LevelSelectionScreenState extends State<LevelSelectionScreen> {
+  // Cache font styles to avoid recreating them on every build
+  late final TextStyle _headerStyle;
+  late final TextStyle _levelNumberStyle;
+  late final TextStyle _levelTitleStyle;
+  late final TextStyle _dialogTitleStyle;
+  late final TextStyle _dialogBodyStyle;
+  late final TextStyle _dialogButtonStyle;
+
   @override
   void initState() {
     super.initState();
-    // Force portrait orientation for level selection
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    
+    // Cache font styles once during initialization
+    _headerStyle = AppFonts.inter(
+      fontSize: 32,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.5,
+      color: SwissTheme.textPrimary,
+    );
+    _levelNumberStyle = AppFonts.inter(
+      fontSize: 48,
+      fontWeight: FontWeight.w900,
+      height: 1.0,
+      letterSpacing: -1.0,
+    );
+    _levelTitleStyle = AppFonts.inter(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.5,
+    );
+    _dialogTitleStyle = AppFonts.inter(
+      fontSize: 24,
+      fontWeight: FontWeight.w600,
+      color: SwissTheme.textPrimary,
+    );
+    _dialogBodyStyle = AppFonts.inter(
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      color: SwissTheme.textPrimary,
+    );
+    _dialogButtonStyle = AppFonts.inter(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: SwissTheme.accentBlue,
+    );
+    
+    // Defer orientation change to avoid blocking UI initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    });
   }
 
   @override
@@ -68,12 +113,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                   const SizedBox(width: 16),
                   Text(
                     'SELECT MODE',
-                    style: GoogleFonts.inter(
-                      fontSize: 32,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                      color: SwissTheme.textPrimary,
-                    ),
+                    style: _headerStyle,
                   ),
                 ],
               ),
@@ -81,11 +121,14 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
 
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
             
-            // Level Grid
+            // Level Grid - Optimized for performance
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16.0), // Outer padding
                 child: GridView.builder(
+                  cacheExtent: 200, // Cache only 200px outside viewport
+                  addAutomaticKeepAlives: false, // Don't keep off-screen items alive
+                  addRepaintBoundaries: true, // Isolate repaints per item
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: 1, // Thin 1px spacing
@@ -95,7 +138,9 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                   itemCount: levels.length,
                   itemBuilder: (context, index) {
                     final level = levels[index];
-                    return _buildLevelCard(level);
+                    return RepaintBoundary(
+                      child: _buildLevelCard(level),
+                    );
                   },
                 ),
               ),
@@ -152,14 +197,10 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                       // Giant level number (top left)
                       Text(
                         level.number.toString().padLeft(2, '0'),
-                        style: GoogleFonts.inter(
-                          fontSize: 48,
-                          fontWeight: FontWeight.w900,
+                        style: _levelNumberStyle.copyWith(
                           color: isLocked 
                             ? SwissTheme.textSecondary.withOpacity(0.3)
                             : SwissTheme.textSecondary.withOpacity(0.5),
-                          height: 1.0,
-                          letterSpacing: -1.0,
                         ),
                       ),
                       
@@ -193,13 +234,10 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                   // Title (bottom left)
                   Text(
                     level.name.toUpperCase(),
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                    style: _levelTitleStyle.copyWith(
                       color: isLocked 
                         ? SwissTheme.textSecondary.withOpacity(0.5)
                         : SwissTheme.textPrimary,
-                      letterSpacing: 0.5,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -240,26 +278,11 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
   }
 
   void _startGame(GameLevel level) {
-    // Navigate to the game screen with the selected level
+    // Use MaterialPageRoute for better performance
     Navigator.push(
       context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => GameScreen(level: level),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(1.0, 0.0);
-          const end = Offset.zero;
-          const curve = Curves.easeInOut;
-
-          var tween = Tween(begin: begin, end: end).chain(
-            CurveTween(curve: curve),
-          );
-
-          return SlideTransition(
-            position: animation.drive(tween),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
+      MaterialPageRoute(
+        builder: (context) => GameScreen(level: level),
       ),
     );
   }
@@ -282,22 +305,14 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
               children: [
                 Text(
                   'LEVEL LOCKED',
-                  style: GoogleFonts.inter(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: SwissTheme.textPrimary,
-                  ),
+                  style: _dialogTitleStyle,
                 ),
                 const SizedBox(height: 24),
                 const Divider(color: SwissTheme.dividerBlack, thickness: 1),
                 const SizedBox(height: 24),
                 Text(
                   'Complete the previous levels to unlock "${level.name}".',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: SwissTheme.textPrimary,
-                  ),
+                  style: _dialogBodyStyle,
                 ),
                 const SizedBox(height: 32),
                 const Divider(color: SwissTheme.dividerBlack, thickness: 1),
@@ -314,11 +329,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                     ),
                     child: Text(
                       'OK',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: SwissTheme.accentBlue,
-                      ),
+                      style: _dialogButtonStyle,
                     ),
                   ),
                 ),

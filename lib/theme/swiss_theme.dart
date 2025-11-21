@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../utils/app_fonts.dart';
 
 /// Swiss Design (International Typographic Style) Theme
 /// 
@@ -24,45 +24,54 @@ class SwissTheme {
   static const Color dividerBlack = Color(0xFF000000);
   static const Color borderBlack = Color(0xFF000000);
   
+  // Cache the theme data to avoid recreating it on every access
+  static ThemeData? _cachedThemeData;
+  static TextStyle? _cachedMonospacedText;
+  
   /// Main theme data for the application
   static ThemeData get themeData {
-    final textTheme = GoogleFonts.interTextTheme().copyWith(
-      displayLarge: GoogleFonts.inter(
+    _cachedThemeData ??= _buildThemeData();
+    return _cachedThemeData!;
+  }
+  
+  static ThemeData _buildThemeData() {
+    final textTheme = AppFonts.interTextTheme.copyWith(
+      displayLarge: AppFonts.inter(
         fontSize: 80,
         fontWeight: FontWeight.w900,
         height: 0.9, // Tight line height
         letterSpacing: -1.0,
         color: textPrimary,
       ),
-      displayMedium: GoogleFonts.inter(
+      displayMedium: AppFonts.inter(
         fontSize: 48,
         fontWeight: FontWeight.w900,
         height: 0.9,
         letterSpacing: -1.0,
         color: textPrimary,
       ),
-      displaySmall: GoogleFonts.inter(
+      displaySmall: AppFonts.inter(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
         color: textPrimary,
       ),
-      headlineMedium: GoogleFonts.inter(
+      headlineMedium: AppFonts.inter(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: textPrimary,
       ),
-      bodyLarge: GoogleFonts.inter(
+      bodyLarge: AppFonts.inter(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: textPrimary,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: AppFonts.inter(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         color: textSecondary,
       ),
-      bodySmall: GoogleFonts.inter(
+      bodySmall: AppFonts.inter(
         fontSize: 10,
         fontWeight: FontWeight.w400,
         color: textSecondary,
@@ -130,12 +139,12 @@ class SwissTheme {
           borderRadius: BorderRadius.zero,
           side: BorderSide(color: borderBlack, width: 1),
         ),
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: AppFonts.inter(
           fontSize: 24,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
-        contentTextStyle: GoogleFonts.inter(
+        contentTextStyle: AppFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.w400,
           color: textPrimary,
@@ -148,7 +157,7 @@ class SwissTheme {
         foregroundColor: textPrimary,
         elevation: 0,
         iconTheme: const IconThemeData(color: textPrimary),
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: AppFonts.inter(
           fontSize: 24,
           fontWeight: FontWeight.w600,
           color: textPrimary,
@@ -159,11 +168,12 @@ class SwissTheme {
   
   /// Get monospaced font for technical data display
   static TextStyle get monospacedText {
-    return GoogleFonts.robotoMono(
+    _cachedMonospacedText ??= AppFonts.robotoMono(
       fontSize: 10,
       fontWeight: FontWeight.w400,
       color: textSecondary,
     );
+    return _cachedMonospacedText!;
   }
 }
 

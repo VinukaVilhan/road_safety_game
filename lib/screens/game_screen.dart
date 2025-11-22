@@ -119,28 +119,28 @@ class GameScreenState extends State<GameScreen> {
                   ),
                 ),
                 
-                // Top-center: Level info
-                Positioned(
-                  top: 20,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: Text(
-                        '${widget.level.name} - Level ${widget.level.number}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+                // Top-center: Level info (REMOVED per user request)
+                // Positioned(
+                //   top: 20,
+                //   left: 0,
+                //   right: 0,
+                //   child: Center(
+                //     child: Container(
+                //       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                //       decoration: BoxDecoration(
+                //         color: Colors.black.withValues(alpha: 0.6),
+                //         borderRadius: BorderRadius.circular(15),
+                //       ),
+                //       child: Text(
+                //         '${widget.level.name} - Level ${widget.level.number}',
+                //         style: const TextStyle(
+                //           color: Colors.white,
+                //           fontWeight: FontWeight.bold,
+                //         ),
+                //       ),
+                //     ),
+                //   ),
+                // ),
                 
                 // Top-right: Speed/Score section
                 Positioned(
@@ -262,7 +262,7 @@ class GameScreenState extends State<GameScreen> {
   Stream<double> _getSpeedStream() async* {
     while (mounted) {
       await Future.delayed(const Duration(milliseconds: 100));
-      yield game.car.getCurrentSpeed();
+      yield game.car?.getCurrentSpeed() ?? 0.0;
     }
   }
 
@@ -276,31 +276,37 @@ class GameScreenState extends State<GameScreen> {
 
   // Enhanced gear change application with smooth transitions
   void _applyGearChange() {
+    final car = game.car;
+    if (car == null) return; // Guard against null car
+    
     String currentGearString = _gears[_currentGear];
     
     if (currentGearString == 'P') {
       // Park - disable movement
-      game.car.currentGear = 0;
-      game.car.isInPark = true;
+      car.currentGear = 0;
+      car.isInPark = true;
     } else if (currentGearString == 'R') {
       // Reverse
-      game.car.currentGear = -1;
-      game.car.isInPark = false;
+      car.currentGear = -1;
+      car.isInPark = false;
     } else {
       // Forward gears (1-5)
       int gear = int.parse(currentGearString);
-      game.car.currentGear = gear;
-      game.car.isInPark = false;
+      car.currentGear = gear;
+      car.isInPark = false;
     }
   }
 
   // Steering wheel control methods
   void _handleSteeringStart(DragStartDetails details) {
     // Mark that steering is active
-    game.car.isSteering = true;
+    game.car?.isSteering = true;
   }
 
   void _handleSteeringUpdate(DragUpdateDetails details) {
+    final car = game.car;
+    if (car == null) return; // Guard against null car
+    
     // Update visual rotation without setState (using ValueNotifier)
     // Increased sensitivity for more responsive steering (0.05 instead of 0.02)
     final deltaX = details.delta.dx;
@@ -309,33 +315,33 @@ class GameScreenState extends State<GameScreen> {
     // Map steering wheel rotation to car steering angle continuously
     // Increased rotation range for more responsiveness: -2.5 to 2.5 radians
     final normalizedRotation = _steeringRotation.value / 2.5; // Normalize to -1.0 to 1.0
-    final steeringAngle = normalizedRotation * game.car.maxSteerAngle;
+    final steeringAngle = normalizedRotation * car.maxSteerAngle;
     
     // Apply steering angle continuously - car will turn as long as wheel is turned
-    game.car.setSteeringAngle(steeringAngle);
+    car.setSteeringAngle(steeringAngle);
   }
 
   void _handleSteeringEnd(DragEndDetails details) {
     // Gradually return steering wheel to center
     _steeringRotation.value = 0.0;
-    game.car.resetSteering();
+    game.car?.resetSteering();
   }
 
   // Pedal control methods
   void _startAccelerating() {
-    game.car.accelerate();
+    game.car?.accelerate();
   }
 
   void _stopAccelerating() {
-    game.car.coast();
+    game.car?.coast();
   }
 
   void _startBraking() {
-    game.car.brake();
+    game.car?.brake();
   }
 
   void _stopBraking() {
-    game.car.coast();
+    game.car?.coast();
   }
 
   void _showPauseDialog() {

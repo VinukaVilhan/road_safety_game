@@ -47,7 +47,7 @@ class _PedalsWidgetState extends State<PedalsWidget> {
         
         // Brake - negative margin to bring closer
         Transform.translate(
-          offset: const Offset(-15, 0),
+          offset: const Offset(-50, 0),
           child: _buildPedal(
             normalImagePath: 'assets/images/rescaled/brake_normal.png',
             pressedImagePath: 'assets/images/rescaled/brake_pressed.png',
@@ -82,13 +82,13 @@ class _PedalsWidgetState extends State<PedalsWidget> {
       child: Container(
         margin: EdgeInsets.zero,
         padding: EdgeInsets.zero,
-        width: 90,  // Increased width for larger touch area
-        height: 80,
+        width: 120,  // Increased from 90 (33% larger for better touch area)
+        height: 110, // Increased from 80 (37.5% larger)
         alignment: Alignment.centerLeft,
         child: Image.asset(
           imagePath,
-          width: 70,  // Image stays at 70, but container is 90 for larger touch area
-          height: 80,
+          width: 100,  // Increased from 70 (43% larger for better visibility)
+          height: 110, // Increased from 80 (37.5% larger)
           fit: BoxFit.contain,
           alignment: Alignment.centerLeft,
           errorBuilder: (context, error, stackTrace) {
@@ -97,8 +97,8 @@ class _PedalsWidgetState extends State<PedalsWidget> {
             debugPrint('Error: $error');
             // Return a placeholder container with error indicator
             return Container(
-              width: 50,
-              height: 60,
+              width: 70,  // Increased from 50
+              height: 80,  // Increased from 60
               color: Colors.grey[300],
               child: const Icon(Icons.error_outline, color: Colors.red),
             );

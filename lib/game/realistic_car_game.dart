@@ -92,7 +92,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     // Load the Tiled map
     final tiledMap = await TiledComponent.load(
-      'town_tiles.tmx',
+      'town_tiles_2.tmx',
       Vector2.all(16), // Tile size from TMX file (16x16)
     );
     
@@ -104,7 +104,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     // Create a single static map instance at (0, 0) covering the entire world
     final mapInstance = await TiledComponent.load(
-      'town_tiles.tmx',
+      'town_tiles_2.tmx',
       Vector2.all(16),
     );
     
@@ -182,16 +182,16 @@ class Car extends SpriteComponent {
   Vector2 velocity = Vector2.zero();
   Vector2 acceleration = Vector2.zero();
   double maxSpeed = 200.0;
-  double accelerationForce = 300.0;
+  double accelerationForce = 450.0;
   double brakeForce = 600.0;
   double friction = 400.0;
   
   // Steering properties
   double steerAngle = 0;
-  double maxSteerAngle = 45.0; // Maximum steering angle in degrees (allows sharp turns for U-turns)
+  double maxSteerAngle = 50.0; // Maximum steering angle in degrees (allows sharp turns for U-turns)
   double steerReturnSpeed = 300.0; // how fast steering returns to center
   bool isSteering = false; // Track if user is actively steering
-  double turnRate = 2.0; // Changed from 3.0 to 1.5 (reduced for smoother, less rapid turning)
+  double turnRate = 3.0; // Changed from 3.0 to 1.5 (reduced for smoother, less rapid turning)
   
   // Control flags to maintain acceleration/braking states
   bool isAccelerating = false;

@@ -1,4 +1,4 @@
-package com.cargame.road_safety_game
+package com.acenzo.roadrick
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,11 +1,17 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'screens/menu_screen.dart';
+import 'firebase_options.dart';
+import 'screens/auth_wrapper.dart';
 import 'theme/swiss_theme.dart';
 import 'services/image_preloader.dart';
 
 /// Industry-standard app initialization using MaterialApp.builder pattern
 /// This ensures UI shows immediately while resources load in background
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(MyApp());
 }
 
@@ -26,7 +32,7 @@ class MyApp extends StatelessWidget {
         });
         return child ?? const SizedBox.shrink();
       },
-      home: MenuScreen(),
+      home: AuthWrapper(),
     );
   }
 }

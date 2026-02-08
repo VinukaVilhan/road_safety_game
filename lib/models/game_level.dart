@@ -1,15 +1,34 @@
+import 'package:flutter/material.dart';
+
 // Data classes for level management
 class GameLevel {
-  final int number;
+  final String id; // Unique identifier: "junctions_t_basics"
+  final int number; // Display number (for ordering)
   final String name;
   final String description;
   final LevelDifficulty difficulty;
   final bool isUnlocked;
+  
+  // Topic-based organization
+  final DrivingTopic topic;
+  final int topicLevel; // Level within the topic (1, 2, 3...)
+  final List<String> unlockRequirementIds; // IDs of levels that must be completed first
 
-  GameLevel(this.number, this.name, this.description, this.difficulty, this.isUnlocked);
+  GameLevel({
+    required this.id,
+    required this.number,
+    required this.name,
+    required this.description,
+    required this.difficulty,
+    required this.isUnlocked,
+    required this.topic,
+    required this.topicLevel,
+    this.unlockRequirementIds = const [],
+  });
   
   // You can add more properties like:
   // final String backgroundImage;
+  // final String mapAsset; // Which map file to use
   // final double targetTime;
   // final int targetScore;
   // final List<String> obstacles;
@@ -18,3 +37,58 @@ class GameLevel {
 }
 
 enum LevelDifficulty { Easy, Medium, Hard, Extreme }
+
+enum DrivingTopic {
+  Junctions,
+  RoadMarkings,
+  RoadSigns,
+  EmergencySituations,
+  Parking,
+}
+
+extension DrivingTopicExtension on DrivingTopic {
+  String get displayName {
+    switch (this) {
+      case DrivingTopic.Junctions:
+        return 'JUNCTIONS';
+      case DrivingTopic.RoadMarkings:
+        return 'ROAD MARKINGS';
+      case DrivingTopic.RoadSigns:
+        return 'ROAD SIGNS';
+      case DrivingTopic.EmergencySituations:
+        return 'EMERGENCY SITUATIONS';
+      case DrivingTopic.Parking:
+        return 'PARKING';
+    }
+  }
+  
+  String get description {
+    switch (this) {
+      case DrivingTopic.Junctions:
+        return 'Learn T-junctions, cross roads, and roundabouts';
+      case DrivingTopic.RoadMarkings:
+        return 'Master lane markings, crossings, and zones';
+      case DrivingTopic.RoadSigns:
+        return 'Understand warning, regulatory, and information signs';
+      case DrivingTopic.EmergencySituations:
+        return 'Handle braking, breakdowns, and emergencies';
+      case DrivingTopic.Parking:
+        return 'Practice parallel, perpendicular, and angle parking';
+    }
+  }
+  
+  IconData get icon {
+    switch (this) {
+      case DrivingTopic.Junctions:
+        return Icons.turn_right;
+      case DrivingTopic.RoadMarkings:
+        return Icons.format_color_fill;
+      case DrivingTopic.RoadSigns:
+        return Icons.traffic;
+      case DrivingTopic.EmergencySituations:
+        return Icons.warning_amber_rounded;
+      case DrivingTopic.Parking:
+        return Icons.local_parking;
+    }
+  }
+}

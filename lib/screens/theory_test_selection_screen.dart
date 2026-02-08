@@ -2,30 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
-import '../models/game_level.dart';
-import '../services/driving_levels_service.dart';
-import 'game_screen.dart';
+import '../models/theory_test.dart';
+import '../services/theory_tests_service.dart';
 
-class LevelSelectionScreen extends StatefulWidget {
-  final DrivingTopic? topic; // Optional: if null, shows all levels (backward compatible)
+class TheoryTestSelectionScreen extends StatefulWidget {
+  final String categoryId; // Which category of tests to show
   
-  const LevelSelectionScreen({super.key, this.topic});
+  const TheoryTestSelectionScreen({super.key, required this.categoryId});
 
   @override
-  LevelSelectionScreenState createState() => LevelSelectionScreenState();
+  State<TheoryTestSelectionScreen> createState() => _TheoryTestSelectionScreenState();
 }
 
-class LevelSelectionScreenState extends State<LevelSelectionScreen> {
+class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
   // Cache font styles to avoid recreating them on every build
   late final TextStyle _headerStyle;
-  late final TextStyle _levelNumberStyle;
-  late final TextStyle _levelTitleStyle;
+  late final TextStyle _testNumberStyle;
+  late final TextStyle _testTitleStyle;
   late final TextStyle _dialogTitleStyle;
   late final TextStyle _dialogBodyStyle;
   late final TextStyle _dialogButtonStyle;
 
-  // Track completed levels (TODO: Get from Firebase/local storage)
-  Set<String> completedLevelIds = {};
+  // Track completed tests (TODO: Get from Firebase/local storage)
+  Set<String> completedTestIds = {};
 
   @override
   void initState() {
@@ -38,13 +37,13 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
       letterSpacing: -0.5,
       color: SwissTheme.textPrimary,
     );
-    _levelNumberStyle = AppFonts.inter(
+    _testNumberStyle = AppFonts.inter(
       fontSize: 48,
       fontWeight: FontWeight.w900,
       height: 1.0,
       letterSpacing: -1.0,
     );
-    _levelTitleStyle = AppFonts.inter(
+    _testTitleStyle = AppFonts.inter(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       letterSpacing: 0.5,
@@ -86,23 +85,27 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     super.dispose();
   }
 
-  // Get levels based on topic (or all levels if topic is null)
-  List<GameLevel> get levels {
-    if (widget.topic != null) {
-      return DrivingLevelsService.getLevelsForTopic(widget.topic!);
-    } else {
-      // Backward compatibility: return empty list or default levels
-      // For now, return empty - topic should always be provided from topic selection
-      return [];
-    }
-  }
+  // Get tests for the current category
+  List<TheoryTest> get tests => TheoryTestsService.getTestsForCategory(widget.categoryId);
 
-  // Get header title
-  String get headerTitle {
-    if (widget.topic != null) {
-      return widget.topic!.displayName;
+  // Get category display name
+  String get categoryDisplayName {
+    switch (widget.categoryId) {
+      case 'road_signs':
+        return 'ROAD SIGNS';
+      case 'best_practices':
+        return 'BEST PRACTICES';
+      case 'traffic_rules':
+        return 'TRAFFIC RULES';
+      case 'parking':
+        return 'PARKING';
+      case 'vehicle_control':
+        return 'VEHICLE CONTROL';
+      case 'safety_procedures':
+        return 'SAFETY PROCEDURES';
+      default:
+        return 'THEORY TEST';
     }
-    return 'SELECT LEVEL';
   }
 
   @override
@@ -131,7 +134,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
-                      headerTitle,
+                      categoryDisplayName,
                       style: _headerStyle,
                       maxLines: 2,
                       overflow: TextOverflow.clip,
@@ -144,14 +147,14 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
 
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
             
-            // Level Grid - Optimized for performance
+            // Test Grid - Optimized for performance
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: levels.isEmpty
+                child: tests.isEmpty
                     ? Center(
                         child: Text(
-                          'No levels available',
+                          'No tests available',
                           style: AppFonts.inter(
                             fontSize: 14,
                             color: SwissTheme.textSecondary,
@@ -166,18 +169,18 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 1,
                           mainAxisSpacing: 1,
-                          childAspectRatio: 0.70, // Slightly taller to accommodate more text
+                          childAspectRatio: 0.70, // Slightly taller to accommodate text
                         ),
-                        itemCount: levels.length,
+                        itemCount: tests.length,
                         itemBuilder: (context, index) {
-                          final level = levels[index];
-                          // Check unlock status based on completed levels
-                          final isUnlocked = DrivingLevelsService.isLevelUnlocked(
-                            level,
-                            completedLevelIds,
+                          final test = tests[index];
+                          // Check unlock status based on completed tests
+                          final isUnlocked = TheoryTestsService.isTestUnlocked(
+                            test,
+                            completedTestIds,
                           );
                           return RepaintBoundary(
-                            child: _buildLevelCard(level, isUnlocked),
+                            child: _buildTestCard(test, isUnlocked),
                           );
                         },
                       ),
@@ -189,13 +192,13 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     );
   }
 
-  Widget _buildLevelCard(GameLevel level, bool isUnlocked) {
+  Widget _buildTestCard(TheoryTest test, bool isUnlocked) {
     return GestureDetector(
       onTap: () {
         if (isUnlocked) {
-          _startGame(level);
+          _startTest(test);
         } else {
-          _showLockedLevelDialog(level);
+          _showLockedTestDialog(test);
         }
       },
       child: Container(
@@ -225,33 +228,33 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top row: Level number and difficulty indicator
+                  // Top row: Test number and difficulty indicator
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Giant level number (top left) - use topicLevel instead of number
+                      // Giant test number (top left)
                       Text(
-                        level.topicLevel.toString().padLeft(2, '0'),
-                        style: _levelNumberStyle.copyWith(
+                        test.testNumber.toString().padLeft(2, '0'),
+                        style: _testNumberStyle.copyWith(
                           color: isUnlocked 
                             ? SwissTheme.textSecondary.withOpacity(0.5)
                             : SwissTheme.textSecondary.withOpacity(0.3),
                         ),
                       ),
                       
-                      // Difficulty circle (top right) - only for unlocked levels
+                      // Difficulty circle (top right) - only for unlocked tests
                       if (isUnlocked)
                         Container(
                           width: 12,
                           height: 12,
                           decoration: BoxDecoration(
-                            color: _getDifficultyColor(level.difficulty),
+                            color: _getDifficultyColor(test.difficulty),
                             shape: BoxShape.circle,
                           ),
                         ),
                       
-                      // Lock icon (center) - only for locked levels
+                      // Lock icon (center) - only for locked tests
                       if (!isUnlocked)
                         Expanded(
                           child: Center(
@@ -273,8 +276,8 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        level.name.toUpperCase(),
-                        style: _levelTitleStyle.copyWith(
+                        test.name.toUpperCase(),
+                        style: _testTitleStyle.copyWith(
                           color: isUnlocked 
                             ? SwissTheme.textPrimary
                             : SwissTheme.textSecondary.withOpacity(0.5),
@@ -287,7 +290,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                       
                       // Description (smaller text)
                       Text(
-                        level.description,
+                        test.description,
                         style: SwissTheme.monospacedText.copyWith(
                           fontSize: 10,
                           color: isUnlocked
@@ -297,6 +300,19 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         softWrap: true,
                         maxLines: null, // Allow unlimited lines
                         overflow: TextOverflow.clip,
+                      ),
+                      
+                      const SizedBox(height: 4),
+                      
+                      // Question count
+                      Text(
+                        '${test.questionCount} Questions',
+                        style: SwissTheme.monospacedText.copyWith(
+                          fontSize: 9,
+                          color: isUnlocked
+                            ? SwissTheme.textSecondary.withOpacity(0.7)
+                            : SwissTheme.textSecondary.withOpacity(0.3),
+                        ),
                       ),
                     ],
                   ),
@@ -309,41 +325,46 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     );
   }
 
-  Color _getDifficultyColor(LevelDifficulty difficulty) {
+  Color _getDifficultyColor(TestDifficulty difficulty) {
     switch (difficulty) {
-      case LevelDifficulty.Easy:
+      case TestDifficulty.Easy:
         return SwissTheme.accentGreen;
-      case LevelDifficulty.Medium:
+      case TestDifficulty.Medium:
         return SwissTheme.accentOrange;
-      case LevelDifficulty.Hard:
-        return SwissTheme.accentRed;
-      case LevelDifficulty.Extreme:
+      case TestDifficulty.Hard:
         return SwissTheme.accentRed;
     }
   }
 
-  void _startGame(GameLevel level) {
-    // Use MaterialPageRoute for better performance
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => GameScreen(level: level),
+  void _startTest(TheoryTest test) {
+    // TODO: Navigate to actual MCQ test screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Starting ${test.name}...',
+          style: AppFonts.inter(
+            fontSize: 14,
+            color: SwissTheme.backgroundWhite,
+          ),
+        ),
+        backgroundColor: SwissTheme.accentBlue,
+        behavior: SnackBarBehavior.fixed,
       ),
     );
   }
 
-  void _showLockedLevelDialog(GameLevel level) {
-    String unlockMessage = 'Complete the previous levels to unlock "${level.name}".';
+  void _showLockedTestDialog(TheoryTest test) {
+    String unlockMessage = 'Complete the previous tests to unlock "${test.name}".';
     
-    if (level.unlockRequirementIds.isNotEmpty) {
-      // Get names of required levels
-      final requiredLevels = levels
-          .where((l) => level.unlockRequirementIds.contains(l.id))
-          .map((l) => l.name)
+    if (test.unlockRequirementIds.isNotEmpty) {
+      // Get names of required tests
+      final requiredTests = tests
+          .where((t) => test.unlockRequirementIds.contains(t.id))
+          .map((t) => t.name)
           .toList();
       
-      if (requiredLevels.isNotEmpty) {
-        unlockMessage = 'Complete "${requiredLevels.join('" and "')}" to unlock this level.';
+      if (requiredTests.isNotEmpty) {
+        unlockMessage = 'Complete "${requiredTests.join('" and "')}" to unlock this test.';
       }
     }
 
@@ -363,7 +384,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'LEVEL LOCKED',
+                  'TEST LOCKED',
                   style: _dialogTitleStyle,
                 ),
                 const SizedBox(height: 24),
@@ -401,7 +422,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
   }
 }
 
-/// Custom painter for hatching pattern on locked levels
+/// Custom painter for hatching pattern on locked tests
 class HatchingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {

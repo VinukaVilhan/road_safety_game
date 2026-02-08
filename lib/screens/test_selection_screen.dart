@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
-import 'level_selection_screen.dart';
+import 'driving_topic_selection_screen.dart';
+import 'theory_test_categories_screen.dart';
 
 class TestSelectionScreen extends StatefulWidget {
   const TestSelectionScreen({super.key});
@@ -210,25 +211,21 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
   }
 
   void _startMCQTest(BuildContext context) {
-    // TODO: Navigate to MCQ test screen when implemented
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'MCQ Test feature coming soon!',
-          style: _snackbarStyle,
-        ),
-        backgroundColor: SwissTheme.accentBlue,
-        behavior: SnackBarBehavior.fixed,
+    // Navigate to theory test categories screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const TheoryTestCategoriesScreen(),
       ),
     );
   }
 
   void _startPracticalTest(BuildContext context) {
-    // Use MaterialPageRoute for better performance
+    // Navigate to topic selection screen first
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const LevelSelectionScreen(),
+        builder: (context) => const DrivingTopicSelectionScreen(),
       ),
     );
   }

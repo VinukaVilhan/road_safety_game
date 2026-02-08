@@ -77,7 +77,7 @@ class GameScreenState extends State<GameScreen> {
           SafeArea(
             child: Stack(
               children: [
-                // Top-left: Controls (Pause, Pedals, Gearbox)
+                // Top-left: Controls (Pause, Pedals)
                 Positioned(
                   top: 20,
                   left: 20,
@@ -106,15 +106,6 @@ class GameScreenState extends State<GameScreen> {
                         onBrakeDown: _startBraking,
                         onBrakeUp: _stopBraking,
                       ),
-                      
-                      const SizedBox(height: 15),
-                      
-                      // Gearbox
-                      GearboxWidget(
-                        currentGear: _currentGear,
-                        gears: _gears,
-                        onGearSelected: _onGearSelected,
-                      ),
                     ],
                   ),
                 ),
@@ -142,113 +133,87 @@ class GameScreenState extends State<GameScreen> {
                 //   ),
                 // ),
                 
-                // Top-right: Speed/Score section
+                // Top right: Speed (fixed layout for 1–3 digits, no wrap)
                 Positioned(
                   top: 20,
                   right: 20,
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Speed section
-                        const Text(
-                          'SPEED',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        StreamBuilder<double>(
-                          stream: _getSpeedStream(),
-                          builder: (context, snapshot) {
-                            final speed = snapshot.data ?? 0;
-                            return Text(
-                              '${speed.toInt()}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
+                    child: StreamBuilder<double>(
+                      stream: _getSpeedStream(),
+                      builder: (context, snapshot) {
+                        final speed = snapshot.data ?? 0;
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            const Text(
+                              'Speed',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
-                            );
-                          },
-                        ),
-                        const Text(
-                          'km/h',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 12),
-                        
-                        // Divider
-                        Container(
-                          width: 60,
-                          height: 1,
-                          color: Colors.white.withValues(alpha: 0.3),
-                        ),
-                        
-                        const SizedBox(height: 12),
-                        
-                        // Target section
-                        const Text(
-                          'TARGET',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${widget.level.number * 500}',
-                          style: const TextStyle(
-                            color: Colors.yellow,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const Text(
-                          'km/h',
-                          style: TextStyle(
-                            color: Colors.yellow,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
+                            ),
+                            const SizedBox(width: 6),
+                            SizedBox(
+                              width: 36,
+                              child: Text(
+                                '${speed.toInt()}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
+                                textAlign: TextAlign.right,
+                                maxLines: 1,
+                                overflow: TextOverflow.visible,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
                 
-                // Bottom-right: Steering Wheel
+                // Bottom-right: Gearbox above Steering Wheel
                 Positioned(
                   bottom: 20,
                   right: 20,
-                  child: ValueListenableBuilder<double>(
-                    valueListenable: _steeringRotation,
-                    builder: (context, rotation, child) {
-                      return SteeringWheelWidget(
-                        rotation: rotation,
-                        onPanStart: _handleSteeringStart,
-                        onPanUpdate: _handleSteeringUpdate,
-                        onPanEnd: _handleSteeringEnd,
-                      );
-                    },
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // Gearbox above steering wheel
+                      GearboxWidget(
+                        currentGear: _currentGear,
+                        gears: _gears,
+                        onGearSelected: _onGearSelected,
+                      ),
+                      const SizedBox(height: 15),
+                      // Steering Wheel
+                      ValueListenableBuilder<double>(
+                        valueListenable: _steeringRotation,
+                        builder: (context, rotation, child) {
+                          return SteeringWheelWidget(
+                            rotation: rotation,
+                            onPanStart: _handleSteeringStart,
+                            onPanUpdate: _handleSteeringUpdate,
+                            onPanEnd: _handleSteeringEnd,
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ],

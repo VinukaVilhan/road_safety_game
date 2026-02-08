@@ -4,6 +4,7 @@ import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../services/image_preloader.dart';
 import 'test_selection_screen.dart';
+import 'profile_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   @override
@@ -177,9 +178,23 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                         
                         const SizedBox(height: 24),
                         
-                        // Menu Item 03 - QUIT
+                        // Menu Item 03 - PROFILE
                         _buildMenuButton(
                           '03',
+                          'PROFILE',
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const ProfileScreen(),
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Menu Item 04 - QUIT
+                        _buildMenuButton(
+                          '04',
                           'QUIT',
                           () => _quitGame(context),
                         ),

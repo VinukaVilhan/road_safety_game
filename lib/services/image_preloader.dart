@@ -17,10 +17,10 @@ class ImagePreloader {
       'assets/images/rescaled/gearbox_cubic.png',
       'assets/images/rescaled/gas_normal.png',
       'assets/images/rescaled/gas_pressed.png',
-      'assets/images/rescaled/gas_pressed_simple.png',
+      'assets/images/rescaled/gas pressed simple.png',
       'assets/images/rescaled/brake_normal.png',
       'assets/images/rescaled/brake_pressed.png',
-      'assets/images/rescaled/brake_pressed_simple.png',
+      'assets/images/rescaled/brake pressed simple.png',
     ];
     
     for (final path in images) {

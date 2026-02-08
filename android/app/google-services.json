@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "860711284288",
+    "project_id": "roadrick-482a5",
+    "storage_bucket": "roadrick-482a5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:860711284288:android:438a16cc0ffdadd99939a5",
+        "android_client_info": {
+          "package_name": "com.acenzo.roadrick"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "860711284288-f0rmau2ni941cmnfhd6jnnpbe840u3o4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.acenzo.roadrick",
+            "certificate_hash": "42ea1f203ef3b6d3b6e0911327e41c4b4cc2402b"
+          }
+        },
+        {
+          "client_id": "860711284288-sel11579st8pfgh3jqs7e68blp6fm3tf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuA8FIy0Ik31an4DjniKHXYb5ir0LoKKU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "860711284288-sel11579st8pfgh3jqs7e68blp6fm3tf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

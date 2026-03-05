@@ -10,6 +10,7 @@ class AppFonts {
   // Font family names - match pubspec.yaml
   static const String interFamily = 'Inter';
   static const String robotoMonoFamily = 'RobotoMono';
+  static const String pixelifySansFamily = 'PixelifySans';
   
   // Check if bundled fonts are available
   // We check by trying to load the font - if it's not available,
@@ -87,6 +88,47 @@ class AppFonts {
     );
   }
   
+  /// Pixelify Sans — used for the practical driving test game UI.
+  static TextStyle pixelifySans({
+    double? fontSize,
+    FontWeight? fontWeight,
+    double? height,
+    double? letterSpacing,
+    Color? color,
+    List<FontFeature>? fontFeatures,
+  }) {
+    return TextStyle(
+      fontFamily: pixelifySansFamily,
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      height: height,
+      letterSpacing: letterSpacing,
+      color: color,
+      fontFeatures: fontFeatures,
+    );
+  }
+
+  /// Text theme using Pixelify Sans for the driving test screen.
+  static TextTheme get drivingGameTextTheme {
+    return TextTheme(
+      displayLarge: pixelifySans(fontSize: 80, fontWeight: FontWeight.w900),
+      displayMedium: pixelifySans(fontSize: 48, fontWeight: FontWeight.w900),
+      displaySmall: pixelifySans(fontSize: 32, fontWeight: FontWeight.w700),
+      headlineLarge: pixelifySans(fontSize: 24, fontWeight: FontWeight.w700),
+      headlineMedium: pixelifySans(fontSize: 20, fontWeight: FontWeight.w600),
+      headlineSmall: pixelifySans(fontSize: 18, fontWeight: FontWeight.w600),
+      titleLarge: pixelifySans(fontSize: 18, fontWeight: FontWeight.w600),
+      titleMedium: pixelifySans(fontSize: 16, fontWeight: FontWeight.w600),
+      titleSmall: pixelifySans(fontSize: 14, fontWeight: FontWeight.w600),
+      bodyLarge: pixelifySans(fontSize: 14, fontWeight: FontWeight.w400),
+      bodyMedium: pixelifySans(fontSize: 12, fontWeight: FontWeight.w400),
+      bodySmall: pixelifySans(fontSize: 10, fontWeight: FontWeight.w400),
+      labelLarge: pixelifySans(fontSize: 12, fontWeight: FontWeight.w600),
+      labelMedium: pixelifySans(fontSize: 10, fontWeight: FontWeight.w600),
+      labelSmall: pixelifySans(fontSize: 10, fontWeight: FontWeight.w500),
+    );
+  }
+
   /// Get Inter text theme (for theme configuration)
   static TextTheme get interTextTheme {
     if (_hasBundledFonts) {

@@ -1,7 +1,9 @@
 import 'dart:math' as math;
-import 'package:flame/components.dart';
-import 'package:flame/game.dart';
+import 'dart:ui' show Rect;
 import 'package:flame/camera.dart';
+import 'package:flame/components.dart';
+import 'package:flame/experimental.dart';
+import 'package:flame/game.dart';
 import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/services.dart';
 
@@ -11,10 +13,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   double roadSpeed = 200.0;
   List<TiledComponent> roadTiles = [];
   bool _roadInitialized = false;
-  bool _cameraReady = false; // Track if camera is properly positioned
   double? _mapWidth;
   double? _mapHeight;
-  int _frameCount = 0; // For debug output
+
+  /// Camera zoom level (> 1 = zoom in, < 1 = zoom out). Default 1.5 for a closer view.
+  static const double cameraZoom = 1.5;
+
+  /// Optional TMX map path (e.g. 'assets/tiles/T-junction.tmx'). If null, default map is used.
+  final String? mapAsset;
+
+  RealisticCarGame({this.mapAsset});
   
   @override
   Future<void> onLoad() async {
@@ -25,10 +33,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     // Use MaxViewport to fill screen - road will stretch to fill
     camera.viewport = MaxViewport();
     
-    // Set camera to center on target (car)
+    // Set camera to center on target (car) and apply zoom
     camera.viewfinder.anchor = Anchor.center;
-    print('[DEBUG] onLoad() - Camera viewfinder anchor set to center');
-    print('[DEBUG] onLoad() - Initial camera position: ${camera.viewfinder.position}');
+    camera.viewfinder.zoom = cameraZoom;
+    print('[DEBUG] onLoad() - Camera viewfinder anchor set to center, zoom: $cameraZoom');
     
     // Try to setup road if size is already available
     if (size.x > 0 && size.y > 0) {
@@ -46,13 +54,6 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     // Wait for next frame to ensure car's onMount() is called
     await Future.delayed(Duration.zero);
-    
-    print('[DEBUG] onLoad() - After frame delay, car position: ${car!.position}');
-    print('[DEBUG] onLoad() - After frame delay, camera position: ${camera.viewfinder.position}');
-    
-    // DON'T use camera.follow() - we'll manually control camera in update()
-    // This gives us full control over camera positioning
-    print('[DEBUG] onLoad() - Camera will be manually controlled in update()');
   }
   
   @override
@@ -65,20 +66,6 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     if (!_roadInitialized && size.x > 0 && size.y > 0) {
       _setupRoad();
     }
-    
-    // Set camera to car position after car is mounted and map is loaded
-    // This ensures camera starts centered on car
-    if (_roadInitialized && car != null && car!.isMounted) {
-      print('[DEBUG] onGameResize() - Setting camera to car position: ${car!.position}');
-      camera.viewfinder.position = car!.position;
-      print('[DEBUG] onGameResize() - Camera position after set: ${camera.viewfinder.position}');
-      
-      // Mark camera as ready once it's successfully positioned
-      _cameraReady = true;
-      print('[DEBUG] onGameResize() - Camera is now READY!');
-    } else {
-      print('[DEBUG] onGameResize() - Not setting camera: _roadInitialized=$_roadInitialized, car=${car != null ? "exists, isMounted=${car!.isMounted}" : "null"}');
-    }
   }
   
   Future<void> _setupRoad() async {
@@ -90,9 +77,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     }
     roadTiles.clear();
     
+    final tmxPath = mapAsset ?? 'town_tiles_2.tmx';
     // Load the Tiled map
     final tiledMap = await TiledComponent.load(
-      'town_tiles_2.tmx',
+      tmxPath,
       Vector2.all(16), // Tile size from TMX file (16x16)
     );
     
@@ -104,7 +92,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     // Create a single static map instance at (0, 0) covering the entire world
     final mapInstance = await TiledComponent.load(
-      'town_tiles_2.tmx',
+      tmxPath,
       Vector2.all(16),
     );
     
@@ -117,58 +105,23 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     _roadInitialized = true;
     
-    // Ensure car is on top by re-adding it if it exists and is loaded
-    if (car != null) {
-      if (car!.isMounted) {
-        print('[DEBUG] _setupRoad() - Car is mounted, position: ${car!.position}');
-        world.remove(car!);  // Remove from world
-        car!.priority = 1; // Higher priority - renders on top
-        world.add(car!);  // Add back to world
-        
-        // Set camera to car position immediately after map is loaded
-        print('[DEBUG] _setupRoad() - Setting camera to car position: ${car!.position}');
-        camera.viewfinder.position = car!.position;
-        print('[DEBUG] _setupRoad() - Camera position after set: ${camera.viewfinder.position}');
-      } else {
-        print('[DEBUG] _setupRoad() - Car exists but not mounted yet');
-      }
-    } else {
-      // Car not yet loaded, will be added in onLoad
-      print('[DEBUG] _setupRoad() - Car not created yet (will be added in onLoad)');
+    // Set camera bounds so the view never shows past the map edges (no black void).
+    // considerViewport: true ensures the visible area (viewport + zoom) stays inside the map.
+    final mapBounds = Rect.fromLTWH(0, 0, _mapWidth!, _mapHeight!);
+    camera.setBounds(Rectangle.fromRect(mapBounds), considerViewport: true);
+    
+    // Follow the car (if already in world); otherwise Car.onMount will call follow
+    if (car != null && car!.isMounted) {
+      camera.follow(car!);
+      world.remove(car!);
+      car!.priority = 1;
+      world.add(car!);
     }
   }
   
   @override
   void update(double dt) {
     super.update(dt);
-    
-    _frameCount++;
-    
-    // Manually update camera position to follow car
-    // This ensures camera always stays centered on car
-    if (car != null && car!.isMounted && _roadInitialized && _cameraReady) {
-      final oldCameraPos = camera.viewfinder.position.clone();
-      
-      // CRITICAL FIX: Use assignment (like onGameResize) instead of .x/.y
-      camera.viewfinder.position = car!.position.clone();
-      
-      // Debug every 60 frames (roughly once per second at 60fps)
-      if (_frameCount % 60 == 0) {
-        print('[DEBUG] update() - Frame: $_frameCount');
-        print('[DEBUG] update() - Car position: ${car!.position}');
-        print('[DEBUG] update() - Camera position AFTER UPDATE: ${camera.viewfinder.position} (was: $oldCameraPos)');
-        print('[DEBUG] update() - Did camera move? ${camera.viewfinder.position != oldCameraPos}');
-        print('[DEBUG] update() - Camera viewfinder anchor: ${camera.viewfinder.anchor}');
-        print('[DEBUG] update() - Game size: ${size.x} x ${size.y}');
-        print('[DEBUG] update() - Map size: $_mapWidth x $_mapHeight');
-        print('[DEBUG] update() - Viewport size: ${camera.viewport.size}');
-      }
-    } else {
-      // Debug why camera isn't updating
-      if (_frameCount % 60 == 0) {
-        print('[DEBUG] update() - Camera NOT updating: car=${car != null ? "exists, isMounted=${car!.isMounted}" : "null"}, _roadInitialized=$_roadInitialized, _cameraReady=$_cameraReady');
-      }
-    }
   }
   
   @override
@@ -223,7 +176,7 @@ class Car extends SpriteComponent {
     sprite = await Sprite.load('BlackCar.png');
     
     // Set car size and anchor
-    size = Vector2(90, 90);
+    size = Vector2(60, 60);
     anchor = Anchor.center;
     angle = -math.pi / 2; // Car starts facing up (negative Y direction)
   }
@@ -240,20 +193,8 @@ class Car extends SpriteComponent {
     final centerY = (game._mapHeight ?? 1600) / 2;
     
     position = Vector2(centerX, centerY);
-    print('[DEBUG] Car.onMount() - Car positioned at CENTER: $position');
-    print('[DEBUG] Car.onMount() - Parent type: ${parent.runtimeType}');
-    print('[DEBUG] Car.onMount() - Game type: ${game.runtimeType}');
-    print('[DEBUG] Car.onMount() - Map dimensions: ${game._mapWidth} x ${game._mapHeight}');
-    
-    // CRITICAL FIX: Directly set x and y instead of using setFrom
-    print('[DEBUG] Car.onMount() - Setting camera to car position: $position');
-    print('[DEBUG] Car.onMount() - Camera position BEFORE: ${game.camera.viewfinder.position}');
-    
-    game.camera.viewfinder.position.x = position.x;
-    game.camera.viewfinder.position.y = position.y;
-    
-    print('[DEBUG] Car.onMount() - Camera position AFTER: ${game.camera.viewfinder.position}');
-    print('[DEBUG] Car.onMount() - Camera successfully moved? ${game.camera.viewfinder.position.x == position.x && game.camera.viewfinder.position.y == position.y}');
+    // Start following this car (bounds are set in _setupRoad when map is loaded)
+    game.camera.follow(this);
   }
   
   @override
@@ -265,13 +206,6 @@ class Car extends SpriteComponent {
     final game = findGame();
     if (game == null) return;
     final realisticGame = game as RealisticCarGame;
-    
-    // CRITICAL: Don't allow movement until camera is ready!
-    if (!realisticGame._cameraReady) {
-      velocity = Vector2.zero();
-      acceleration = Vector2.zero();
-      return;
-    }
     
     // Don't allow movement if in park
     if (isInPark) {

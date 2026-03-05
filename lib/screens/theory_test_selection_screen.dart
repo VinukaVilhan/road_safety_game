@@ -4,6 +4,7 @@ import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../models/theory_test.dart';
 import '../services/theory_tests_service.dart';
+import 'roadsign_mcq_screen.dart';
 
 class TheoryTestSelectionScreen extends StatefulWidget {
   final String categoryId; // Which category of tests to show
@@ -337,20 +338,28 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
   }
 
   void _startTest(TheoryTest test) {
-    // TODO: Navigate to actual MCQ test screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Starting ${test.name}...',
-          style: AppFonts.inter(
-            fontSize: 14,
-            color: SwissTheme.backgroundWhite,
-          ),
+    if (widget.categoryId == 'road_signs') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RoadSignMcqScreen(test: test),
         ),
-        backgroundColor: SwissTheme.accentBlue,
-        behavior: SnackBarBehavior.fixed,
-      ),
-    );
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Starting ${test.name}... (Coming soon)',
+            style: AppFonts.inter(
+              fontSize: 14,
+              color: SwissTheme.backgroundWhite,
+            ),
+          ),
+          backgroundColor: SwissTheme.accentBlue,
+          behavior: SnackBarBehavior.fixed,
+        ),
+      );
+    }
   }
 
   void _showLockedTestDialog(TheoryTest test) {

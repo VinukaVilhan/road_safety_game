@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flame/game.dart';
 import '../models/game_level.dart';
 import '../game/realistic_car_game.dart';
+import '../utils/app_fonts.dart';
 import '../widgets/gearbox.dart';
 import '../widgets/steeringWheel.dart';
 import '../widgets/pedals.dart';
+import '../services/music_service.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLevel level;
@@ -22,6 +24,7 @@ class GameScreenState extends State<GameScreen> {
   final List<String> _gears = ['P', '1', '2', '3', '4', '5', 'R'];
   final ValueNotifier<double> _steeringRotation = ValueNotifier<double>(0.0);
   DateTime? _lastSteeringUpdate;
+  final MusicService _musicService = MusicService();
 
   @override
   void initState() {
@@ -31,7 +34,7 @@ class GameScreenState extends State<GameScreen> {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
-    game = RealisticCarGame();
+    game = RealisticCarGame(mapAsset: widget.level.mapAsset);
     // Configure the game based on the level
     _configureGameForLevel();
   }
@@ -67,7 +70,14 @@ class GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    // Use Pixelify Sans for all text in the practical driving test
+    final drivingTheme = Theme.of(context).copyWith(
+      textTheme: AppFonts.drivingGameTextTheme,
+    );
+    return Theme(
+      data: drivingTheme,
+      child: Scaffold(
+      backgroundColor: Colors.black, // Match game background so letterboxing isn't jarring
       body: Stack(
         children: [
           // The game widget
@@ -85,16 +95,31 @@ class GameScreenState extends State<GameScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Pause/Back button
-                      IconButton(
-                        onPressed: () {
-                          _showPauseDialog();
-                        },
-                        icon: const Icon(
-                          Icons.pause,
-                          color: Colors.white,
-                          size: 32,
-                        ),
+                      // Pause and Radio buttons row
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () {
+                              _showPauseDialog();
+                            },
+                            icon: const Icon(
+                              Icons.pause,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              _showMusicSheet();
+                            },
+                            icon: const Icon(
+                              Icons.radio,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                          ),
+                        ],
                       ),
                       
                       const SizedBox(height: 10),
@@ -151,15 +176,15 @@ class GameScreenState extends State<GameScreen> {
                       stream: _getSpeedStream(),
                       builder: (context, snapshot) {
                         final speed = snapshot.data ?? 0;
+                        final theme = Theme.of(context).textTheme;
                         return Row(
                           mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            const Text(
+                            Text(
                               'Speed',
-                              style: TextStyle(
+                              style: theme.labelSmall!.copyWith(
                                 color: Colors.white70,
-                                fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -168,11 +193,10 @@ class GameScreenState extends State<GameScreen> {
                               width: 36,
                               child: Text(
                                 '${speed.toInt()}',
-                                style: const TextStyle(
+                                style: theme.titleSmall!.copyWith(
                                   color: Colors.white,
-                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  fontFeatures: [FontFeature.tabularFigures()],
+                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                                 textAlign: TextAlign.right,
                                 maxLines: 1,
@@ -221,6 +245,7 @@ class GameScreenState extends State<GameScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -310,6 +335,7 @@ class GameScreenState extends State<GameScreen> {
   }
 
   void _showPauseDialog() {
+    final theme = Theme.of(context).textTheme;
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -318,20 +344,20 @@ class GameScreenState extends State<GameScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text(
+          title: Text(
             'Game Paused',
-            style: TextStyle(color: Colors.white),
+            style: theme.titleLarge!.copyWith(color: Colors.white),
           ),
-          content: const Text(
+          content: Text(
             'What would you like to do?',
-            style: TextStyle(color: Colors.white70),
+            style: theme.bodyLarge!.copyWith(color: Colors.white70),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(), // Resume game
-              child: const Text(
+              child: Text(
                 'Resume',
-                style: TextStyle(color: Colors.green),
+                style: theme.labelLarge!.copyWith(color: Colors.green),
               ),
             ),
             TextButton(
@@ -339,12 +365,98 @@ class GameScreenState extends State<GameScreen> {
                 Navigator.of(context).pop(); // Close dialog
                 Navigator.of(context).pop(); // Return to level selection
               },
-              child: const Text(
+              child: Text(
                 'Quit',
-                style: TextStyle(color: Colors.red),
+                style: theme.labelLarge!.copyWith(color: Colors.red),
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showMusicSheet() {
+    final theme = Theme.of(context).textTheme;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1a1a2e),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Music',
+                  style: theme.titleMedium!.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.radio, color: Colors.white70),
+                  title: Text('Radio', style: theme.bodyLarge!.copyWith(color: Colors.white)),
+                  subtitle: Text('Open radio in browser or app', style: theme.bodySmall!.copyWith(color: Colors.white54)),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _musicService.openRadioUrl('https://www.internet-radio.com/');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.music_note, color: Colors.white70),
+                  title: Text('Spotify', style: theme.bodyLarge!.copyWith(color: Colors.white)),
+                  subtitle: Text('Open Spotify app or web', style: theme.bodySmall!.copyWith(color: Colors.white54)),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await _musicService.openSpotify();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.library_music, color: Colors.white70),
+                  title: Text('Phone music folder', style: theme.bodyLarge!.copyWith(color: Colors.white)),
+                  subtitle: Text(
+                    MusicService.musicFolderPath != null && MusicService.musicFolderPath!.isNotEmpty
+                        ? 'Play from: ${MusicService.musicFolderPath}'
+                        : 'Set musicFolderPath in MusicService',
+                    style: theme.bodySmall!.copyWith(color: Colors.white54),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    if (MusicService.musicFolderPath == null || MusicService.musicFolderPath!.isEmpty) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Set MusicService.musicFolderPath to your music folder path first.'),
+                            backgroundColor: Color(0xFF1a1a2e),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                    await _musicService.playLocal();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Playing from phone music folder'),
+                          backgroundColor: Color(0xFF1a1a2e),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

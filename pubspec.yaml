@@ -41,6 +41,8 @@ dependencies:
   firebase_auth: ^5.3.4
   google_sign_in: ^6.2.2
   flutter_facebook_auth: ^7.0.0
+  just_audio: ^0.9.40
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -70,6 +72,7 @@ flutter:
   - assets/images/
   - assets/images/rescaled/
   - assets/tiles/
+  - assets/roadsigns/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -87,6 +90,9 @@ flutter:
     - family: RobotoMono
       fonts:
         - asset: assets/fonts/RobotoMono-VariableFont_wght.ttf
+    - family: PixelifySans
+      fonts:
+        - asset: assets/fonts/Pixelify_Sans/PixelifySans-VariableFont_wght.ttf
 
 flutter_launcher_icons:
   android: true

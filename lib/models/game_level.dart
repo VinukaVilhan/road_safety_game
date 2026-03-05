@@ -13,6 +13,8 @@ class GameLevel {
   final DrivingTopic topic;
   final int topicLevel; // Level within the topic (1, 2, 3...)
   final List<String> unlockRequirementIds; // IDs of levels that must be completed first
+  /// Optional TMX map asset path (e.g. 'tiles/T-junction.tmx'). If null, default map is used.
+  final String? mapAsset;
 
   GameLevel({
     required this.id,
@@ -24,11 +26,11 @@ class GameLevel {
     required this.topic,
     required this.topicLevel,
     this.unlockRequirementIds = const [],
+    this.mapAsset,
   });
   
   // You can add more properties like:
   // final String backgroundImage;
-  // final String mapAsset; // Which map file to use
   // final double targetTime;
   // final int targetScore;
   // final List<String> obstacles;

@@ -36,7 +36,7 @@ class GearboxWidget extends StatelessWidget {
                 errorBuilder: (context, error, stackTrace) {
                   debugPrint('Failed to load gearbox image: assets/images/rescaled/gearbox_cubic.png');
                   debugPrint('Error: $error');
-                  return _buildFallbackGearbox();
+                  return _buildFallbackGearbox(context);
                 },
               ),
             ),
@@ -145,13 +145,17 @@ class GearboxWidget extends StatelessWidget {
             ],
           ),
           child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.grey[700],
-                fontSize: isSelected ? 14 : 12,
-                fontWeight: FontWeight.bold,
-              ),
+            child: Builder(
+              builder: (context) {
+                final theme = Theme.of(context).textTheme;
+                return Text(
+                  label,
+                  style: (isSelected ? theme.titleSmall : theme.labelMedium)!.copyWith(
+                    color: isSelected ? Colors.white : Colors.grey[700],
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -175,7 +179,8 @@ class GearboxWidget extends StatelessWidget {
   }
 
   // Fallback gearbox UI when image fails to load
-  Widget _buildFallbackGearbox() {
+  Widget _buildFallbackGearbox(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
     return Container(
       width: 140,
       height: 200,
@@ -202,9 +207,8 @@ class GearboxWidget extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'GEARBOX',
-            style: TextStyle(
+            style: theme.labelMedium!.copyWith(
               color: Colors.grey[400],
-              fontSize: 12,
               fontWeight: FontWeight.bold,
             ),
           ),

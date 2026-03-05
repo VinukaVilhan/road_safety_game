@@ -50,6 +50,7 @@ class DrivingLevelsService {
       topic: DrivingTopic.Junctions,
       topicLevel: 1,
       unlockRequirementIds: [],
+      mapAsset: 'T-junction.tmx',
     ),
     GameLevel(
       id: "junctions_y",

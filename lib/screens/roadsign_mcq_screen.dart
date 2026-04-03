@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
+import '../data/repositories/progress_repository.dart';
 import '../models/theory_test.dart';
 import '../models/mcq_question.dart';
 import '../services/road_signs_questions_service.dart';
@@ -23,6 +24,7 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
   int? _selectedOptionIndex;
   bool _hasAnswered = false;
   bool _testComplete = false;
+  bool _resultPersisted = false;
 
   late final TextStyle _headerStyle;
   late final TextStyle _questionStyle;
@@ -98,8 +100,9 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
     });
   }
 
-  void _nextQuestion() {
+  Future<void> _nextQuestion() async {
     if (_currentIndex + 1 >= _questions.length) {
+      await _persistResultIfNeeded();
       setState(() => _testComplete = true);
       return;
     }
@@ -112,6 +115,20 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
 
   void _exitTest() {
     Navigator.of(context).pop();
+  }
+
+  Future<void> _persistResultIfNeeded() async {
+    if (_resultPersisted) return;
+    final total = _questions.length;
+    if (total == 0) return;
+    final score = ((_correctCount / total) * 100).round();
+    await ProgressRepository.instance.recordTheoryAttempt(
+      testId: widget.test.id,
+      totalQuestions: total,
+      correctCount: _correctCount,
+      score: score,
+    );
+    _resultPersisted = true;
   }
 
   @override
@@ -362,7 +379,10 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
-                  onPressed: _exitTest,
+                  onPressed: () async {
+                    await _persistResultIfNeeded();
+                    _exitTest();
+                  },
                   style: TextButton.styleFrom(
                     backgroundColor: SwissTheme.textPrimary,
                     foregroundColor: Colors.white,

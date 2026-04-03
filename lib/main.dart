@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'firebase_options.dart';
+import 'data/local/local_db.dart';
+import 'data/sync/sync_service.dart';
 import 'screens/auth_wrapper.dart';
 import 'theme/swiss_theme.dart';
 import 'services/image_preloader.dart';
@@ -12,6 +14,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await LocalDb.instance.initialize();
+  await SyncService.instance.initialize();
   runApp(MyApp());
 }
 

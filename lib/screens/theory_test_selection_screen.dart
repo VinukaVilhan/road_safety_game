@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
+import '../data/repositories/progress_repository.dart';
 import '../models/theory_test.dart';
 import '../services/theory_tests_service.dart';
 import 'roadsign_mcq_screen.dart';
@@ -72,6 +73,7 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
         DeviceOrientation.portraitDown,
       ]);
     });
+    _loadCompletedTests();
   }
 
   @override
@@ -88,6 +90,18 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
 
   // Get tests for the current category
   List<TheoryTest> get tests => TheoryTestsService.getTestsForCategory(widget.categoryId);
+
+  Future<void> _loadCompletedTests() async {
+    try {
+      final ids = await ProgressRepository.instance.getCompletedTestIds();
+      if (!mounted) return;
+      setState(() {
+        completedTestIds = ids;
+      });
+    } catch (_) {
+      // Keep UI usable if progress loading fails.
+    }
+  }
 
   // Get category display name
   String get categoryDisplayName {
@@ -337,14 +351,15 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
     }
   }
 
-  void _startTest(TheoryTest test) {
+  Future<void> _startTest(TheoryTest test) async {
     if (widget.categoryId == 'road_signs') {
-      Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => RoadSignMcqScreen(test: test),
         ),
       );
+      await _loadCompletedTests();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

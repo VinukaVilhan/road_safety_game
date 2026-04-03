@@ -48,6 +48,7 @@ class DrivingLevelsService {
       difficulty: LevelDifficulty.Easy,
       isUnlocked: true, // First level is always unlocked
       topic: DrivingTopic.Junctions,
+      moduleId: 't_junction',
       topicLevel: 1,
       unlockRequirementIds: [],
       mapAsset: 'T-junction-left.tmx',
@@ -61,6 +62,7 @@ class DrivingLevelsService {
       difficulty: LevelDifficulty.Easy,
       isUnlocked: false,
       topic: DrivingTopic.Junctions,
+      moduleId: 't_junction',
       topicLevel: 2,
       unlockRequirementIds: ["junctions_t_left"],
       mapAsset: 'T-junction-right.tmx',

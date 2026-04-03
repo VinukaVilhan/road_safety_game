@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
+import '../data/repositories/progress_repository.dart';
 import '../services/image_preloader.dart';
 import '../services/ui_sound_service.dart';
 import 'test_selection_screen.dart';
@@ -291,6 +293,10 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                       onChanged: (bool value) {
                         uiSound.playMenuTap();
                         setDialogState(() => uiSound.soundEnabled = value);
+                        unawaited(ProgressRepository.instance.saveSetting(
+                          settingKey: 'sound_enabled',
+                          value: value.toString(),
+                        ));
                       },
                     ),
                   ],
@@ -312,6 +318,10 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                       onChanged: (bool value) {
                         uiSound.playMenuTap();
                         setDialogState(() => uiSound.vibrationEnabled = value);
+                        unawaited(ProgressRepository.instance.saveSetting(
+                          settingKey: 'vibration_enabled',
+                          value: value.toString(),
+                        ));
                       },
                     ),
                   ],

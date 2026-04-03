@@ -1,3 +1,6 @@
+import com.android.build.gradle.LibraryExtension
+import java.io.File
+
 plugins {
     id("com.google.gms.google-services") version "4.4.4" apply false
 }
@@ -18,6 +21,33 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+// AGP 8+ requires `namespace` for every Android module.
+// Some transitive plugins (e.g. older cached packages) may miss it.
+subprojects {
+    plugins.withId("com.android.library") {
+        extensions.configure<LibraryExtension>("android") {
+            if (namespace == null || namespace!!.isBlank()) {
+                namespace = "fallback.${project.name.replace('-', '_')}"
+            }
+        }
+    }
+}
+
+// Temporary compatibility patch for isar_flutter_libs 3.1.0+1 on AGP 8.x.
+run {
+    val manifest = File(
+        System.getProperty("user.home"),
+        "AppData/Local/Pub/Cache/hosted/pub.dev/isar_flutter_libs-3.1.0+1/android/src/main/AndroidManifest.xml",
+    )
+    if (manifest.exists()) {
+        val original = manifest.readText()
+        val patched = original.replace(" package=\"dev.isar.isar_flutter_libs\"", "")
+        if (patched != original) {
+            manifest.writeText(patched)
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

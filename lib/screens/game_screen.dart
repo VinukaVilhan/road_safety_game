@@ -8,6 +8,7 @@ import '../widgets/gearbox.dart';
 import '../widgets/steeringWheel.dart';
 import '../widgets/pedals.dart';
 import '../services/music_service.dart';
+import '../services/level_progress_service.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLevel level;
@@ -399,9 +400,14 @@ class GameScreenState extends State<GameScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
+              onPressed: () async {
+                await LevelProgressService.markLevelCompleted(
+                  widget.level.id,
+                  moduleId: widget.level.moduleId,
+                );
+                if (!mounted) return;
                 Navigator.of(context).pop();
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(widget.level.id);
               },
               child: const Text('Back to Levels'),
             ),

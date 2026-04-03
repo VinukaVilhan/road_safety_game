@@ -11,6 +11,7 @@ class GameLevel {
   
   // Topic-based organization
   final DrivingTopic topic;
+  final String? moduleId; // Optional sub-module identifier (e.g. "t_junction")
   final int topicLevel; // Level within the topic (1, 2, 3...)
   final List<String> unlockRequirementIds; // IDs of levels that must be completed first
   /// Optional TMX map asset path (e.g. 'tiles/T-junction-left.tmx' or 'tiles/T-junction-right.tmx'). If null, default map is used.
@@ -26,6 +27,7 @@ class GameLevel {
     required this.difficulty,
     required this.isUnlocked,
     required this.topic,
+    this.moduleId,
     required this.topicLevel,
     this.unlockRequirementIds = const [],
     this.mapAsset,

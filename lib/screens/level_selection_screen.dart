@@ -4,6 +4,7 @@ import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../models/game_level.dart';
 import '../services/driving_levels_service.dart';
+import '../services/level_progress_service.dart';
 import 'game_screen.dart';
 
 class LevelSelectionScreen extends StatefulWidget {
@@ -24,7 +25,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
   late final TextStyle _dialogBodyStyle;
   late final TextStyle _dialogButtonStyle;
 
-  // Track completed levels (TODO: Get from Firebase/local storage)
+  // Track completed levels from Firebase.
   Set<String> completedLevelIds = {};
 
   @override
@@ -72,6 +73,8 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
         DeviceOrientation.portraitDown,
       ]);
     });
+
+    _loadCompletedLevels();
   }
 
   @override
@@ -322,14 +325,36 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     }
   }
 
-  void _startGame(GameLevel level) {
+  Future<void> _loadCompletedLevels() async {
+    try {
+      final ids = await LevelProgressService.getCompletedLevelIds();
+      if (!mounted) return;
+      setState(() {
+        completedLevelIds = ids;
+      });
+    } catch (_) {
+      // Keep UI usable even if progress fetch fails.
+    }
+  }
+
+  Future<void> _startGame(GameLevel level) async {
     // Use MaterialPageRoute for better performance
-    Navigator.push(
+    final result = await Navigator.push<Object?>(
       context,
       MaterialPageRoute(
         builder: (context) => GameScreen(level: level),
       ),
     );
+
+    if (!mounted) return;
+
+    if (result is String && result.isNotEmpty) {
+      setState(() {
+        completedLevelIds.add(result);
+      });
+    }
+
+    await _loadCompletedLevels();
   }
 
   void _showLockedLevelDialog(GameLevel level) {

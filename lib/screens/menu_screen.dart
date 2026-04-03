@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../services/image_preloader.dart';
+import '../services/ui_sound_service.dart';
 import 'test_selection_screen.dart';
 import 'profile_screen.dart';
 
@@ -214,7 +215,10 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onPressed,
+        onTap: () {
+          UiSoundService().playMenuTap();
+          onPressed();
+        },
         borderRadius: BorderRadius.zero, // Sharp corners
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
@@ -250,7 +254,10 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Dialog(
+        final uiSound = UiSoundService();
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
           backgroundColor: SwissTheme.backgroundWhite,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.zero,
@@ -279,10 +286,11 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                       style: _dialogBodyStyle,
                     ),
                     Switch(
-                      value: true,
+                      value: uiSound.soundEnabled,
                       activeColor: SwissTheme.accentRed,
                       onChanged: (bool value) {
-                        // Handle sound toggle
+                        uiSound.playMenuTap();
+                        setDialogState(() => uiSound.soundEnabled = value);
                       },
                     ),
                   ],
@@ -299,10 +307,11 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                       style: _dialogBodyStyle,
                     ),
                     Switch(
-                      value: true,
+                      value: uiSound.vibrationEnabled,
                       activeColor: SwissTheme.accentRed,
                       onChanged: (bool value) {
-                        // Handle vibration toggle
+                        uiSound.playMenuTap();
+                        setDialogState(() => uiSound.vibrationEnabled = value);
                       },
                     ),
                   ],
@@ -316,7 +325,10 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      uiSound.playMenuTap();
+                      Navigator.of(context).pop();
+                    },
                     style: TextButton.styleFrom(
                       foregroundColor: SwissTheme.textPrimary,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -333,11 +345,14 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
             ),
           ),
         );
+          },
+        );
       },
     );
   }
 
   void _quitGame(BuildContext context) {
+    final uiSound = UiSoundService();
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -373,7 +388,10 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: () {
+                        uiSound.playMenuTap();
+                        Navigator.of(context).pop();
+                      },
                       style: TextButton.styleFrom(
                         foregroundColor: SwissTheme.textSecondary,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -388,6 +406,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                     const SizedBox(width: 16),
                     TextButton(
                       onPressed: () {
+                        uiSound.playMenuTap();
                         Navigator.of(context).pop();
                         SystemNavigator.pop();
                       },

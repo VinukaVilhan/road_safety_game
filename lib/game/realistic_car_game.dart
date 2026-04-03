@@ -1,11 +1,35 @@
 import 'dart:math' as math;
-import 'dart:ui' show Rect;
 import 'package:flame/camera.dart';
 import 'package:flame/components.dart';
 import 'package:flame/experimental.dart';
 import 'package:flame/game.dart';
 import 'package:flame_tiled/flame_tiled.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
+/// True if this object layer should supply axis-aligned collision rectangles.
+bool _isTiledCollisionObjectLayer(ObjectGroup layer) {
+  final nameNorm = layer.name.replaceAll(' ', '_').toLowerCase();
+  if (nameNorm == 'obstacles_layer') return true;
+  final cls = layer.class_?.trim().toLowerCase();
+  return cls == 'collision_box';
+}
+
+class _DrivingZone {
+  final int objectId;
+  final Rect rect;
+  final String zoneClass;
+  final int? stepId;
+  final String? failMessage;
+
+  const _DrivingZone({
+    required this.objectId,
+    required this.rect,
+    required this.zoneClass,
+    this.stepId,
+    this.failMessage,
+  });
+}
 
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   Car? car; // Make car accessible - nullable to handle initialization order
@@ -17,14 +41,30 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   double? _mapHeight;
   double _baseLayerFriction = 400.0; // default fallback friction
   final List<Rect> _wallRects = [];
+  Vector2? _spawnPoint;
 
-  /// Camera zoom level (> 1 = zoom in, < 1 = zoom out). Default 1.5 for a closer view.
-  static const double cameraZoom = 1.5;
+  /// Preferred camera zoom level (> 1 = zoom in, < 1 = zoom out).
+  /// Final zoom is clamped so camera never shows outside-map void.
+  static const double preferredCameraZoom = 1.4;
 
-  /// Optional TMX map path (e.g. 'assets/tiles/T-junction.tmx'). If null, default map is used.
+  /// Optional TMX map path (e.g. 'assets/tiles/T-junction-left.tmx'). If null, default map is used.
   final String? mapAsset;
+  /// Optional scenario key to alter objective routing on a shared map.
+  final String? scenarioId;
+  final void Function(String message)? onTestFailed;
+  final VoidCallback? onTestPassed;
 
-  RealisticCarGame({this.mapAsset});
+  final List<_DrivingZone> _drivingZones = [];
+  final Set<int> _zonesInsidePreviousFrame = <int>{};
+  int _lastCompletedStepId = 0;
+  bool _testFinished = false;
+
+  RealisticCarGame({
+    this.mapAsset,
+    this.scenarioId,
+    this.onTestFailed,
+    this.onTestPassed,
+  });
   
   @override
   Future<void> onLoad() async {
@@ -37,8 +77,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     // Set camera to center on target (car) and apply zoom
     camera.viewfinder.anchor = Anchor.center;
-    camera.viewfinder.zoom = cameraZoom;
-    print('[DEBUG] onLoad() - Camera viewfinder anchor set to center, zoom: $cameraZoom');
+    camera.viewfinder.zoom = preferredCameraZoom;
+    print('[DEBUG] onLoad() - Camera viewfinder anchor set to center, zoom: $preferredCameraZoom');
     
     // Try to setup road if size is already available
     if (size.x > 0 && size.y > 0) {
@@ -68,6 +108,11 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     if (!_roadInitialized && size.x > 0 && size.y > 0) {
       _setupRoad();
     }
+    // Re-apply bounds after resize/orientation changes to avoid clipped camera limits.
+    if (_roadInitialized) {
+      _applyCameraZoomForViewport();
+      _applyCameraBounds();
+    }
   }
   
   Future<void> _setupRoad() async {
@@ -92,13 +137,39 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     print('[DEBUG] _setupRoad() - Map dimensions: ${_mapWidth} x ${_mapHeight}');
     print('[DEBUG] _setupRoad() - Map tiles: ${tiledMap.tileMap.map.width} x ${tiledMap.tileMap.map.height}');
 
+    // Read spawn point from object groups (layer/object class, type, or name can mark spawn).
+    _spawnPoint = null;
+    for (final layer in tiledMap.tileMap.map.layers.whereType<ObjectGroup>()) {
+      final layerTag = layer.name.replaceAll(' ', '_').toLowerCase();
+      final layerClassTag = (layer.class_ ?? '').replaceAll(' ', '_').toLowerCase();
+      final isSpawnLayer = layerTag.contains('spawn') || layerClassTag.contains('spawn');
+      for (final obj in layer.objects) {
+        final objectClassTag =
+            (obj.class_ ?? '').replaceAll(' ', '_').toLowerCase();
+        final objectTypeTag = obj.type.replaceAll(' ', '_').toLowerCase();
+        final objectNameTag = obj.name.replaceAll(' ', '_').toLowerCase();
+        final isSpawnObject = objectClassTag.contains('spawn') ||
+            objectTypeTag.contains('spawn') ||
+            objectNameTag.contains('spawn');
+        if (!isSpawnLayer && !isSpawnObject) continue;
+
+        final spawnX = obj.isPoint ? obj.x : obj.x + (obj.width / 2);
+        final spawnY = obj.isPoint ? obj.y : obj.y + (obj.height / 2);
+        _spawnPoint = Vector2(spawnX, spawnY);
+        print('[DEBUG] _setupRoad() - Spawn point loaded: $_spawnPoint');
+        break;
+      }
+      if (_spawnPoint != null) break;
+    }
+
     // Read friction from the "Base" layer if available (Tiled layer property)
-    final baseLayer = tiledMap.tileMap.map.layers
-        .whereType<TileLayer>()
-        .firstWhere(
-          (layer) => layer.name == 'Base',
-          orElse: () => null,
-        );
+    TileLayer? baseLayer;
+    for (final layer in tiledMap.tileMap.map.layers.whereType<TileLayer>()) {
+      if (layer.name == 'Base') {
+        baseLayer = layer;
+        break;
+      }
+    }
     if (baseLayer != null) {
       final frictionProp = baseLayer.properties.getValue<double>('friction');
       if (frictionProp != null) {
@@ -111,17 +182,45 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       print('[DEBUG] _setupRoad() - No Base layer found, using default friction: $_baseLayerFriction');
     }
 
-    // Read wall objects from "Obstacles_Layer" (Tiled object layer)
+    // Read collision rectangles from Tiled object layers:
+    // - Layer name "Obstacles_Layer" / "Obstacles Layer", OR
+    // - Layer class "Collision_Box" (Tiled 1.9+ <objectgroup class="...">).
+    // - Skip hidden objects (visible="0") so old placeholder walls don't block the road.
+    // - Use every visible axis-aligned rectangle unless type is a known non-solid (spawn, trigger, …).
+    // - Plain rectangles without a class/type still collide (Tiled defaults type to "").
     _wallRects.clear();
-    final obstaclesLayer = tiledMap.tileMap.map.layers
+    final collisionLayers = tiledMap.tileMap.map.layers
         .whereType<ObjectGroup>()
-        .firstWhere(
-          (layer) => layer.name == 'Obstacles_Layer',
-          orElse: () => null,
+        .where(_isTiledCollisionObjectLayer)
+        .toList();
+    const ignoredCollisionTypes = {
+      'spawn',
+      'player',
+      'trigger',
+      'sensor',
+      'ignore',
+      'nocollision',
+    };
+    if (collisionLayers.isNotEmpty) {
+      for (final obstaclesLayer in collisionLayers) {
+        print(
+          '[DEBUG] _setupRoad() - Collision layer "${obstaclesLayer.name}" class="${obstaclesLayer.class_ ?? ""}"',
         );
-    if (obstaclesLayer != null) {
-      for (final obj in obstaclesLayer.objects) {
-        if (obj.type == 'Wall') {
+        for (final obj in obstaclesLayer.objects) {
+          if (!obj.visible) continue;
+          if (obj.width <= 0 || obj.height <= 0) continue;
+          if (obj.isPoint || obj.isPolygon || obj.isPolyline || obj.isEllipse) {
+            continue;
+          }
+          if (obj.rotation != 0) {
+            print(
+              '[DEBUG] _setupRoad() - Skipping rotated object id=${obj.id} (rotation=${obj.rotation}); use axis-aligned rects for collision',
+            );
+            continue;
+          }
+          final typeLower = obj.type.trim().toLowerCase();
+          if (ignoredCollisionTypes.contains(typeLower)) continue;
+
           final rect = Rect.fromLTWH(
             obj.x,
             obj.y,
@@ -129,13 +228,67 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
             obj.height,
           );
           _wallRects.add(rect);
-          print('[DEBUG] _setupRoad() - Added Wall rect: $rect');
+          print(
+            '[DEBUG] _setupRoad() - Obstacle rect id=${obj.id} type="${obj.type}": $rect',
+          );
         }
       }
-      print('[DEBUG] _setupRoad() - Total wall rects: ${_wallRects.length}');
+      print('[DEBUG] _setupRoad() - Total obstacle rects: ${_wallRects.length}');
     } else {
-      print('[DEBUG] _setupRoad() - No Obstacles_Layer found, no walls added');
+      print(
+        '[DEBUG] _setupRoad() - No collision object layer (name Obstacles_Layer or class Collision_Box), no walls added',
+      );
     }
+
+    // Read rule zones (checkpoint, finish, fail) from object layers or objects.
+    _drivingZones.clear();
+    for (final layer in tiledMap.tileMap.map.layers.whereType<ObjectGroup>()) {
+      final layerClass = (layer.class_ ?? '').trim();
+      final layerClassLower = layerClass.toLowerCase();
+      final layerStepId = layer.properties.getValue<int>('step_id');
+      final layerFailMessage = layer.properties.getValue<String>('fail_message');
+
+      for (final obj in layer.objects) {
+        if (!obj.visible || obj.width <= 0 || obj.height <= 0) continue;
+        if (obj.isPoint || obj.isPolygon || obj.isPolyline || obj.isEllipse) continue;
+        if (obj.rotation != 0) continue;
+
+        final objectClass = (obj.class_ ?? '').trim();
+        final objectType = obj.type.trim();
+        final zoneClass = objectClass.isNotEmpty
+            ? objectClass
+            : (objectType.isNotEmpty ? objectType : layerClass);
+        final zoneClassLower = zoneClass.toLowerCase();
+
+        if (zoneClassLower != 'zone_check' &&
+            zoneClassLower != 'zone_finish' &&
+            zoneClassLower != 'zone_fail_wt' &&
+            zoneClassLower != 'zone_fail_it' &&
+            layerClassLower != 'zone_check' &&
+            layerClassLower != 'zone_finish' &&
+            layerClassLower != 'zone_fail_wt' &&
+            layerClassLower != 'zone_fail_it') {
+          continue;
+        }
+
+        final effectiveZoneClass =
+            zoneClassLower.isNotEmpty ? zoneClass : layerClass;
+        final stepId = obj.properties.getValue<int>('step_id') ?? layerStepId;
+        final failMessage =
+            obj.properties.getValue<String>('fail_message') ?? layerFailMessage;
+
+        _drivingZones.add(
+          _DrivingZone(
+            objectId: obj.id,
+            rect: Rect.fromLTWH(obj.x, obj.y, obj.width, obj.height),
+            zoneClass: effectiveZoneClass.toLowerCase(),
+            stepId: stepId,
+            failMessage: _sanitizeFailMessage(failMessage),
+          ),
+        );
+      }
+    }
+    print('[DEBUG] _setupRoad() - Loaded driving zones: ${_drivingZones.length}');
     
     // Create a single static map instance at (0, 0) covering the entire world
     final mapInstance = await TiledComponent.load(
@@ -154,21 +307,114 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     // Set camera bounds so the view never shows past the map edges (no black void).
     // considerViewport: true ensures the visible area (viewport + zoom) stays inside the map.
-    final mapBounds = Rect.fromLTWH(0, 0, _mapWidth!, _mapHeight!);
-    camera.setBounds(Rectangle.fromRect(mapBounds), considerViewport: true);
+    _applyCameraZoomForViewport();
+    _applyCameraBounds();
     
     // Follow the car (if already in world); otherwise Car.onMount will call follow
     if (car != null && car!.isMounted) {
+      if (_spawnPoint != null) {
+        car!.position = _spawnPoint!.clone();
+      }
       camera.follow(car!);
       world.remove(car!);
       car!.priority = 1;
       world.add(car!);
     }
   }
+
+  void _applyCameraBounds() {
+    if (_mapWidth == null || _mapHeight == null) return;
+    final mapBounds = Rect.fromLTWH(0, 0, _mapWidth!, _mapHeight!);
+    camera.setBounds(Rectangle.fromRect(mapBounds), considerViewport: true);
+  }
+
+  void _applyCameraZoomForViewport() {
+    if (_mapWidth == null || _mapHeight == null || size.x <= 0 || size.y <= 0) {
+      return;
+    }
+    // Prevent black space by ensuring visible world <= map size on both axes.
+    final minZoomToAvoidVoid = math.max(size.x / _mapWidth!, size.y / _mapHeight!);
+    final finalZoom = math.max(preferredCameraZoom, minZoomToAvoidVoid);
+    camera.viewfinder.zoom = finalZoom;
+  }
   
   @override
   void update(double dt) {
     super.update(dt);
+    _updateDrivingRuleZones();
+  }
+
+  String _sanitizeFailMessage(String? raw) {
+    if (raw == null) return '';
+    final trimmed = raw.trim();
+    if (trimmed.length >= 2 &&
+        trimmed.startsWith('"') &&
+        trimmed.endsWith('"')) {
+      return trimmed.substring(1, trimmed.length - 1);
+    }
+    return trimmed;
+  }
+
+  String _zoneKindForScenario(String zoneClass) {
+    return zoneClass;
+  }
+
+  void _updateDrivingRuleZones() {
+    if (_testFinished || car == null || _drivingZones.isEmpty) return;
+
+    final currentInside = <int>{};
+    final carRect = Rect.fromCenter(
+      center: Offset(car!.position.x, car!.position.y),
+      width: car!.size.x,
+      height: car!.size.y,
+    );
+
+    for (final zone in _drivingZones) {
+      if (!carRect.overlaps(zone.rect)) continue;
+      currentInside.add(zone.objectId);
+      if (_zonesInsidePreviousFrame.contains(zone.objectId)) continue;
+      _handleZoneEntry(zone);
+      if (_testFinished) break;
+    }
+
+    _zonesInsidePreviousFrame
+      ..clear()
+      ..addAll(currentInside);
+  }
+
+  void _handleZoneEntry(_DrivingZone zone) {
+    final zoneKind = _zoneKindForScenario(zone.zoneClass);
+
+    if (zoneKind == 'zone_check') {
+      final step = zone.stepId;
+      if (step == null) return;
+      if (step == _lastCompletedStepId + 1) {
+        _lastCompletedStepId = step;
+      }
+      return;
+    }
+
+    if (zoneKind == 'zone_finish') {
+      final requiredPreviousStep = (zone.stepId ?? 1) - 1;
+      if (_lastCompletedStepId < requiredPreviousStep) {
+        return;
+      }
+      _testFinished = true;
+      car?.coast();
+      onTestPassed?.call();
+      return;
+    }
+
+    if (zoneKind == 'zone_fail_wt' || zoneKind == 'zone_fail_it') {
+      _testFinished = true;
+      car?.coast();
+      final defaultMessage = zoneKind == 'zone_fail_it'
+          ? 'Driving in oncoming traffic!'
+          : 'Wrong Turn!';
+      onTestFailed?.call(
+        zone.failMessage?.isNotEmpty == true ? zone.failMessage! : defaultMessage,
+      );
+    }
   }
   
   @override
@@ -238,8 +484,7 @@ class Car extends SpriteComponent {
     final game = findGame()! as RealisticCarGame;
     final centerX = (game._mapWidth ?? 1600) / 2;
     final centerY = (game._mapHeight ?? 1600) / 2;
-    
-    position = Vector2(centerX, centerY);
+    position = game._spawnPoint?.clone() ?? Vector2(centerX, centerY);
     // Start following this car (bounds are set in _setupRoad when map is loaded)
     game.camera.follow(this);
   }
@@ -371,19 +616,15 @@ class Car extends SpriteComponent {
     // Keep car within world bounds (map boundaries)
     // Only prevent going completely off map edges - camera handles visibility
     if (realisticGame._mapWidth != null && realisticGame._mapHeight != null) {
-      bool hitBoundary = false;
-      
       // Horizontal world bounds - prevent going off map edges
       if (position.x < 0) {
         print('[DEBUG] Car.update() - Hit LEFT boundary! position.x=$position.x, setting to 0');
         position.x = 0;
         velocity.x = 0; // Stop horizontal movement at left edge
-        hitBoundary = true;
       } else if (position.x > realisticGame._mapWidth!) {
         print('[DEBUG] Car.update() - Hit RIGHT boundary! position.x=$position.x, mapWidth=${realisticGame._mapWidth}, setting to ${realisticGame._mapWidth}');
         position.x = realisticGame._mapWidth!;
         velocity.x = 0; // Stop horizontal movement at right edge
-        hitBoundary = true;
       }
       
       // Vertical world bounds - prevent going off map edges
@@ -391,12 +632,10 @@ class Car extends SpriteComponent {
         print('[DEBUG] Car.update() - Hit TOP boundary! position.y=$position.y, setting to 0');
         position.y = 0;
         velocity.y = math.max(0, velocity.y); // Stop upward movement
-        hitBoundary = true;
       } else if (position.y > realisticGame._mapHeight!) {
         print('[DEBUG] Car.update() - Hit BOTTOM boundary! position.y=$position.y, mapHeight=${realisticGame._mapHeight}, setting to ${realisticGame._mapHeight}');
         position.y = realisticGame._mapHeight!;
         velocity.y = math.min(0, velocity.y); // Stop downward movement
-        hitBoundary = true;
       }
       
       // Debug boundary info periodically

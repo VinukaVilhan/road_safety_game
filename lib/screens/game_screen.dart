@@ -25,6 +25,7 @@ class GameScreenState extends State<GameScreen> {
   final ValueNotifier<double> _steeringRotation = ValueNotifier<double>(0.0);
   DateTime? _lastSteeringUpdate;
   final MusicService _musicService = MusicService();
+  bool _resultDialogVisible = false;
 
   @override
   void initState() {
@@ -34,7 +35,12 @@ class GameScreenState extends State<GameScreen> {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
-    game = RealisticCarGame(mapAsset: widget.level.mapAsset);
+    game = RealisticCarGame(
+      mapAsset: widget.level.mapAsset,
+      scenarioId: widget.level.scenarioId,
+      onTestPassed: _handleTestPassed,
+      onTestFailed: _handleTestFailed,
+    );
     // Configure the game based on the level
     _configureGameForLevel();
   }
@@ -374,6 +380,76 @@ class GameScreenState extends State<GameScreen> {
         );
       },
     );
+  }
+
+  void _handleTestPassed() {
+    if (!mounted || _resultDialogVisible) return;
+    _resultDialogVisible = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1a1a2e),
+          title: const Text('Test Passed!', style: TextStyle(color: Colors.white)),
+          content: const Text(
+            'Great drive. You followed the route correctly.',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Back to Levels'),
+            ),
+          ],
+        );
+      },
+    ).then((_) => _resultDialogVisible = false);
+  }
+
+  void _handleTestFailed(String message) {
+    if (!mounted || _resultDialogVisible) return;
+    _resultDialogVisible = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1a1a2e),
+          title: const Text('Test Failed', style: TextStyle(color: Colors.white)),
+          content: Text(
+            message,
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (!mounted) return;
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => GameScreen(level: widget.level),
+                  ),
+                );
+              },
+              child: const Text('Retry'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop();
+              },
+              child: const Text('Back to Levels'),
+            ),
+          ],
+        );
+      },
+    ).then((_) => _resultDialogVisible = false);
   }
 
   void _showMusicSheet() {

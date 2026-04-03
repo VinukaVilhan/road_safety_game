@@ -41,27 +41,30 @@ class DrivingLevelsService {
   // ========== JUNCTIONS LEVELS ==========
   static final List<GameLevel> _junctionsLevels = [
     GameLevel(
-      id: "junctions_t_basics",
+      id: "junctions_t_left",
       number: 1,
-      name: "T-Junction Basics",
-      description: "Master right and left turns at T-junctions",
+      name: "T-Junction Left Turn",
+      description: "Approach and complete a safe left turn at a T-junction",
       difficulty: LevelDifficulty.Easy,
       isUnlocked: true, // First level is always unlocked
       topic: DrivingTopic.Junctions,
       topicLevel: 1,
       unlockRequirementIds: [],
-      mapAsset: 'T-junction.tmx',
+      mapAsset: 'T-junction-left.tmx',
+      scenarioId: 't_junction_left',
     ),
     GameLevel(
-      id: "junctions_y",
+      id: "junctions_t_right",
       number: 2,
-      name: "Y-Junction",
-      description: "Navigate Y-shaped intersections",
+      name: "T-Junction Right Turn",
+      description: "Approach and complete a safe right turn at a T-junction",
       difficulty: LevelDifficulty.Easy,
       isUnlocked: false,
       topic: DrivingTopic.Junctions,
       topicLevel: 2,
-      unlockRequirementIds: ["junctions_t_basics"],
+      unlockRequirementIds: ["junctions_t_left"],
+      mapAsset: 'T-junction-right.tmx',
+      scenarioId: 't_junction_right',
     ),
     GameLevel(
       id: "junctions_cross_basics",
@@ -72,7 +75,7 @@ class DrivingLevelsService {
       isUnlocked: false,
       topic: DrivingTopic.Junctions,
       topicLevel: 3,
-      unlockRequirementIds: ["junctions_y"],
+      unlockRequirementIds: ["junctions_t_right"],
     ),
     GameLevel(
       id: "junctions_roundabout_basics",
@@ -83,7 +86,7 @@ class DrivingLevelsService {
       isUnlocked: false,
       topic: DrivingTopic.Junctions,
       topicLevel: 4,
-      unlockRequirementIds: ["junctions_y"], // Can unlock after Y-junction
+      unlockRequirementIds: ["junctions_t_right"],
     ),
     GameLevel(
       id: "junctions_cross_advanced",

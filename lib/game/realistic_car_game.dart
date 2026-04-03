@@ -15,6 +15,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   bool _roadInitialized = false;
   double? _mapWidth;
   double? _mapHeight;
+  double _baseLayerFriction = 400.0; // default fallback friction
+  final List<Rect> _wallRects = [];
 
   /// Camera zoom level (> 1 = zoom in, < 1 = zoom out). Default 1.5 for a closer view.
   static const double cameraZoom = 1.5;
@@ -89,6 +91,51 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _mapHeight = tiledMap.tileMap.map.height * 16.0; // 16 is tile height
     print('[DEBUG] _setupRoad() - Map dimensions: ${_mapWidth} x ${_mapHeight}');
     print('[DEBUG] _setupRoad() - Map tiles: ${tiledMap.tileMap.map.width} x ${tiledMap.tileMap.map.height}');
+
+    // Read friction from the "Base" layer if available (Tiled layer property)
+    final baseLayer = tiledMap.tileMap.map.layers
+        .whereType<TileLayer>()
+        .firstWhere(
+          (layer) => layer.name == 'Base',
+          orElse: () => null,
+        );
+    if (baseLayer != null) {
+      final frictionProp = baseLayer.properties.getValue<double>('friction');
+      if (frictionProp != null) {
+        _baseLayerFriction = frictionProp * 400.0; // scale tile friction into force
+        print('[DEBUG] _setupRoad() - Base layer friction from TMX: $frictionProp -> $_baseLayerFriction');
+      } else {
+        print('[DEBUG] _setupRoad() - Base layer has no friction property, using default: $_baseLayerFriction');
+      }
+    } else {
+      print('[DEBUG] _setupRoad() - No Base layer found, using default friction: $_baseLayerFriction');
+    }
+
+    // Read wall objects from "Obstacles_Layer" (Tiled object layer)
+    _wallRects.clear();
+    final obstaclesLayer = tiledMap.tileMap.map.layers
+        .whereType<ObjectGroup>()
+        .firstWhere(
+          (layer) => layer.name == 'Obstacles_Layer',
+          orElse: () => null,
+        );
+    if (obstaclesLayer != null) {
+      for (final obj in obstaclesLayer.objects) {
+        if (obj.type == 'Wall') {
+          final rect = Rect.fromLTWH(
+            obj.x,
+            obj.y,
+            obj.width,
+            obj.height,
+          );
+          _wallRects.add(rect);
+          print('[DEBUG] _setupRoad() - Added Wall rect: $rect');
+        }
+      }
+      print('[DEBUG] _setupRoad() - Total wall rects: ${_wallRects.length}');
+    } else {
+      print('[DEBUG] _setupRoad() - No Obstacles_Layer found, no walls added');
+    }
     
     // Create a single static map instance at (0, 0) covering the entire world
     final mapInstance = await TiledComponent.load(
@@ -206,6 +253,9 @@ class Car extends SpriteComponent {
     final game = findGame();
     if (game == null) return;
     final realisticGame = game as RealisticCarGame;
+
+    // Update friction from map (e.g. Base layer property) if available
+    friction = realisticGame._baseLayerFriction;
     
     // Don't allow movement if in park
     if (isInPark) {
@@ -287,7 +337,26 @@ class Car extends SpriteComponent {
     }
     
     // Apply velocity to position
+    final oldPosition = position.clone();
     position += velocity * dt;
+
+    // Simple wall collision: push car out of any wall rect and stop movement into it
+    if (realisticGame._wallRects.isNotEmpty) {
+      final carRect = Rect.fromCenter(
+        center: Offset(position.x, position.y),
+        width: size.x,
+        height: size.y,
+      );
+      for (final wall in realisticGame._wallRects) {
+        if (carRect.overlaps(wall)) {
+          // Resolve collision by snapping back to previous position
+          position.setFrom(oldPosition);
+          velocity = Vector2.zero();
+          acceleration = Vector2.zero();
+          break;
+        }
+      }
+    }
     
     // Gradually return steering to center only when NOT actively steering
     if (!isSteering && steerAngle != 0) {

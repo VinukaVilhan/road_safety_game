@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/swiss_theme.dart';
@@ -9,8 +11,20 @@ import 'game_screen.dart';
 
 class LevelSelectionScreen extends StatefulWidget {
   final DrivingTopic? topic; // Optional: if null, shows all levels (backward compatible)
-  
-  const LevelSelectionScreen({super.key, this.topic});
+
+  /// When set with [topic] == [DrivingTopic.Junctions], only levels in this module are listed
+  /// (T-junctions, cross junctions, or roundabouts).
+  final String? junctionsModuleId;
+
+  /// Screen title (e.g. "T-JUNCTIONS") when showing a junctions submodule.
+  final String? headerTitleOverride;
+
+  const LevelSelectionScreen({
+    super.key,
+    this.topic,
+    this.junctionsModuleId,
+    this.headerTitleOverride,
+  });
 
   @override
   LevelSelectionScreenState createState() => LevelSelectionScreenState();
@@ -91,17 +105,34 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
 
   // Get levels based on topic (or all levels if topic is null)
   List<GameLevel> get levels {
-    if (widget.topic != null) {
-      return DrivingLevelsService.getLevelsForTopic(widget.topic!);
-    } else {
-      // Backward compatibility: return empty list or default levels
-      // For now, return empty - topic should always be provided from topic selection
+    if (widget.topic == null) {
       return [];
     }
+    if (widget.junctionsModuleId != null &&
+        widget.junctionsModuleId!.trim().isNotEmpty) {
+      return DrivingLevelsService.getJunctionsLevelsForModule(
+        widget.junctionsModuleId!.trim(),
+      );
+    }
+    return DrivingLevelsService.getLevelsForTopic(widget.topic!);
+  }
+
+  /// Big number on level cards: 01, 02 within a junctions submodule; otherwise [GameLevel.topicLevel].
+  int displayLevelNumber(GameLevel level) {
+    if (widget.junctionsModuleId != null &&
+        widget.junctionsModuleId!.trim().isNotEmpty) {
+      final i = levels.indexOf(level);
+      return i >= 0 ? i + 1 : level.topicLevel;
+    }
+    return level.topicLevel;
   }
 
   // Get header title
   String get headerTitle {
+    final override = widget.headerTitleOverride?.trim();
+    if (override != null && override.isNotEmpty) {
+      return override;
+    }
     if (widget.topic != null) {
       return widget.topic!.displayName;
     }
@@ -235,7 +266,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                     children: [
                       // Giant level number (top left) - use topicLevel instead of number
                       Text(
-                        level.topicLevel.toString().padLeft(2, '0'),
+                        displayLevelNumber(level).toString().padLeft(2, '0'),
                         style: _levelNumberStyle.copyWith(
                           color: isUnlocked 
                             ? SwissTheme.textSecondary.withOpacity(0.5)
@@ -355,14 +386,18 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     }
 
     await _loadCompletedLevels();
+    unawaited(LevelProgressService.uploadLocalCompletedLevelsToFirestore());
   }
 
   void _showLockedLevelDialog(GameLevel level) {
     String unlockMessage = 'Complete the previous levels to unlock "${level.name}".';
     
     if (level.unlockRequirementIds.isNotEmpty) {
-      // Get names of required levels
-      final requiredLevels = levels
+      // Resolve names from the full topic so cross-module prerequisites still show correctly.
+      final pool = widget.topic != null
+          ? DrivingLevelsService.getLevelsForTopic(widget.topic!)
+          : levels;
+      final requiredLevels = pool
           .where((l) => level.unlockRequirementIds.contains(l.id))
           .map((l) => l.name)
           .toList();

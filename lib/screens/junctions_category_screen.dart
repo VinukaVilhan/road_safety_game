@@ -1,46 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../models/game_level.dart';
+import '../services/driving_levels_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
-import '../models/game_level.dart';
-import 'junctions_category_screen.dart';
 import 'level_selection_screen.dart';
 
-class DrivingTopicSelectionScreen extends StatefulWidget {
-  const DrivingTopicSelectionScreen({super.key});
+/// First step under Junctions: pick T-junctions (left/right), cross junctions, or roundabouts.
+class JunctionsCategoryScreen extends StatefulWidget {
+  const JunctionsCategoryScreen({super.key});
 
   @override
-  State<DrivingTopicSelectionScreen> createState() => _DrivingTopicSelectionScreenState();
+  State<JunctionsCategoryScreen> createState() => _JunctionsCategoryScreenState();
 }
 
-class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScreen> {
-  // Cache font styles to avoid recreating them on every build
+class _JunctionsCategoryScreenState extends State<JunctionsCategoryScreen> {
   late final TextStyle _headerStyle;
-  late final TextStyle _topicTitleStyle;
-  late final TextStyle _topicDescriptionStyle;
+  late final TextStyle _titleStyle;
+  late final TextStyle _descStyle;
 
   @override
   void initState() {
     super.initState();
-    
-    // Cache font styles once during initialization
     _headerStyle = AppFonts.inter(
       fontSize: 32,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
       color: SwissTheme.textPrimary,
     );
-    _topicTitleStyle = AppFonts.inter(
+    _titleStyle = AppFonts.inter(
       fontSize: 18,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.5,
     );
-    _topicDescriptionStyle = AppFonts.inter(
+    _descStyle = AppFonts.inter(
       fontSize: 11,
       fontWeight: FontWeight.w400,
     );
-    
-    // Defer orientation change to avoid blocking UI initialization
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
@@ -51,7 +48,6 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
 
   @override
   void dispose() {
-    // Allow all orientations when leaving
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -61,13 +57,25 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
     super.dispose();
   }
 
-  // All available driving topics
-  final List<DrivingTopic> topics = [
-    DrivingTopic.Junctions,
-    DrivingTopic.RoadMarkings,
-    DrivingTopic.RoadSigns,
-    DrivingTopic.EmergencySituations,
-    DrivingTopic.Parking,
+  static const List<_JunctionCategory> _categories = [
+    _JunctionCategory(
+      moduleId: DrivingLevelsService.junctionModuleTJunction,
+      title: 'T-Junctions',
+      description: 'Left turn and right turn',
+      icon: Icons.turn_left,
+    ),
+    _JunctionCategory(
+      moduleId: DrivingLevelsService.junctionModuleCross,
+      title: 'Cross junctions',
+      description: 'Four-way crossings',
+      icon: Icons.grid_4x4_outlined,
+    ),
+    _JunctionCategory(
+      moduleId: DrivingLevelsService.junctionModuleRoundabout,
+      title: 'Roundabouts',
+      description: 'Single- and multi-lane roundabouts',
+      icon: Icons.roundabout_left,
+    ),
   ];
 
   @override
@@ -78,7 +86,6 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
               child: Row(
@@ -94,17 +101,17 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
                     constraints: const BoxConstraints(),
                   ),
                   const SizedBox(width: 16),
-                  Text(
-                    'DRIVING TEST',
-                    style: _headerStyle,
+                  Expanded(
+                    child: Text(
+                      'JUNCTIONS',
+                      style: _headerStyle,
+                      maxLines: 2,
+                    ),
                   ),
                 ],
               ),
             ),
-
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
-
-            // Topic Grid - Optimized for performance
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -116,13 +123,13 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
                     crossAxisCount: 2,
                     crossAxisSpacing: 1,
                     mainAxisSpacing: 1,
-                    childAspectRatio: 0.70, // Slightly taller to accommodate more text
+                    childAspectRatio: 0.70,
                   ),
-                  itemCount: topics.length,
+                  itemCount: _categories.length,
                   itemBuilder: (context, index) {
-                    final topic = topics[index];
+                    final c = _categories[index];
                     return RepaintBoundary(
-                      child: _buildTopicCard(topic),
+                      child: _buildCard(c),
                     );
                   },
                 ),
@@ -134,9 +141,20 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
     );
   }
 
-  Widget _buildTopicCard(DrivingTopic topic) {
+  Widget _buildCard(_JunctionCategory c) {
     return GestureDetector(
-      onTap: () => _selectTopic(topic),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LevelSelectionScreen(
+              topic: DrivingTopic.Junctions,
+              junctionsModuleId: c.moduleId,
+              headerTitleOverride: c.title.toUpperCase(),
+            ),
+          ),
+        );
+      },
       child: Container(
         decoration: BoxDecoration(
           color: SwissTheme.backgroundWhite,
@@ -152,36 +170,28 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Top section: Icon
               Icon(
-                topic.icon,
+                c.icon,
                 size: 36,
                 color: SwissTheme.textPrimary,
               ),
-              
               const Spacer(),
-              
-              // Bottom section: Title and description
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    topic.displayName,
-                    style: _topicTitleStyle.copyWith(
-                      color: SwissTheme.textPrimary,
-                    ),
+                    c.title.toUpperCase(),
+                    style: _titleStyle.copyWith(color: SwissTheme.textPrimary),
                     maxLines: 2,
                     overflow: TextOverflow.clip,
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    topic.description,
-                    style: _topicDescriptionStyle.copyWith(
-                      color: SwissTheme.textSecondary,
-                    ),
+                    c.description,
+                    style: _descStyle.copyWith(color: SwissTheme.textSecondary),
                     softWrap: true,
-                    maxLines: null, // Allow unlimited lines
+                    maxLines: null,
                     overflow: TextOverflow.clip,
                   ),
                 ],
@@ -192,22 +202,18 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
       ),
     );
   }
+}
 
-  void _selectTopic(DrivingTopic topic) {
-    if (topic == DrivingTopic.Junctions) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const JunctionsCategoryScreen(),
-        ),
-      );
-      return;
-    }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LevelSelectionScreen(topic: topic),
-      ),
-    );
-  }
+class _JunctionCategory {
+  final String moduleId;
+  final String title;
+  final String description;
+  final IconData icon;
+
+  const _JunctionCategory({
+    required this.moduleId,
+    required this.title,
+    required this.description,
+    required this.icon,
+  });
 }

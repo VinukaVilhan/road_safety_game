@@ -29,6 +29,19 @@ class DrivingLevelsService {
     ];
   }
 
+  /// Progress / grouping for levels under [DrivingTopic.Junctions].
+  static const String junctionModuleTJunction = 't_junction';
+  static const String junctionModuleCross = 'cross_junction';
+  static const String junctionModuleRoundabout = 'roundabout';
+
+  /// Levels in one junctions submodule (T-junctions, cross, or roundabout).
+  static List<GameLevel> getJunctionsLevelsForModule(String moduleId) {
+    final list =
+        _junctionsLevels.where((l) => l.moduleId == moduleId).toList();
+    list.sort((a, b) => a.topicLevel.compareTo(b.topicLevel));
+    return list;
+  }
+
   /// Check if a level is unlocked based on completed level IDs
   static bool isLevelUnlocked(GameLevel level, Set<String> completedLevelIds) {
     if (level.unlockRequirementIds.isEmpty) {
@@ -43,12 +56,12 @@ class DrivingLevelsService {
     GameLevel(
       id: "junctions_t_left",
       number: 1,
-      name: "T-Junction Left Turn",
+      name: "Left Turn",
       description: "Approach and complete a safe left turn at a T-junction",
       difficulty: LevelDifficulty.Easy,
       isUnlocked: true, // First level is always unlocked
       topic: DrivingTopic.Junctions,
-      moduleId: 't_junction',
+      moduleId: junctionModuleTJunction,
       topicLevel: 1,
       unlockRequirementIds: [],
       mapAsset: 'T-junction-left.tmx',
@@ -57,12 +70,12 @@ class DrivingLevelsService {
     GameLevel(
       id: "junctions_t_right",
       number: 2,
-      name: "T-Junction Right Turn",
+      name: "Right Turn",
       description: "Approach and complete a safe right turn at a T-junction",
       difficulty: LevelDifficulty.Easy,
       isUnlocked: false,
       topic: DrivingTopic.Junctions,
-      moduleId: 't_junction',
+      moduleId: junctionModuleTJunction,
       topicLevel: 2,
       unlockRequirementIds: ["junctions_t_left"],
       mapAsset: 'T-junction-right.tmx',
@@ -76,6 +89,7 @@ class DrivingLevelsService {
       difficulty: LevelDifficulty.Medium,
       isUnlocked: false,
       topic: DrivingTopic.Junctions,
+      moduleId: junctionModuleCross,
       topicLevel: 3,
       unlockRequirementIds: ["junctions_t_right"],
     ),
@@ -87,6 +101,7 @@ class DrivingLevelsService {
       difficulty: LevelDifficulty.Medium,
       isUnlocked: false,
       topic: DrivingTopic.Junctions,
+      moduleId: junctionModuleRoundabout,
       topicLevel: 4,
       unlockRequirementIds: ["junctions_t_right"],
     ),
@@ -98,6 +113,7 @@ class DrivingLevelsService {
       difficulty: LevelDifficulty.Hard,
       isUnlocked: false,
       topic: DrivingTopic.Junctions,
+      moduleId: junctionModuleCross,
       topicLevel: 5,
       unlockRequirementIds: ["junctions_cross_basics"],
     ),
@@ -109,6 +125,7 @@ class DrivingLevelsService {
       difficulty: LevelDifficulty.Hard,
       isUnlocked: false,
       topic: DrivingTopic.Junctions,
+      moduleId: junctionModuleRoundabout,
       topicLevel: 6,
       unlockRequirementIds: ["junctions_roundabout_basics"],
     ),

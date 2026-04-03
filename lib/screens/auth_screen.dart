@@ -19,6 +19,8 @@ class _AuthScreenState extends State<AuthScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
+  /// Prevents overlapping Google Sign-In calls (Android plugin throws if signIn is re-entrant).
+  bool _googleSignInInFlight = false;
 
   @override
   void dispose() {
@@ -74,6 +76,8 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
+    if (_googleSignInInFlight) return;
+    _googleSignInInFlight = true;
     setState(() {
       _errorMessage = null;
       _isLoading = true;
@@ -111,6 +115,8 @@ class _AuthScreenState extends State<AuthScreen> {
         _isLoading = false;
         _errorMessage = 'Google sign in failed. ${e.toString()}';
       });
+    } finally {
+      _googleSignInInFlight = false;
     }
   }
 

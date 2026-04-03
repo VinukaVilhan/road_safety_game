@@ -72,7 +72,7 @@ extension DrivingTopicExtension on DrivingTopic {
   String get description {
     switch (this) {
       case DrivingTopic.Junctions:
-        return 'Learn T-junctions, cross roads, and roundabouts';
+        return 'T-junctions, cross roads, and roundabouts';
       case DrivingTopic.RoadMarkings:
         return 'Master lane markings, crossings, and zones';
       case DrivingTopic.RoadSigns:

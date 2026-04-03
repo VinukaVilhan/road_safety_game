@@ -59,46 +59,59 @@ class SyncService {
     } finally {
       _syncing = false;
     }
+
+    // New outbox rows can be enqueued while we were syncing; a concurrent syncNow()
+    // would have returned early. Drain again so level completions are not stuck locally.
+    final after = _currentUid;
+    if (after != null) {
+      final still = await SyncOutbox(LocalDb.instance.isar).pendingForUser(after);
+      if (still.isNotEmpty) {
+        unawaited(syncNow());
+      }
+    }
   }
 
   Future<void> _flushPending(String uid) async {
     final isar = LocalDb.instance.isar;
     final outbox = SyncOutbox(isar);
-    final items = await outbox.pendingForUser(uid);
-    for (final item in items) {
-      await isar.writeTxn(() async {
-        item.status = SyncOutboxStatus.processing;
-        item.updatedAt = DateTime.now().toUtc();
-        await isar.syncOutboxItems.put(item);
-      });
+    while (true) {
+      final items = await outbox.pendingForUser(uid);
+      if (items.isEmpty) return;
+      for (final item in items) {
+        await isar.writeTxn(() async {
+          item.status = SyncOutboxStatus.processing;
+          item.updatedAt = DateTime.now().toUtc();
+          await isar.syncOutboxItems.put(item);
+        });
 
-      try {
-        await _firestoreApi.applyOutboxOperation(
-          uid: uid,
-          entityType: item.entityType,
-          entityId: item.entityId,
-          opId: item.opId,
-          payloadJson: item.payloadJson,
-        );
-        await _markEntitySynced(isar, uid, item);
-        await isar.writeTxn(() async {
-          item.status = SyncOutboxStatus.synced;
-          item.nextRetryAt = null;
-          item.lastError = null;
-          item.updatedAt = DateTime.now().toUtc();
-          await isar.syncOutboxItems.put(item);
-        });
-      } catch (e) {
-        final retries = item.retryCount + 1;
-        final waitSeconds = retries <= 5 ? retries * 4 : 30;
-        await isar.writeTxn(() async {
-          item.status = SyncOutboxStatus.failed;
-          item.retryCount = retries;
-          item.lastError = e.toString();
-          item.nextRetryAt = DateTime.now().toUtc().add(Duration(seconds: waitSeconds));
-          item.updatedAt = DateTime.now().toUtc();
-          await isar.syncOutboxItems.put(item);
-        });
+        try {
+          await _firestoreApi.applyOutboxOperation(
+            uid: uid,
+            entityType: item.entityType,
+            entityId: item.entityId,
+            opId: item.opId,
+            payloadJson: item.payloadJson,
+          );
+          await _markEntitySynced(isar, uid, item);
+          await isar.writeTxn(() async {
+            item.status = SyncOutboxStatus.synced;
+            item.nextRetryAt = null;
+            item.lastError = null;
+            item.updatedAt = DateTime.now().toUtc();
+            await isar.syncOutboxItems.put(item);
+          });
+        } catch (e) {
+          final retries = item.retryCount + 1;
+          final waitSeconds = retries <= 5 ? retries * 4 : 30;
+          await isar.writeTxn(() async {
+            item.status = SyncOutboxStatus.failed;
+            item.retryCount = retries;
+            item.lastError = e.toString();
+            item.nextRetryAt = DateTime.now().toUtc().add(Duration(seconds: waitSeconds));
+            item.updatedAt = DateTime.now().toUtc();
+            await isar.syncOutboxItems.put(item);
+          });
+        }
       }
     }
   }

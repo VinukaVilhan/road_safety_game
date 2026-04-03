@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
+
+import '../services/level_progress_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../data/repositories/progress_repository.dart';
@@ -81,6 +83,9 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
       if (mounted) {
         ImagePreloader.preloadImages(context);
       }
+
+      // Push local level completions to Firestore (same schema as sync outbox).
+      unawaited(LevelProgressService.uploadLocalCompletedLevelsToFirestore());
     });
     
     _animationController = AnimationController(

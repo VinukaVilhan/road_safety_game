@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:isar/isar.dart';
 import 'package:uuid/uuid.dart';
@@ -5,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../local/isar_schemas.dart';
 import '../local/local_db.dart';
 import '../sync/sync_outbox.dart';
+import '../sync/sync_service.dart';
 
 class ProgressRepository {
   ProgressRepository._();
@@ -61,6 +64,8 @@ class ProgressRepository {
         'updatedAt': now.toIso8601String(),
       },
     );
+
+    unawaited(SyncService.instance.syncNow());
   }
 
   Future<Set<String>> getCompletedTestIds() async {

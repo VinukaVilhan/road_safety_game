@@ -33,34 +33,34 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
     super.initState();
     
     // Cache font styles once during initialization
-    _headerStyle = AppFonts.inter(
+    _headerStyle = AppFonts.pixelifySans(
       fontSize: 32,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
       color: SwissTheme.textPrimary,
     );
-    _testNumberStyle = AppFonts.inter(
+    _testNumberStyle = AppFonts.pixelifySans(
       fontSize: 48,
       fontWeight: FontWeight.w900,
       height: 1.0,
       letterSpacing: -1.0,
     );
-    _testTitleStyle = AppFonts.inter(
+    _testTitleStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       letterSpacing: 0.5,
     );
-    _dialogTitleStyle = AppFonts.inter(
+    _dialogTitleStyle = AppFonts.pixelifySans(
       fontSize: 24,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textPrimary,
     );
-    _dialogBodyStyle = AppFonts.inter(
+    _dialogBodyStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       color: SwissTheme.textPrimary,
     );
-    _dialogButtonStyle = AppFonts.inter(
+    _dialogButtonStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       color: SwissTheme.accentBlue,
@@ -170,7 +170,7 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
                     ? Center(
                         child: Text(
                           'No tests available',
-                          style: AppFonts.inter(
+                          style: AppFonts.pixelifySans(
                             fontSize: 14,
                             color: SwissTheme.textSecondary,
                           ),
@@ -365,7 +365,7 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
         SnackBar(
           content: Text(
             'Starting ${test.name}... (Coming soon)',
-            style: AppFonts.inter(
+            style: AppFonts.pixelifySans(
               fontSize: 14,
               color: SwissTheme.backgroundWhite,
             ),

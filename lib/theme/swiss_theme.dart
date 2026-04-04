@@ -35,43 +35,43 @@ class SwissTheme {
   }
   
   static ThemeData _buildThemeData() {
-    final textTheme = AppFonts.interTextTheme.copyWith(
-      displayLarge: AppFonts.inter(
+    final textTheme = AppFonts.drivingGameTextTheme.copyWith(
+      displayLarge: AppFonts.pixelifySans(
         fontSize: 80,
         fontWeight: FontWeight.w900,
         height: 0.9, // Tight line height
         letterSpacing: -1.0,
         color: textPrimary,
       ),
-      displayMedium: AppFonts.inter(
+      displayMedium: AppFonts.pixelifySans(
         fontSize: 48,
         fontWeight: FontWeight.w900,
         height: 0.9,
         letterSpacing: -1.0,
         color: textPrimary,
       ),
-      displaySmall: AppFonts.inter(
+      displaySmall: AppFonts.pixelifySans(
         fontSize: 32,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.5,
         color: textPrimary,
       ),
-      headlineMedium: AppFonts.inter(
+      headlineMedium: AppFonts.pixelifySans(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: textPrimary,
       ),
-      bodyLarge: AppFonts.inter(
+      bodyLarge: AppFonts.pixelifySans(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: textPrimary,
       ),
-      bodyMedium: AppFonts.inter(
+      bodyMedium: AppFonts.pixelifySans(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         color: textSecondary,
       ),
-      bodySmall: AppFonts.inter(
+      bodySmall: AppFonts.pixelifySans(
         fontSize: 10,
         fontWeight: FontWeight.w400,
         color: textSecondary,
@@ -139,12 +139,12 @@ class SwissTheme {
           borderRadius: BorderRadius.zero,
           side: BorderSide(color: borderBlack, width: 1),
         ),
-        titleTextStyle: AppFonts.inter(
+        titleTextStyle: AppFonts.pixelifySans(
           fontSize: 24,
           fontWeight: FontWeight.w600,
           color: textPrimary,
         ),
-        contentTextStyle: AppFonts.inter(
+        contentTextStyle: AppFonts.pixelifySans(
           fontSize: 14,
           fontWeight: FontWeight.w400,
           color: textPrimary,
@@ -157,7 +157,7 @@ class SwissTheme {
         foregroundColor: textPrimary,
         elevation: 0,
         iconTheme: const IconThemeData(color: textPrimary),
-        titleTextStyle: AppFonts.inter(
+        titleTextStyle: AppFonts.pixelifySans(
           fontSize: 24,
           fontWeight: FontWeight.w600,
           color: textPrimary,

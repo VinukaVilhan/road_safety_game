@@ -24,18 +24,18 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
     super.initState();
     
     // Cache font styles once during initialization
-    _headerStyle = AppFonts.inter(
+    _headerStyle = AppFonts.pixelifySans(
       fontSize: 32,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
       color: SwissTheme.textPrimary,
     );
-    _topicTitleStyle = AppFonts.inter(
+    _topicTitleStyle = AppFonts.pixelifySans(
       fontSize: 18,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.5,
     );
-    _topicDescriptionStyle = AppFonts.inter(
+    _topicDescriptionStyle = AppFonts.pixelifySans(
       fontSize: 11,
       fontWeight: FontWeight.w400,
     );

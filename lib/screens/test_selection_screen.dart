@@ -24,22 +24,22 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
     super.initState();
     
     // Cache font styles once during initialization
-    _headerStyle = AppFonts.inter(
+    _headerStyle = AppFonts.pixelifySans(
       fontSize: 32,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
       color: SwissTheme.textPrimary,
     );
-    _titleStyle = AppFonts.inter(
+    _titleStyle = AppFonts.pixelifySans(
       fontSize: 24,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.5,
     );
-    _descriptionStyle = AppFonts.inter(
+    _descriptionStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
     );
-    _snackbarStyle = AppFonts.inter(
+    _snackbarStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       color: SwissTheme.backgroundWhite,

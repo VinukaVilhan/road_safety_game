@@ -52,27 +52,27 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
   }
 
   void _initStyles() {
-    _headerStyle = AppFonts.inter(
+    _headerStyle = AppFonts.pixelifySans(
       fontSize: 18,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textSecondary,
     );
-    _questionStyle = AppFonts.inter(
+    _questionStyle = AppFonts.pixelifySans(
       fontSize: 18,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textPrimary,
     );
-    _optionStyle = AppFonts.inter(
+    _optionStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w500,
       color: SwissTheme.textPrimary,
     );
-    _resultTitleStyle = AppFonts.inter(
+    _resultTitleStyle = AppFonts.pixelifySans(
       fontSize: 28,
       fontWeight: FontWeight.w800,
       color: SwissTheme.textPrimary,
     );
-    _resultBodyStyle = AppFonts.inter(
+    _resultBodyStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       color: SwissTheme.textSecondary,
@@ -326,7 +326,7 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
           ),
           child: Text(
             _currentIndex + 1 >= _questions.length ? 'SEE RESULTS' : 'NEXT',
-            style: AppFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+            style: AppFonts.pixelifySans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
           ),
         ),
       ),
@@ -369,7 +369,7 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
               const SizedBox(height: 8),
               Text(
                 'Score: $score%',
-                style: AppFonts.inter(
+                style: AppFonts.pixelifySans(
                   fontSize: 32,
                   fontWeight: FontWeight.w800,
                   color: score >= 70 ? SwissTheme.accentGreen : SwissTheme.accentRed,
@@ -391,7 +391,7 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
                   ),
                   child: Text(
                     'BACK TO TESTS',
-                    style: AppFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                    style: AppFonts.pixelifySans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                   ),
                 ),
               ),

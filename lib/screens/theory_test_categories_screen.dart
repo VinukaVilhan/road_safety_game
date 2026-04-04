@@ -37,22 +37,22 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
     super.initState();
     
     // Cache font styles once during initialization
-    _headerStyle = AppFonts.inter(
+    _headerStyle = AppFonts.pixelifySans(
       fontSize: 32,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
       color: SwissTheme.textPrimary,
     );
-    _categoryTitleStyle = AppFonts.inter(
+    _categoryTitleStyle = AppFonts.pixelifySans(
       fontSize: 18,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.5,
     );
-    _categoryDescriptionStyle = AppFonts.inter(
+    _categoryDescriptionStyle = AppFonts.pixelifySans(
       fontSize: 12,
       fontWeight: FontWeight.w400,
     );
-    _snackbarStyle = AppFonts.inter(
+    _snackbarStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       color: SwissTheme.backgroundWhite,

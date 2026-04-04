@@ -1,5 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; 
+import 'package:flutter/services.dart';
 import 'package:flame/game.dart';
 import '../models/game_level.dart';
 import '../game/realistic_car_game.dart';
@@ -29,6 +31,20 @@ class GameScreenState extends State<GameScreen> {
   final MusicService _musicService = MusicService();
   bool _resultDialogVisible = false;
 
+  /// Hit-test exclusion for pause/radio/pedals (left) and gearbox/steering (right).
+  final GlobalKey _excludeHudLeftKey = GlobalKey();
+  final GlobalKey _excludeHudRightKey = GlobalKey();
+  final GlobalKey _turnSignalHitLayerKey = GlobalKey();
+
+  /// Double-tap → left turn signal; triple-tap → right; single tap while on → off.
+  Timer? _turnSignalTapTimer;
+  int _turnSignalTapCount = 0;
+  static const Duration _turnSignalTapWindow = Duration(milliseconds: 420);
+  bool _leftTurnSignalOn = false;
+  bool _rightTurnSignalOn = false;
+  Timer? _turnSignalBlinkTimer;
+  bool _turnSignalBlinkVisible = true;
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +65,8 @@ class GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
+    _turnSignalTapTimer?.cancel();
+    _turnSignalBlinkTimer?.cancel();
     _steeringRotation.dispose();
     // Restore portrait orientation when leaving game
     SystemChrome.setPreferredOrientations([
@@ -95,11 +113,21 @@ class GameScreenState extends State<GameScreen> {
           SafeArea(
             child: Stack(
               children: [
+                // Behind HUD: multi-tap turn signals (does not steal hits from controls above).
+                Positioned.fill(
+                  key: _turnSignalHitLayerKey,
+                  child: Listener(
+                    behavior: HitTestBehavior.translucent,
+                    onPointerDown: _onTurnSignalPointerDown,
+                  ),
+                ),
                 // Top-left: Controls (Pause, Pedals)
                 Positioned(
                   top: 20,
                   left: 20,
-                  child: Column(
+                  child: KeyedSubtree(
+                    key: _excludeHudLeftKey,
+                    child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -140,6 +168,7 @@ class GameScreenState extends State<GameScreen> {
                         onBrakeUp: _stopBraking,
                       ),
                     ],
+                  ),
                   ),
                 ),
                 
@@ -222,7 +251,9 @@ class GameScreenState extends State<GameScreen> {
                 Positioned(
                   bottom: 20,
                   right: 20,
-                  child: Column(
+                  child: KeyedSubtree(
+                    key: _excludeHudRightKey,
+                    child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
@@ -247,7 +278,43 @@ class GameScreenState extends State<GameScreen> {
                       ),
                     ],
                   ),
+                  ),
                 ),
+
+                // Turn signal indicators (ignore pointer so taps pass to layer below / game).
+                if (_leftTurnSignalOn || _rightTurnSignalOn)
+                  Positioned(
+                    top: 24,
+                    left: 0,
+                    right: 0,
+                    child: IgnorePointer(
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (_leftTurnSignalOn)
+                              Opacity(
+                                opacity: _turnSignalBlinkVisible ? 1.0 : 0.2,
+                                child: const Icon(
+                                  Icons.keyboard_double_arrow_left,
+                                  color: Color(0xFFFF9500),
+                                  size: 36,
+                                ),
+                              ),
+                            if (_rightTurnSignalOn)
+                              Opacity(
+                                opacity: _turnSignalBlinkVisible ? 1.0 : 0.2,
+                                child: const Icon(
+                                  Icons.keyboard_double_arrow_right,
+                                  color: Color(0xFFFF9500),
+                                  size: 36,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -255,6 +322,76 @@ class GameScreenState extends State<GameScreen> {
       ),
     ),
     );
+  }
+
+  bool _globalHitExcludesTurnSignal(Offset globalPosition) {
+    bool inside(GlobalKey key) {
+      final ctx = key.currentContext;
+      if (ctx == null) return false;
+      final box = ctx.findRenderObject() as RenderBox?;
+      if (box == null || !box.hasSize || !box.attached) return false;
+      final topLeft = box.localToGlobal(Offset.zero);
+      final rect = Rect.fromLTWH(topLeft.dx, topLeft.dy, box.size.width, box.size.height);
+      return rect.contains(globalPosition);
+    }
+
+    return inside(_excludeHudLeftKey) || inside(_excludeHudRightKey);
+  }
+
+  void _startTurnSignalBlink() {
+    _turnSignalBlinkTimer?.cancel();
+    _turnSignalBlinkVisible = true;
+    _turnSignalBlinkTimer = Timer.periodic(const Duration(milliseconds: 450), (_) {
+      if (!mounted) return;
+      setState(() => _turnSignalBlinkVisible = !_turnSignalBlinkVisible);
+    });
+  }
+
+  void _stopTurnSignalBlink() {
+    _turnSignalBlinkTimer?.cancel();
+    _turnSignalBlinkTimer = null;
+    _turnSignalBlinkVisible = true;
+  }
+
+  void _onTurnSignalPointerDown(PointerDownEvent event) {
+    if (_resultDialogVisible) return;
+    final layerBox =
+        _turnSignalHitLayerKey.currentContext?.findRenderObject() as RenderBox?;
+    if (layerBox == null || !layerBox.attached) return;
+    final global = layerBox.localToGlobal(event.localPosition);
+    if (_globalHitExcludesTurnSignal(global)) return;
+
+    if (_leftTurnSignalOn || _rightTurnSignalOn) {
+      _turnSignalTapTimer?.cancel();
+      _turnSignalTapCount = 0;
+      _stopTurnSignalBlink();
+      setState(() {
+        _leftTurnSignalOn = false;
+        _rightTurnSignalOn = false;
+      });
+      return;
+    }
+
+    _turnSignalTapCount++;
+    _turnSignalTapTimer?.cancel();
+    _turnSignalTapTimer = Timer(_turnSignalTapWindow, () {
+      final n = _turnSignalTapCount;
+      _turnSignalTapCount = 0;
+      if (!mounted) return;
+      if (n == 2) {
+        setState(() {
+          _leftTurnSignalOn = true;
+          _rightTurnSignalOn = false;
+        });
+        _startTurnSignalBlink();
+      } else if (n >= 3) {
+        setState(() {
+          _rightTurnSignalOn = true;
+          _leftTurnSignalOn = false;
+        });
+        _startTurnSignalBlink();
+      }
+    });
   }
 
   Stream<double> _getSpeedStream() async* {

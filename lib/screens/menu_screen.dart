@@ -10,6 +10,7 @@ import '../services/image_preloader.dart';
 import '../services/ui_sound_service.dart';
 import 'test_selection_screen.dart';
 import 'profile_screen.dart';
+import 'driving_tutorial_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   @override
@@ -177,18 +178,31 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                         
                         const SizedBox(height: 24),
                         
-                        // Menu Item 02 - OPTIONS
                         _buildMenuButton(
                           '02',
+                          'CONTROLS',
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DrivingTutorialScreen(),
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        // Menu Item 03 - OPTIONS
+                        _buildMenuButton(
+                          '03',
                           'OPTIONS',
                           () => _showOptions(context),
                         ),
                         
                         const SizedBox(height: 24),
                         
-                        // Menu Item 03 - PROFILE
+                        // Menu Item 04 - PROFILE
                         _buildMenuButton(
-                          '03',
+                          '04',
                           'PROFILE',
                           () => Navigator.push(
                             context,
@@ -200,9 +214,9 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                         
                         const SizedBox(height: 24),
                         
-                        // Menu Item 04 - QUIT
+                        // Menu Item 05 - QUIT
                         _buildMenuButton(
-                          '04',
+                          '05',
                           'QUIT',
                           () => _quitGame(context),
                         ),

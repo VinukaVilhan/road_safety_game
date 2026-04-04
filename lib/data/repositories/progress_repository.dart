@@ -152,6 +152,16 @@ class ProgressRepository {
     );
   }
 
+  /// Returns the stored value for [settingKey] for the current user, or null.
+  Future<String?> readSetting(String settingKey) async {
+    final uid = _uid;
+    final keyName = settingKey.trim();
+    if (uid == null || keyName.isEmpty) return null;
+    final key = '$uid::$keyName';
+    final row = await _isar.localUserSettings.filter().keyEqualTo(key).findFirst();
+    return row?.value;
+  }
+
   Future<void> saveSetting({
     required String settingKey,
     required String value,

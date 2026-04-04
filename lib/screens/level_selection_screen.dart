@@ -16,6 +16,10 @@ class LevelSelectionScreen extends StatefulWidget {
   /// (T-junctions, cross junctions, or roundabouts).
   final String? junctionsModuleId;
 
+  /// When set with [topic] == [DrivingTopic.RoadMarkings], only levels in this module are listed
+  /// (lane lines or other markings).
+  final String? roadMarkingsModuleId;
+
   /// Screen title (e.g. "T-JUNCTIONS") when showing a junctions submodule.
   final String? headerTitleOverride;
 
@@ -23,6 +27,7 @@ class LevelSelectionScreen extends StatefulWidget {
     super.key,
     this.topic,
     this.junctionsModuleId,
+    this.roadMarkingsModuleId,
     this.headerTitleOverride,
   });
 
@@ -114,6 +119,13 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
         widget.junctionsModuleId!.trim(),
       );
     }
+    if (widget.topic == DrivingTopic.RoadMarkings &&
+        widget.roadMarkingsModuleId != null &&
+        widget.roadMarkingsModuleId!.trim().isNotEmpty) {
+      return DrivingLevelsService.getRoadMarkingsLevelsForModule(
+        widget.roadMarkingsModuleId!.trim(),
+      );
+    }
     return DrivingLevelsService.getLevelsForTopic(widget.topic!);
   }
 
@@ -121,6 +133,12 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
   int displayLevelNumber(GameLevel level) {
     if (widget.junctionsModuleId != null &&
         widget.junctionsModuleId!.trim().isNotEmpty) {
+      final i = levels.indexOf(level);
+      return i >= 0 ? i + 1 : level.topicLevel;
+    }
+    if (widget.topic == DrivingTopic.RoadMarkings &&
+        widget.roadMarkingsModuleId != null &&
+        widget.roadMarkingsModuleId!.trim().isNotEmpty) {
       final i = levels.indexOf(level);
       return i >= 0 ? i + 1 : level.topicLevel;
     }

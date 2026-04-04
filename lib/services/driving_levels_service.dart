@@ -34,10 +34,22 @@ class DrivingLevelsService {
   static const String junctionModuleCross = 'cross_junction';
   static const String junctionModuleRoundabout = 'roundabout';
 
+  /// Progress / grouping for levels under [DrivingTopic.RoadMarkings].
+  static const String roadMarkingsModuleLaneLines = 'lane_lines';
+  static const String roadMarkingsModuleOther = 'other_markings';
+
   /// Levels in one junctions submodule (T-junctions, cross, or roundabout).
   static List<GameLevel> getJunctionsLevelsForModule(String moduleId) {
     final list =
         _junctionsLevels.where((l) => l.moduleId == moduleId).toList();
+    list.sort((a, b) => a.topicLevel.compareTo(b.topicLevel));
+    return list;
+  }
+
+  /// Levels in one road markings submodule (lane lines, or other markings).
+  static List<GameLevel> getRoadMarkingsLevelsForModule(String moduleId) {
+    final list =
+        _roadMarkingsLevels.where((l) => l.moduleId == moduleId).toList();
     list.sort((a, b) => a.topicLevel.compareTo(b.topicLevel));
     return list;
   }
@@ -134,60 +146,79 @@ class DrivingLevelsService {
   // ========== ROAD MARKINGS LEVELS ==========
   static final List<GameLevel> _roadMarkingsLevels = [
     GameLevel(
-      id: "markings_dashed",
+      id: "markings_solid",
       number: 1,
-      name: "Dashed lane lines",
-      description: "Drive with dashed lane and center markings",
+      name: "Solid lines",
+      description: "Drive with solid lane and center markings",
       difficulty: LevelDifficulty.Easy,
       isUnlocked: true,
       topic: DrivingTopic.RoadMarkings,
+      moduleId: roadMarkingsModuleLaneLines,
       topicLevel: 1,
       unlockRequirementIds: [],
+      mapAsset: 'lane-markings-solid.tmx',
+      scenarioId: 'markings_solid',
+    ),
+    GameLevel(
+      id: "markings_dashed",
+      number: 2,
+      name: "Dashed lines",
+      description: "Drive with dashed lane and center markings",
+      difficulty: LevelDifficulty.Easy,
+      isUnlocked: false,
+      topic: DrivingTopic.RoadMarkings,
+      moduleId: roadMarkingsModuleLaneLines,
+      topicLevel: 2,
+      unlockRequirementIds: ["markings_solid"],
       mapAsset: 'lane-markings-dashed.tmx',
       scenarioId: 'markings_dashed',
     ),
     GameLevel(
       id: "markings_stop_yield",
-      number: 2,
+      number: 3,
       name: "Stop & Yield Lines",
       description: "Understanding stop and yield markings",
       difficulty: LevelDifficulty.Easy,
       isUnlocked: false,
       topic: DrivingTopic.RoadMarkings,
-      topicLevel: 2,
+      moduleId: roadMarkingsModuleOther,
+      topicLevel: 3,
       unlockRequirementIds: ["markings_dashed"],
     ),
     GameLevel(
       id: "markings_zebra",
-      number: 3,
+      number: 4,
       name: "Zebra Crossings",
       description: "Pedestrian crossings and right of way",
       difficulty: LevelDifficulty.Medium,
       isUnlocked: false,
       topic: DrivingTopic.RoadMarkings,
-      topicLevel: 3,
+      moduleId: roadMarkingsModuleOther,
+      topicLevel: 4,
       unlockRequirementIds: ["markings_stop_yield"],
     ),
     GameLevel(
       id: "markings_bus_lanes",
-      number: 4,
+      number: 5,
       name: "Bus Lanes & Special Zones",
       description: "Restricted lanes and special markings",
       difficulty: LevelDifficulty.Medium,
       isUnlocked: false,
       topic: DrivingTopic.RoadMarkings,
-      topicLevel: 4,
+      moduleId: roadMarkingsModuleOther,
+      topicLevel: 5,
       unlockRequirementIds: ["markings_zebra"],
     ),
     GameLevel(
       id: "markings_complex",
-      number: 5,
+      number: 6,
       name: "Complex Intersections",
       description: "Multiple marking types in complex scenarios",
       difficulty: LevelDifficulty.Hard,
       isUnlocked: false,
       topic: DrivingTopic.RoadMarkings,
-      topicLevel: 5,
+      moduleId: roadMarkingsModuleOther,
+      topicLevel: 6,
       unlockRequirementIds: ["markings_bus_lanes"],
     ),
   ];

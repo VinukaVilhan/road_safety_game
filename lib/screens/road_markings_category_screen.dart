@@ -1,47 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../models/game_level.dart';
+import '../services/driving_levels_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
-import '../models/game_level.dart';
-import 'junctions_category_screen.dart';
 import 'level_selection_screen.dart';
-import 'road_markings_category_screen.dart';
 
-class DrivingTopicSelectionScreen extends StatefulWidget {
-  const DrivingTopicSelectionScreen({super.key});
+/// First step under Road markings: pick lane lines (solid / dashed) or other markings.
+class RoadMarkingsCategoryScreen extends StatefulWidget {
+  const RoadMarkingsCategoryScreen({super.key});
 
   @override
-  State<DrivingTopicSelectionScreen> createState() => _DrivingTopicSelectionScreenState();
+  State<RoadMarkingsCategoryScreen> createState() =>
+      _RoadMarkingsCategoryScreenState();
 }
 
-class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScreen> {
-  // Cache font styles to avoid recreating them on every build
+class _RoadMarkingsCategoryScreenState extends State<RoadMarkingsCategoryScreen> {
   late final TextStyle _headerStyle;
-  late final TextStyle _topicTitleStyle;
-  late final TextStyle _topicDescriptionStyle;
+  late final TextStyle _titleStyle;
+  late final TextStyle _descStyle;
 
   @override
   void initState() {
     super.initState();
-    
-    // Cache font styles once during initialization
     _headerStyle = AppFonts.pixelifySans(
       fontSize: 32,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
       color: SwissTheme.textPrimary,
     );
-    _topicTitleStyle = AppFonts.pixelifySans(
+    _titleStyle = AppFonts.pixelifySans(
       fontSize: 18,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.5,
     );
-    _topicDescriptionStyle = AppFonts.pixelifySans(
+    _descStyle = AppFonts.pixelifySans(
       fontSize: 11,
       fontWeight: FontWeight.w400,
     );
-    
-    // Defer orientation change to avoid blocking UI initialization
     WidgetsBinding.instance.addPostFrameCallback((_) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
@@ -52,7 +49,6 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
 
   @override
   void dispose() {
-    // Allow all orientations when leaving
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -62,13 +58,19 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
     super.dispose();
   }
 
-  // All available driving topics
-  final List<DrivingTopic> topics = [
-    DrivingTopic.Junctions,
-    DrivingTopic.RoadMarkings,
-    DrivingTopic.RoadSigns,
-    DrivingTopic.EmergencySituations,
-    DrivingTopic.Parking,
+  static const List<_RoadMarkingsCategory> _categories = [
+    _RoadMarkingsCategory(
+      moduleId: DrivingLevelsService.roadMarkingsModuleLaneLines,
+      title: 'Lane lines',
+      description: 'Solid lines and dashed lines',
+      icon: Icons.straighten,
+    ),
+    _RoadMarkingsCategory(
+      moduleId: DrivingLevelsService.roadMarkingsModuleOther,
+      title: 'Other markings',
+      description: 'Stop, yield, zebra, bus lanes, and more',
+      icon: Icons.grid_view_outlined,
+    ),
   ];
 
   @override
@@ -79,7 +81,6 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
               child: Row(
@@ -95,17 +96,17 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
                     constraints: const BoxConstraints(),
                   ),
                   const SizedBox(width: 16),
-                  Text(
-                    'DRIVING TEST',
-                    style: _headerStyle,
+                  Expanded(
+                    child: Text(
+                      'ROAD MARKINGS',
+                      style: _headerStyle,
+                      maxLines: 2,
+                    ),
                   ),
                 ],
               ),
             ),
-
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
-
-            // Topic Grid - Optimized for performance
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -117,13 +118,13 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
                     crossAxisCount: 2,
                     crossAxisSpacing: 1,
                     mainAxisSpacing: 1,
-                    childAspectRatio: 0.70, // Slightly taller to accommodate more text
+                    childAspectRatio: 0.70,
                   ),
-                  itemCount: topics.length,
+                  itemCount: _categories.length,
                   itemBuilder: (context, index) {
-                    final topic = topics[index];
+                    final c = _categories[index];
                     return RepaintBoundary(
-                      child: _buildTopicCard(topic),
+                      child: _buildCard(c),
                     );
                   },
                 ),
@@ -135,9 +136,20 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
     );
   }
 
-  Widget _buildTopicCard(DrivingTopic topic) {
+  Widget _buildCard(_RoadMarkingsCategory c) {
     return GestureDetector(
-      onTap: () => _selectTopic(topic),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => LevelSelectionScreen(
+              topic: DrivingTopic.RoadMarkings,
+              roadMarkingsModuleId: c.moduleId,
+              headerTitleOverride: c.title.toUpperCase(),
+            ),
+          ),
+        );
+      },
       child: Container(
         decoration: BoxDecoration(
           color: SwissTheme.backgroundWhite,
@@ -153,36 +165,28 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Top section: Icon
               Icon(
-                topic.icon,
+                c.icon,
                 size: 36,
                 color: SwissTheme.textPrimary,
               ),
-              
               const Spacer(),
-              
-              // Bottom section: Title and description
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    topic.displayName,
-                    style: _topicTitleStyle.copyWith(
-                      color: SwissTheme.textPrimary,
-                    ),
+                    c.title.toUpperCase(),
+                    style: _titleStyle.copyWith(color: SwissTheme.textPrimary),
                     maxLines: 2,
                     overflow: TextOverflow.clip,
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    topic.description,
-                    style: _topicDescriptionStyle.copyWith(
-                      color: SwissTheme.textSecondary,
-                    ),
+                    c.description,
+                    style: _descStyle.copyWith(color: SwissTheme.textSecondary),
                     softWrap: true,
-                    maxLines: null, // Allow unlimited lines
+                    maxLines: null,
                     overflow: TextOverflow.clip,
                   ),
                 ],
@@ -193,31 +197,18 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
       ),
     );
   }
+}
 
-  void _selectTopic(DrivingTopic topic) {
-    if (topic == DrivingTopic.Junctions) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const JunctionsCategoryScreen(),
-        ),
-      );
-      return;
-    }
-    if (topic == DrivingTopic.RoadMarkings) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const RoadMarkingsCategoryScreen(),
-        ),
-      );
-      return;
-    }
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LevelSelectionScreen(topic: topic),
-      ),
-    );
-  }
+class _RoadMarkingsCategory {
+  final String moduleId;
+  final String title;
+  final String description;
+  final IconData icon;
+
+  const _RoadMarkingsCategory({
+    required this.moduleId,
+    required this.title,
+    required this.description,
+    required this.icon,
+  });
 }

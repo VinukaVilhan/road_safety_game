@@ -205,8 +205,8 @@
   <object id="7" type="Wall" x="5.33333" y="325.667" width="389.333" height="634" visible="0"/>
   <object id="10" type="Wall" x="566.667" y="324" width="390.667" height="632" visible="0"/>
   <object id="11" type="Wall" x="2.66667" y="1.33333" width="958.667" height="233.333" visible="0"/>
-  <object id="14" x="10.6746" y="355.819" width="351.075" height="568.125"/>
-  <object id="18" x="600.148" y="355.819" width="353.447" height="551.52"/>
+  <object id="14" x="10.6746" y="355.819" width="351.075" height="597.458"/>
+  <object id="18" x="600.148" y="355.819" width="353.447" height="596.853"/>
   <object id="19" x="5.93032" y="5.93032" width="946.479" height="196.887"/>
  </objectgroup>
  <objectgroup color="#ffff7f" id="7" name="Zone_Check_Layer" class="Zone_Check" visible="0" tintcolor="#ffff7f">

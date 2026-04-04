@@ -89,24 +89,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final titleStyle = AppFonts.inter(
+    final titleStyle = AppFonts.pixelifySans(
       fontSize: 48,
       fontWeight: FontWeight.w900,
       height: 0.9,
       letterSpacing: -1.0,
       color: SwissTheme.textPrimary,
     );
-    final labelStyle = AppFonts.inter(
+    final labelStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textPrimary,
     );
-    final bodyStyle = AppFonts.inter(
+    final bodyStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       color: SwissTheme.textPrimary,
     );
-    final buttonStyle = AppFonts.inter(
+    final buttonStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       color: SwissTheme.backgroundWhite,
@@ -221,7 +221,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   const SizedBox(height: 16),
                   Text(
                     _errorMessage!,
-                    style: AppFonts.inter(
+                    style: AppFonts.pixelifySans(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
                       color: SwissTheme.accentRed,

@@ -154,24 +154,24 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final titleStyle = AppFonts.inter(
+    final titleStyle = AppFonts.pixelifySans(
       fontSize: 48,
       fontWeight: FontWeight.w900,
       height: 0.9,
       letterSpacing: -1.0,
       color: SwissTheme.textPrimary,
     );
-    final labelStyle = AppFonts.inter(
+    final labelStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textPrimary,
     );
-    final bodyStyle = AppFonts.inter(
+    final bodyStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       color: SwissTheme.textPrimary,
     );
-    final buttonStyle = AppFonts.inter(
+    final buttonStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       color: SwissTheme.accentRed,
@@ -253,7 +253,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(height: 16),
                   Text(
                     _errorMessage!,
-                    style: AppFonts.inter(
+                    style: AppFonts.pixelifySans(
                       fontSize: 14,
                       fontWeight: FontWeight.w400,
                       color: SwissTheme.accentRed,
@@ -291,7 +291,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           )
                         : Text(
                             'SIGN IN',
-                            style: AppFonts.inter(
+                            style: AppFonts.pixelifySans(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: SwissTheme.backgroundWhite,
@@ -312,7 +312,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         'OR',
-                        style: AppFonts.inter(
+                        style: AppFonts.pixelifySans(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: SwissTheme.textSecondary,
@@ -341,7 +341,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     child: Text(
                       'Sign in with Google',
-                      style: AppFonts.inter(
+                      style: AppFonts.pixelifySans(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: SwissTheme.textPrimary,
@@ -363,7 +363,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     child: Text(
                       'Sign in with Facebook',
-                      style: AppFonts.inter(
+                      style: AppFonts.pixelifySans(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: SwissTheme.textPrimary,

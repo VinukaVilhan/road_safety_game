@@ -23,18 +23,18 @@ class _JunctionsCategoryScreenState extends State<JunctionsCategoryScreen> {
   @override
   void initState() {
     super.initState();
-    _headerStyle = AppFonts.inter(
+    _headerStyle = AppFonts.pixelifySans(
       fontSize: 32,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
       color: SwissTheme.textPrimary,
     );
-    _titleStyle = AppFonts.inter(
+    _titleStyle = AppFonts.pixelifySans(
       fontSize: 18,
       fontWeight: FontWeight.w700,
       letterSpacing: 0.5,
     );
-    _descStyle = AppFonts.inter(
+    _descStyle = AppFonts.pixelifySans(
       fontSize: 11,
       fontWeight: FontWeight.w400,
     );

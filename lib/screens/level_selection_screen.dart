@@ -47,34 +47,34 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     super.initState();
     
     // Cache font styles once during initialization
-    _headerStyle = AppFonts.inter(
+    _headerStyle = AppFonts.pixelifySans(
       fontSize: 32,
       fontWeight: FontWeight.w700,
       letterSpacing: -0.5,
       color: SwissTheme.textPrimary,
     );
-    _levelNumberStyle = AppFonts.inter(
+    _levelNumberStyle = AppFonts.pixelifySans(
       fontSize: 48,
       fontWeight: FontWeight.w900,
       height: 1.0,
       letterSpacing: -1.0,
     );
-    _levelTitleStyle = AppFonts.inter(
+    _levelTitleStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       letterSpacing: 0.5,
     );
-    _dialogTitleStyle = AppFonts.inter(
+    _dialogTitleStyle = AppFonts.pixelifySans(
       fontSize: 24,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textPrimary,
     );
-    _dialogBodyStyle = AppFonts.inter(
+    _dialogBodyStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       color: SwissTheme.textPrimary,
     );
-    _dialogButtonStyle = AppFonts.inter(
+    _dialogButtonStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       color: SwissTheme.accentBlue,
@@ -186,7 +186,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                     ? Center(
                         child: Text(
                           'No levels available',
-                          style: AppFonts.inter(
+                          style: AppFonts.pixelifySans(
                             fontSize: 14,
                             color: SwissTheme.textSecondary,
                           ),

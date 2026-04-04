@@ -11,24 +11,24 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final titleStyle = AppFonts.inter(
+    final titleStyle = AppFonts.pixelifySans(
       fontSize: 48,
       fontWeight: FontWeight.w900,
       height: 0.9,
       letterSpacing: -1.0,
       color: SwissTheme.textPrimary,
     );
-    final labelStyle = AppFonts.inter(
+    final labelStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textSecondary,
     );
-    final valueStyle = AppFonts.inter(
+    final valueStyle = AppFonts.pixelifySans(
       fontSize: 18,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textPrimary,
     );
-    final buttonStyle = AppFonts.inter(
+    final buttonStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       color: SwissTheme.accentRed,

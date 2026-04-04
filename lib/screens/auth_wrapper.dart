@@ -27,7 +27,7 @@ class AuthWrapper extends StatelessWidget {
                   const SizedBox(height: 24),
                   Text(
                     'LOADING',
-                    style: AppFonts.inter(
+                    style: AppFonts.pixelifySans(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: SwissTheme.textSecondary,

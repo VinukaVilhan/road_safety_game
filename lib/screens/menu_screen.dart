@@ -34,39 +34,39 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
     super.initState();
     
     // Cache font styles once during initialization
-    _titleStyle = AppFonts.inter(
+    _titleStyle = AppFonts.pixelifySans(
       fontSize: 80,
       fontWeight: FontWeight.w900,
       height: 0.9,
       letterSpacing: -1.0,
       color: SwissTheme.textPrimary,
     );
-    _menuButtonNumberStyle = AppFonts.inter(
+    _menuButtonNumberStyle = AppFonts.pixelifySans(
       fontSize: 24,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textPrimary,
     );
-    _menuButtonTextStyle = AppFonts.inter(
+    _menuButtonTextStyle = AppFonts.pixelifySans(
       fontSize: 24,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textPrimary,
     );
-    _dialogTitleStyle = AppFonts.inter(
+    _dialogTitleStyle = AppFonts.pixelifySans(
       fontSize: 24,
       fontWeight: FontWeight.w600,
       color: SwissTheme.textPrimary,
     );
-    _dialogBodyStyle = AppFonts.inter(
+    _dialogBodyStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       color: SwissTheme.textPrimary,
     );
-    _dialogButtonStyle = AppFonts.inter(
+    _dialogButtonStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w600,
       color: SwissTheme.accentRed,
     );
-    _dialogButtonSecondaryStyle = AppFonts.inter(
+    _dialogButtonSecondaryStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
       color: SwissTheme.textSecondary,

@@ -437,11 +437,12 @@ class GameScreenState extends State<GameScreen> {
               onPressed: () {
                 Navigator.of(context).pop();
                 if (!mounted) return;
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (context) => GameScreen(level: widget.level),
-                  ),
-                );
+                // Restart in place so this route is not disposed (dispose forces
+                // portrait and races with the new GameScreen on pushReplacement).
+                game.restartLevel();
+                _steeringRotation.value = 0.0;
+                setState(() => _currentGear = 1);
+                _applyGearChange();
               },
               child: const Text('Retry'),
             ),

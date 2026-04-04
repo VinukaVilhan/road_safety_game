@@ -47,6 +47,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   /// Final zoom is clamped so camera never shows outside-map void.
   static const double preferredCameraZoom = 1.4;
 
+  /// Impact speed (world units/sec, same scale as [Car.maxSpeed]) at or above which
+  /// hitting a Collision_Box / Obstacles_Layer wall fails the test as a crash.
+  static const double wallHighSpeedCrashThreshold = 125.0;
+
   /// Optional TMX map path (e.g. 'assets/tiles/T-junction-left.tmx'). If null, default map is used.
   final String? mapAsset;
   /// Optional scenario key to alter objective routing on a shared map.
@@ -337,7 +341,31 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     final finalZoom = math.max(preferredCameraZoom, minZoomToAvoidVoid);
     camera.viewfinder.zoom = finalZoom;
   }
-  
+
+  /// Reset scenario after failure so the player can retry without replacing [GameScreen]
+  /// (avoids dispose/orientation races with `Navigator.pushReplacement`).
+  void restartLevel() {
+    _testFinished = false;
+    _zonesInsidePreviousFrame.clear();
+    _lastCompletedStepId = 0;
+    final c = car;
+    if (c == null) return;
+    c.velocity = Vector2.zero();
+    c.acceleration = Vector2.zero();
+    c.coast();
+    c.isSteering = false;
+    c.steerAngle = 0;
+    c.angle = -math.pi / 2;
+    if (_spawnPoint != null) {
+      c.position.setFrom(_spawnPoint!);
+    } else {
+      final cx = (_mapWidth ?? 1600) / 2;
+      final cy = (_mapHeight ?? 1600) / 2;
+      c.position = Vector2(cx, cy);
+    }
+    camera.follow(c);
+  }
+
   @override
   void update(double dt) {
     super.update(dt);
@@ -415,6 +443,13 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
         zone.failMessage?.isNotEmpty == true ? zone.failMessage! : defaultMessage,
       );
     }
+  }
+
+  void _failFromHighSpeedWallCrash() {
+    if (_testFinished) return;
+    _testFinished = true;
+    car?.coast();
+    onTestFailed?.call('High-speed crash! You hit an obstacle too fast.');
   }
   
   @override
@@ -594,10 +629,13 @@ class Car extends SpriteComponent {
       );
       for (final wall in realisticGame._wallRects) {
         if (carRect.overlaps(wall)) {
-          // Resolve collision by snapping back to previous position
+          final impactSpeed = velocity.length;
           position.setFrom(oldPosition);
           velocity = Vector2.zero();
           acceleration = Vector2.zero();
+          if (impactSpeed >= RealisticCarGame.wallHighSpeedCrashThreshold) {
+            realisticGame._failFromHighSpeedWallCrash();
+          }
           break;
         }
       }

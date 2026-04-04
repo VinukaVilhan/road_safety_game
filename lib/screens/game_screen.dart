@@ -9,6 +9,7 @@ import '../widgets/steeringWheel.dart';
 import '../widgets/pedals.dart';
 import '../services/music_service.dart';
 import '../services/level_progress_service.dart';
+import '../services/ui_sound_service.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLevel level;
@@ -386,6 +387,7 @@ class GameScreenState extends State<GameScreen> {
   void _handleTestPassed() {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
+    UiSoundService().playLevelPassed();
 
     showDialog(
       context: context,
@@ -420,6 +422,7 @@ class GameScreenState extends State<GameScreen> {
   void _handleTestFailed(String message) {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
+    UiSoundService().playLevelFailed();
 
     showDialog(
       context: context,

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../theme/swiss_theme.dart';
@@ -14,6 +15,8 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  static const double _oauthLogoSize = 22;
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -339,13 +342,24 @@ class _AuthScreenState extends State<AuthScreen> {
                         borderRadius: BorderRadius.zero,
                       ),
                     ),
-                    child: Text(
-                      'Sign in with Google',
-                      style: AppFonts.pixelifySans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: SwissTheme.textPrimary,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/images/google_logo.svg',
+                          width: _oauthLogoSize,
+                          height: _oauthLogoSize,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Sign in with Google',
+                          style: AppFonts.pixelifySans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: SwissTheme.textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -361,13 +375,24 @@ class _AuthScreenState extends State<AuthScreen> {
                         borderRadius: BorderRadius.zero,
                       ),
                     ),
-                    child: Text(
-                      'Sign in with Facebook',
-                      style: AppFonts.pixelifySans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: SwissTheme.textPrimary,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SvgPicture.asset(
+                          'assets/images/facebook_logo.svg',
+                          width: _oauthLogoSize,
+                          height: _oauthLogoSize,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Sign in with Facebook',
+                          style: AppFonts.pixelifySans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: SwissTheme.textPrimary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

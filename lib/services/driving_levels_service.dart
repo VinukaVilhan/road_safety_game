@@ -134,15 +134,17 @@ class DrivingLevelsService {
   // ========== ROAD MARKINGS LEVELS ==========
   static final List<GameLevel> _roadMarkingsLevels = [
     GameLevel(
-      id: "markings_lane",
+      id: "markings_dashed",
       number: 1,
-      name: "Lane Markings",
-      description: "Solid and dashed lines, lane changes",
+      name: "Dashed lane lines",
+      description: "Drive with dashed lane and center markings",
       difficulty: LevelDifficulty.Easy,
       isUnlocked: true,
       topic: DrivingTopic.RoadMarkings,
       topicLevel: 1,
       unlockRequirementIds: [],
+      mapAsset: 'lane-markings-dashed.tmx',
+      scenarioId: 'markings_dashed',
     ),
     GameLevel(
       id: "markings_stop_yield",
@@ -153,7 +155,7 @@ class DrivingLevelsService {
       isUnlocked: false,
       topic: DrivingTopic.RoadMarkings,
       topicLevel: 2,
-      unlockRequirementIds: ["markings_lane"],
+      unlockRequirementIds: ["markings_dashed"],
     ),
     GameLevel(
       id: "markings_zebra",

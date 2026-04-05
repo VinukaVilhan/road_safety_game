@@ -70,16 +70,28 @@ class _MusicFolderSettingsScreenState extends State<MusicFolderSettingsScreen> {
       final text = _controller.text.trim();
       await MusicService.setMusicFolderPath(text.isEmpty ? null : text);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            text.isEmpty
-                ? 'Music folder cleared.'
-                : 'Saved. Game will play .mp3, .m4a, .aac, .ogg, .wav in that folder.',
+      if (text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Music folder cleared.'),
+            backgroundColor: SwissTheme.textPrimary,
           ),
-          backgroundColor: SwissTheme.textPrimary,
-        ),
-      );
+        );
+      } else {
+        final accessOk = await MusicService.requestMusicAccessIfNeeded();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              accessOk
+                  ? 'Saved. Will play .mp3, .m4a, .aac, .ogg, .wav, .flac from this folder and subfolders.'
+                  : 'Folder saved. Allow music/audio permission in Settings, then try playing again.',
+            ),
+            backgroundColor: SwissTheme.textPrimary,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
       Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -148,8 +160,9 @@ class _MusicFolderSettingsScreenState extends State<MusicFolderSettingsScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Files in this folder (not subfolders) are used when you tap '
-              '"Phone music folder" during a driving test. Typical Android path:',
+              'Tracks in this folder and its subfolders are used when you tap '
+              '"Phone music folder" during a test. On Android, allow music/audio access '
+              'when the app asks. Typical path:',
               style: bodyStyle,
             ),
             const SizedBox(height: 8),

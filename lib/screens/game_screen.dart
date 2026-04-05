@@ -700,13 +700,16 @@ class GameScreenState extends State<GameScreen> {
                       );
                       return;
                     }
-                    await _musicService.playLocal();
+                    final err = await _musicService.playLocal();
                     if (!mounted) return;
                     scaffoldMessenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('Playing from phone music folder'),
-                        backgroundColor: Color(0xFF1a1a2e),
-                        duration: Duration(seconds: 2),
+                      SnackBar(
+                        content: Text(
+                          err ??
+                              'Playing from phone music folder (first track found)',
+                        ),
+                        backgroundColor: const Color(0xFF1a1a2e),
+                        duration: Duration(seconds: err != null ? 5 : 2),
                       ),
                     );
                   },

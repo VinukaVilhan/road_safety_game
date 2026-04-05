@@ -2,6 +2,8 @@ import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'music_access_stub.dart'
+    if (dart.library.io) 'music_access_io.dart' as access_impl;
 import 'music_service_stub.dart' if (dart.library.io) 'music_service_io.dart' as io_impl;
 
 /// Service for playing radio, Spotify, or local music from a folder.
@@ -19,6 +21,11 @@ class MusicService {
 
   /// Current music folder (absolute path). Persisted via SharedPreferences.
   static String? musicFolderPath;
+
+  /// Android: request read access so playback works later (no-op on other platforms).
+  static Future<bool> requestMusicAccessIfNeeded() async {
+    return access_impl.ensureMusicFolderReadAccess();
+  }
 
   /// Load [musicFolderPath] from device storage (call from [main] after binding).
   static Future<void> loadSavedMusicFolderPath() async {
@@ -62,18 +69,40 @@ class MusicService {
 
   /// Play from local folder: uses first available file if [filePath] is null,
   /// otherwise plays [filePath]. Requires [musicFolderPath] to be set for listing.
-  Future<void> playLocal({String? filePath}) async {
+  ///
+  /// Returns `null` if playback started; otherwise a short error for the UI.
+  Future<String?> playLocal({String? filePath}) async {
     await _player.stop();
+
+    final allowed = await access_impl.ensureMusicFolderReadAccess();
+    if (!allowed) {
+      return 'Audio/storage permission denied. Allow “Music and audio” (or Files) '
+          'for this app in Android Settings, then try again.';
+    }
+
     late final String path;
     if (filePath != null && filePath.isNotEmpty) {
       path = filePath;
     } else {
       final list = await getLocalMusicPaths();
-      if (list.isEmpty) return;
+      if (list.isEmpty) {
+        final folder = musicFolderPath?.trim();
+        if (folder == null || folder.isEmpty) {
+          return 'No music folder set. Use Menu → Options → Music folder.';
+        }
+        return 'No playable files in that folder (need .mp3, .m4a, .aac, .ogg, '
+            '.wav, or .flac in this folder or subfolders), or the path cannot be read.';
+      }
       path = list.first;
     }
-    await _player.setFilePath(path);
-    await _player.play();
+
+    try {
+      await _player.setFilePath(path);
+      await _player.play();
+      return null;
+    } catch (e) {
+      return 'Could not play audio: $e';
+    }
   }
 
   /// Play from a URL (e.g. radio stream).

@@ -270,7 +270,7 @@
   <object id="2" x="573.047" y="254.766" width="386.953" height="705.234"/>
   <object id="3" x="574.055" y="4.81394" width="382.387" height="142.092"/>
  </objectgroup>
- <objectgroup color="#ffff7f" id="5" name="Zone_Check_Layer" class="Zone_Check" visible="0" tintcolor="#ffff7f">
+ <objectgroup color="#ffff7f" id="5" name="Zone_Check_Layer" class="Zone_Check" tintcolor="#ffff7f">
   <properties>
    <property name="step_id" type="int" value="1"/>
   </properties>

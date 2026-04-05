@@ -24,6 +24,8 @@ class GameScreen extends StatefulWidget {
 }
 
 class GameScreenState extends State<GameScreen> {
+  final ValueNotifier<bool> _turnSignalLeftNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _turnSignalRightNotifier = ValueNotifier<bool>(false);
   late RealisticCarGame game;
   int _currentGear = 1; // Track current gear (P=0, 1,2,3,4,5,R=-1)
   final List<String> _gears = ['P', '1', '2', '3', '4', '5', 'R'];
@@ -75,9 +77,16 @@ class GameScreenState extends State<GameScreen> {
       scenarioId: widget.level.scenarioId,
       onTestPassed: _handleTestPassed,
       onTestFailed: _handleTestFailed,
+      turnSignalLeft: _turnSignalLeftNotifier,
+      turnSignalRight: _turnSignalRightNotifier,
     );
     // Configure the game based on the level
     _configureGameForLevel();
+  }
+
+  void _syncTurnSignalsToGame() {
+    _turnSignalLeftNotifier.value = _leftTurnSignalOn;
+    _turnSignalRightNotifier.value = _rightTurnSignalOn;
   }
 
   @override
@@ -85,6 +94,8 @@ class GameScreenState extends State<GameScreen> {
     _turnSignalTapTimer?.cancel();
     _turnSignalBlinkTimer?.cancel();
     _steeringRotation.dispose();
+    _turnSignalLeftNotifier.dispose();
+    _turnSignalRightNotifier.dispose();
     // Restore portrait orientation when leaving game
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -386,6 +397,7 @@ class GameScreenState extends State<GameScreen> {
         _leftTurnSignalOn = false;
         _rightTurnSignalOn = false;
       });
+      _syncTurnSignalsToGame();
       return;
     }
 
@@ -400,12 +412,14 @@ class GameScreenState extends State<GameScreen> {
           _leftTurnSignalOn = true;
           _rightTurnSignalOn = false;
         });
+        _syncTurnSignalsToGame();
         _startTurnSignalBlink();
       } else if (n >= 3) {
         setState(() {
           _rightTurnSignalOn = true;
           _leftTurnSignalOn = false;
         });
+        _syncTurnSignalsToGame();
         _startTurnSignalBlink();
       }
     });
@@ -661,16 +675,6 @@ class GameScreenState extends State<GameScreen> {
                   onTap: () {
                     Navigator.pop(sheetContext);
                     RadioTunerSheet.show(context);
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.music_note, color: Colors.white70),
-                  title: Text('Spotify', style: theme.bodyLarge!.copyWith(color: Colors.white)),
-                  subtitle: Text('Open Spotify app or web', style: theme.bodySmall!.copyWith(color: Colors.white54)),
-                  onTap: () async {
-                    Navigator.pop(sheetContext);
-                    await _musicService.openSpotify();
                   },
                 ),
                 ListTile(

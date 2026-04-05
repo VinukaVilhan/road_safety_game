@@ -224,13 +224,13 @@
  </objectgroup>
  <objectgroup color="#ff0000" id="9" name="Incoming_Traffic_Layer" class="Zone_Fail_IT" tintcolor="#ff0000">
   <properties>
-   <property name="fail_message" value="&quot;Driving in oncoming traffic!&quot;"/>
+   <property name="fail_message" value="Driving in oncoming traffic!"/>
   </properties>
   <object id="39" x="493" y="321.333" width="62" height="630.667"/>
  </objectgroup>
  <objectgroup color="#ff0000" id="10" name="Wrong_Turn_Layer" class="Zone_Fail_WT" tintcolor="#ff0000">
   <properties>
-   <property name="fail_message" value="&quot;Wrong Turn&quot;"/>
+   <property name="fail_message" value="Wrong Turn"/>
   </properties>
   <object id="42" x="578.667" y="253.333" width="373.333" height="60"/>
  </objectgroup>

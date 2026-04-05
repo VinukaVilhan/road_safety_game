@@ -1,4 +1,6 @@
 import 'dart:math' as math;
+import 'dart:ui' show Path;
+
 import 'package:flame/camera.dart';
 import 'package:flame/components.dart';
 import 'package:flame/experimental.dart';
@@ -31,6 +33,73 @@ class _DrivingZone {
   });
 }
 
+/// Junction "brown" validation: [expectedSignal] is `left`, `right`, or `none`.
+class _MidTurnZone {
+  final int objectId;
+  final Path hitPath;
+  final String expectedSignal;
+
+  const _MidTurnZone({
+    required this.objectId,
+    required this.hitPath,
+    required this.expectedSignal,
+  });
+}
+
+/// Tiled: rotation in degrees clockwise around ([ox], [oy]) (pixel space, Y down).
+Offset _tiledRotateLocal(double lx, double ly, double rotationDeg) {
+  if (rotationDeg == 0) return Offset(lx, ly);
+  final rad = rotationDeg * math.pi / 180;
+  final c = math.cos(rad);
+  final s = math.sin(rad);
+  final rx = lx * c + ly * s;
+  final ry = lx * s + ly * c;
+  return Offset(rx, ry);
+}
+
+Path? _midTurnHitPathFromObject(TiledObject obj) {
+  if (!obj.visible) return null;
+
+  if (obj.isPolygon && obj.polygon.length >= 3) {
+    final pts = <Offset>[];
+    for (final p in obj.polygon) {
+      final r = _tiledRotateLocal(p.x, p.y, obj.rotation);
+      pts.add(Offset(obj.x + r.dx, obj.y + r.dy));
+    }
+    return Path()..addPolygon(pts, true);
+  }
+
+  if (obj.isRectangle && obj.width > 0 && obj.height > 0) {
+    final w = obj.width;
+    final h = obj.height;
+    final corners = [
+      Offset(0, 0),
+      Offset(w, 0),
+      Offset(w, h),
+      Offset(0, h),
+    ];
+    final pts = corners
+        .map((c) {
+          final r = _tiledRotateLocal(c.dx, c.dy, obj.rotation);
+          return Offset(obj.x + r.dx, obj.y + r.dy);
+        })
+        .toList();
+    return Path()..addPolygon(pts, true);
+  }
+
+  return null;
+}
+
+bool _isMidTurnValidationObject(TiledObject obj, ObjectGroup layer) {
+  final ot = obj.type.trim().toLowerCase();
+  if (ot == 'zone_midturn') return true;
+  final lc = (layer.class_ ?? '').trim().toLowerCase();
+  if (lc == 'zone_midturn') return true;
+  final ln = layer.name.replaceAll(' ', '_').toLowerCase();
+  if (ln.contains('junction_validation')) return true;
+  return false;
+}
+
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   Car? car; // Make car accessible - nullable to handle initialization order
   late SpriteComponent roadBackground;
@@ -58,8 +127,13 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   final void Function(String message)? onTestFailed;
   final VoidCallback? onTestPassed;
 
+  /// Synced from [GameScreen] turn-signal UI; required for [Zone_MidTurn] checks.
+  final ValueNotifier<bool>? turnSignalLeft;
+  final ValueNotifier<bool>? turnSignalRight;
+
   final List<_DrivingZone> _drivingZones = [];
   final Set<int> _zonesInsidePreviousFrame = <int>{};
+  final List<_MidTurnZone> _midTurnZones = [];
   int _lastCompletedStepId = 0;
   bool _testFinished = false;
 
@@ -68,6 +142,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     this.scenarioId,
     this.onTestFailed,
     this.onTestPassed,
+    this.turnSignalLeft,
+    this.turnSignalRight,
   });
   
   @override
@@ -149,7 +225,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       final isSpawnLayer = layerTag.contains('spawn') || layerClassTag.contains('spawn');
       for (final obj in layer.objects) {
         final objectClassTag =
-            (obj.class_ ?? '').replaceAll(' ', '_').toLowerCase();
+            obj.class_.replaceAll(' ', '_').toLowerCase();
         final objectTypeTag = obj.type.replaceAll(' ', '_').toLowerCase();
         final objectNameTag = obj.name.replaceAll(' ', '_').toLowerCase();
         final isSpawnObject = objectClassTag.contains('spawn') ||
@@ -257,7 +333,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
         if (obj.isPoint || obj.isPolygon || obj.isPolyline || obj.isEllipse) continue;
         if (obj.rotation != 0) continue;
 
-        final objectClass = (obj.class_ ?? '').trim();
+        final objectClass = obj.class_.trim();
         final objectType = obj.type.trim();
         final zoneClass = objectClass.isNotEmpty
             ? objectClass
@@ -293,6 +369,30 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       }
     }
     print('[DEBUG] _setupRoad() - Loaded driving zones: ${_drivingZones.length}');
+
+    // Junction_Validation_Layer / Zone_MidTurn + expected_signal (polygon or rect).
+    _midTurnZones.clear();
+    for (final layer in tiledMap.tileMap.map.layers.whereType<ObjectGroup>()) {
+      for (final obj in layer.objects) {
+        if (!_isMidTurnValidationObject(obj, layer)) continue;
+        final raw =
+            (obj.properties.getValue<String>('expected_signal') ?? 'none').trim();
+        final expected = raw.toLowerCase();
+        final path = _midTurnHitPathFromObject(obj);
+        if (path == null) continue;
+        _midTurnZones.add(
+          _MidTurnZone(
+            objectId: obj.id,
+            hitPath: path,
+            expectedSignal: expected,
+          ),
+        );
+        print(
+          '[DEBUG] _setupRoad() - MidTurn zone id=${obj.id} expected=$expected',
+        );
+      }
+    }
+    print('[DEBUG] _setupRoad() - MidTurn validation zones: ${_midTurnZones.length}');
     
     // Create a single static map instance at (0, 0) covering the entire world
     final mapInstance = await TiledComponent.load(
@@ -369,6 +469,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   @override
   void update(double dt) {
     super.update(dt);
+    _updateMidTurnSignalValidation();
     _updateDrivingRuleZones();
   }
 
@@ -385,6 +486,69 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
 
   String _zoneKindForScenario(String zoneClass) {
     return zoneClass;
+  }
+
+  bool _turnSignalsMatchExpected(String expected, bool leftOn, bool rightOn) {
+    switch (expected) {
+      case 'left':
+        return leftOn && !rightOn;
+      case 'right':
+        return rightOn && !leftOn;
+      case 'none':
+      case 'straight':
+        return !leftOn && !rightOn;
+      default:
+        return true;
+    }
+  }
+
+  String _midTurnFailMessage(_MidTurnZone zone, bool leftOn, bool rightOn) {
+    final exp = zone.expectedSignal;
+    if (exp == 'left') {
+      return 'Use your left signal when taking the left path of the junction.';
+    }
+    if (exp == 'right') {
+      return 'Use your right signal when taking the right path of the junction.';
+    }
+    if (exp == 'none' || exp == 'straight') {
+      if (leftOn && rightOn) {
+        return 'Turn signals must be off when going straight through the junction.';
+      }
+      if (leftOn) {
+        return 'Turn off your left signal when going straight through the junction.';
+      }
+      if (rightOn) {
+        return 'Turn off your right signal when going straight through the junction.';
+      }
+      return 'Turn signals must be off when going straight through the junction.';
+    }
+    return 'Incorrect turn signal for this lane.';
+  }
+
+  void _updateMidTurnSignalValidation() {
+    if (_testFinished ||
+        car == null ||
+        _midTurnZones.isEmpty ||
+        turnSignalLeft == null ||
+        turnSignalRight == null) {
+      return;
+    }
+
+    final leftOn = turnSignalLeft!.value;
+    final rightOn = turnSignalRight!.value;
+    final center = Offset(car!.position.x, car!.position.y);
+
+    // Re-check every frame while the car is inside a zone so turning a signal
+    // on/off mid-junction is still validated (e.g. straight path + blinker on).
+    for (final zone in _midTurnZones) {
+      if (!zone.hitPath.contains(center)) continue;
+      if (!_turnSignalsMatchExpected(zone.expectedSignal, leftOn, rightOn)) {
+        _testFinished = true;
+        car?.coast();
+        onTestFailed?.call(_midTurnFailMessage(zone, leftOn, rightOn));
+        return;
+      }
+    }
   }
 
   void _updateDrivingRuleZones() {

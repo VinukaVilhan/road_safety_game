@@ -6,6 +6,7 @@ import 'data/sync/sync_service.dart';
 import 'screens/auth_wrapper.dart';
 import 'theme/swiss_theme.dart';
 import 'services/image_preloader.dart';
+import 'services/music_service.dart';
 
 /// Industry-standard app initialization using MaterialApp.builder pattern
 /// This ensures UI shows immediately while resources load in background
@@ -16,6 +17,7 @@ void main() async {
   );
   await LocalDb.instance.initialize();
   await SyncService.instance.initialize();
+  await MusicService.loadSavedMusicFolderPath();
   runApp(MyApp());
 }
 

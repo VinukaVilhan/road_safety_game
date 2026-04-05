@@ -112,7 +112,7 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
                         child: _buildTestOption(
                           title: 'THEORY TEST',
                           icon: Icons.crop_square, // Geometric square icon
-                          description: 'Test your knowledge with multiple choice questions',
+                          description: 'Test your knowledge with questions',
                           isBlackBackground: false,
                           onTap: () => _startMCQTest(context),
                         ),

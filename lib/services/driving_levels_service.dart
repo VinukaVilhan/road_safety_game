@@ -104,6 +104,8 @@ class DrivingLevelsService {
       moduleId: junctionModuleCross,
       topicLevel: 3,
       unlockRequirementIds: ["junctions_t_right"],
+      mapAsset: 'cross-junction.tmx',
+      scenarioId: 'cross_junction_basics',
     ),
     GameLevel(
       id: "junctions_roundabout_basics",

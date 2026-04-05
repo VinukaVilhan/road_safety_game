@@ -1,23 +1,44 @@
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'music_service_stub.dart' if (dart.library.io) 'music_service_io.dart' as io_impl;
 
 /// Service for playing radio, Spotify, or local music from a folder.
-/// Set [musicFolderPath] to your phone's music folder path (e.g. Android:
-/// /storage/emulated/0/Music or use path_provider for app dir).
+/// Use [loadSavedMusicFolderPath] at startup and [setMusicFolderPath] from
+/// settings (Menu → Options → Music folder).
 class MusicService {
   static final MusicService _instance = MusicService._();
   factory MusicService() => _instance;
 
   MusicService._();
 
+  static const String _prefsKeyMusicFolder = 'music_folder_path';
+
   final AudioPlayer _player = AudioPlayer();
 
-  /// Set this to your device's music folder path when available.
-  /// Example Android: '/storage/emulated/0/Music'
-  /// Example iOS: use path_provider getApplicationDocumentsDirectory + subdir
+  /// Current music folder (absolute path). Persisted via SharedPreferences.
   static String? musicFolderPath;
+
+  /// Load [musicFolderPath] from device storage (call from [main] after binding).
+  static Future<void> loadSavedMusicFolderPath() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getString(_prefsKeyMusicFolder)?.trim();
+    musicFolderPath = (v != null && v.isNotEmpty) ? v : null;
+  }
+
+  /// Save folder path and update [musicFolderPath]. Pass null or empty to clear.
+  static Future<void> setMusicFolderPath(String? path) async {
+    final prefs = await SharedPreferences.getInstance();
+    final trimmed = path?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      musicFolderPath = null;
+      await prefs.remove(_prefsKeyMusicFolder);
+      return;
+    }
+    musicFolderPath = trimmed;
+    await prefs.setString(_prefsKeyMusicFolder, trimmed);
+  }
 
   AudioPlayer get player => _player;
 
@@ -43,13 +64,14 @@ class MusicService {
   /// otherwise plays [filePath]. Requires [musicFolderPath] to be set for listing.
   Future<void> playLocal({String? filePath}) async {
     await _player.stop();
-    String? path = filePath;
-    if (path == null || path.isEmpty) {
+    late final String path;
+    if (filePath != null && filePath.isNotEmpty) {
+      path = filePath;
+    } else {
       final list = await getLocalMusicPaths();
       if (list.isEmpty) return;
       path = list.first;
     }
-    if (path == null) return;
     await _player.setFilePath(path);
     await _player.play();
   }

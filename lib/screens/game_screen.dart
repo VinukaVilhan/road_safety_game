@@ -9,6 +9,7 @@ import '../utils/app_fonts.dart';
 import '../widgets/gearbox.dart';
 import '../widgets/steeringWheel.dart';
 import '../widgets/pedals.dart';
+import '../widgets/radio_tuner_sheet.dart';
 import '../services/music_service.dart';
 import '../services/level_progress_service.dart';
 import '../services/ui_sound_service.dart';
@@ -30,6 +31,22 @@ class GameScreenState extends State<GameScreen> {
   DateTime? _lastSteeringUpdate;
   final MusicService _musicService = MusicService();
   bool _resultDialogVisible = false;
+
+  static const String _radioIconAsset = 'assets/images/Radio.png';
+
+  Widget _radioIconWidget({double size = 32, Color fallbackColor = Colors.white}) {
+    return Image.asset(
+      _radioIconAsset,
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) => Icon(
+        Icons.radio,
+        color: fallbackColor,
+        size: size,
+      ),
+    );
+  }
 
   /// Hit-test exclusion for pause/radio/pedals (left) and gearbox/steering (right).
   final GlobalKey _excludeHudLeftKey = GlobalKey();
@@ -146,14 +163,14 @@ class GameScreenState extends State<GameScreen> {
                             ),
                           ),
                           IconButton(
-                            onPressed: () {
-                              _showMusicSheet();
-                            },
-                            icon: const Icon(
-                              Icons.radio,
-                              color: Colors.white,
-                              size: 32,
+                            onPressed: _showMusicSheet,
+                            style: IconButton.styleFrom(
+                              minimumSize: const Size(48, 48),
+                              fixedSize: const Size(48, 48),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
+                            padding: EdgeInsets.zero,
+                            icon: _radioIconWidget(size: 32, fallbackColor: Colors.white),
                           ),
                         ],
                       ),
@@ -601,16 +618,20 @@ class GameScreenState extends State<GameScreen> {
 
   void _showMusicSheet() {
     final theme = Theme.of(context).textTheme;
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF1a1a2e),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (BuildContext context) {
+      builder: (BuildContext sheetContext) {
+        final bottomInset = MediaQuery.of(sheetContext).padding.bottom;
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+            padding: EdgeInsets.fromLTRB(20, 24, 20, 24 + bottomInset),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -624,57 +645,70 @@ class GameScreenState extends State<GameScreen> {
                 ),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading: const Icon(Icons.radio, color: Colors.white70),
+                  contentPadding: EdgeInsets.zero,
+                  leading: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: Center(
+                      child: _radioIconWidget(size: 28, fallbackColor: Colors.white70),
+                    ),
+                  ),
                   title: Text('Radio', style: theme.bodyLarge!.copyWith(color: Colors.white)),
-                  subtitle: Text('Open radio in browser or app', style: theme.bodySmall!.copyWith(color: Colors.white54)),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await _musicService.openRadioUrl('https://www.internet-radio.com/');
+                  subtitle: Text(
+                    'Phone FM + tune dial to match',
+                    style: theme.bodySmall!.copyWith(color: Colors.white54),
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    RadioTunerSheet.show(context);
                   },
                 ),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.music_note, color: Colors.white70),
                   title: Text('Spotify', style: theme.bodyLarge!.copyWith(color: Colors.white)),
                   subtitle: Text('Open Spotify app or web', style: theme.bodySmall!.copyWith(color: Colors.white54)),
                   onTap: () async {
-                    Navigator.pop(context);
+                    Navigator.pop(sheetContext);
                     await _musicService.openSpotify();
                   },
                 ),
                 ListTile(
+                  contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.library_music, color: Colors.white70),
                   title: Text('Phone music folder', style: theme.bodyLarge!.copyWith(color: Colors.white)),
                   subtitle: Text(
                     MusicService.musicFolderPath != null && MusicService.musicFolderPath!.isNotEmpty
                         ? 'Play from: ${MusicService.musicFolderPath}'
-                        : 'Set musicFolderPath in MusicService',
+                        : 'Menu → Options → Music folder',
                     style: theme.bodySmall!.copyWith(color: Colors.white54),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   onTap: () async {
-                    Navigator.pop(context);
+                    Navigator.pop(sheetContext);
                     if (MusicService.musicFolderPath == null || MusicService.musicFolderPath!.isEmpty) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Set MusicService.musicFolderPath to your music folder path first.'),
-                            backgroundColor: Color(0xFF1a1a2e),
+                      if (!mounted) return;
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Set your music folder: pause, go to Menu → Options → Music folder.',
                           ),
-                        );
-                      }
+                          backgroundColor: Color(0xFF1a1a2e),
+                          duration: Duration(seconds: 4),
+                        ),
+                      );
                       return;
                     }
                     await _musicService.playLocal();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Playing from phone music folder'),
-                          backgroundColor: Color(0xFF1a1a2e),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    }
+                    if (!mounted) return;
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Playing from phone music folder'),
+                        backgroundColor: Color(0xFF1a1a2e),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
                   },
                 ),
               ],

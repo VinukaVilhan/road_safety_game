@@ -209,7 +209,7 @@
   <object id="18" x="600.148" y="355.819" width="353.447" height="596.853"/>
   <object id="19" x="5.93032" y="5.93032" width="946.479" height="196.887"/>
  </objectgroup>
- <objectgroup color="#ffff7f" id="7" name="Zone_Check_Layer" class="Zone_Check" visible="0" tintcolor="#ffff7f">
+ <objectgroup color="#ffff7f" id="7" name="Zone_Check_Layer" class="Zone_Check" tintcolor="#ffff7f">
   <properties>
    <property name="step_id" type="int" value="1"/>
   </properties>
@@ -222,13 +222,13 @@
    </properties>
   </object>
  </objectgroup>
- <objectgroup color="#ff0000" id="9" name="Incoming_Traffic_Layer" class="Zone_Fail_IT" visible="0" tintcolor="#ff0000">
+ <objectgroup color="#ff0000" id="9" name="Incoming_Traffic_Layer" class="Zone_Fail_IT" tintcolor="#ff0000">
   <properties>
    <property name="fail_message" value="&quot;Driving in oncoming traffic!&quot;"/>
   </properties>
   <object id="39" x="493" y="321.333" width="62" height="630.667"/>
  </objectgroup>
- <objectgroup color="#ff0000" id="10" name="Wrong_Turn_Layer" class="Zone_Fail_WT" visible="0" tintcolor="#ff0000">
+ <objectgroup color="#ff0000" id="10" name="Wrong_Turn_Layer" class="Zone_Fail_WT" tintcolor="#ff0000">
   <properties>
    <property name="fail_message" value="&quot;Wrong Turn&quot;"/>
   </properties>

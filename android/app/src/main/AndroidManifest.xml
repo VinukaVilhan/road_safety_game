@@ -41,5 +41,17 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- So getLaunchIntentForPackage works for FM apps on API 30+ -->
+        <package android:name="com.sec.android.app.fm" />
+        <package android:name="com.samsung.android.app.radio" />
+        <package android:name="com.motorola.fmplayer" />
+        <package android:name="com.motorola.fmradio" />
+        <package android:name="com.caf.fmradio" />
+        <package android:name="com.miui.fm" />
+        <package android:name="com.huawei.android.FMRadio" />
+        <package android:name="com.sonyericsson.fmradio" />
+        <package android:name="com.lge.fmradio" />
+        <package android:name="com.mediatek.fmradio" />
+        <package android:name="com.android.fmradio" />
     </queries>
 </manifest>

@@ -11,6 +11,7 @@ import '../services/ui_sound_service.dart';
 import 'test_selection_screen.dart';
 import 'profile_screen.dart';
 import 'driving_tutorial_screen.dart';
+import 'music_folder_settings_screen.dart';
 
 class MenuScreen extends StatefulWidget {
   @override
@@ -345,8 +346,41 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 16),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 8),
+
+                InkWell(
+                  onTap: () {
+                    uiSound.playMenuTap();
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (context) => const MusicFolderSettingsScreen(),
+                      ),
+                    );
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'MUSIC FOLDER',
+                          style: _dialogBodyStyle,
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          color: SwissTheme.textSecondary,
+                          size: 22,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
                 const Divider(color: SwissTheme.dividerBlack, thickness: 1),
                 const SizedBox(height: 16),
                 

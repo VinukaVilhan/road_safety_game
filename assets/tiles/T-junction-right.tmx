@@ -215,7 +215,7 @@
   </properties>
   <object id="32" x="484" y="328.5" width="72.5" height="110.5"/>
  </objectgroup>
- <objectgroup color="#00ff00" id="8" name="Finish_Zone_Layer" tintcolor="#00ff00">
+ <objectgroup color="#00ff00" id="8" name="Finish_Zone_Layer" class="Finish_Zone" tintcolor="#00ff00">
   <object id="35" type="Zone_Finish" x="824" y="254" width="122" height="52">
    <properties>
     <property name="step_id" type="int" value="2"/>

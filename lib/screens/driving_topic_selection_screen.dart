@@ -6,6 +6,7 @@ import '../models/game_level.dart';
 import 'junctions_category_screen.dart';
 import 'level_selection_screen.dart';
 import 'road_markings_category_screen.dart';
+import 'driving_tutorial_screen.dart';
 
 class DrivingTopicSelectionScreen extends StatefulWidget {
   const DrivingTopicSelectionScreen({super.key});
@@ -64,6 +65,7 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
 
   // All available driving topics
   final List<DrivingTopic> topics = [
+    DrivingTopic.Practice,
     DrivingTopic.Junctions,
     DrivingTopic.RoadMarkings,
     DrivingTopic.RoadSigns,
@@ -209,6 +211,15 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
         context,
         MaterialPageRoute(
           builder: (context) => const RoadMarkingsCategoryScreen(),
+        ),
+      );
+      return;
+    }
+    if (topic == DrivingTopic.Practice) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const DrivingTutorialScreen(),
         ),
       );
       return;

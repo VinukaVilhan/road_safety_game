@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/tutorial_progress.dart';
-import '../services/tutorial_progress_service.dart';
 import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
@@ -12,7 +11,7 @@ import '../widgets/gearbox.dart';
 import '../widgets/pedals.dart';
 import '../widgets/steeringWheel.dart';
 
-/// Lists control tutorials and shows completion from [TutorialProgress].
+/// Lists control tutorials as a non-tracked reference/practice area.
 class DrivingTutorialScreen extends StatefulWidget {
   const DrivingTutorialScreen({super.key});
 
@@ -21,31 +20,12 @@ class DrivingTutorialScreen extends StatefulWidget {
 }
 
 class _DrivingTutorialScreenState extends State<DrivingTutorialScreen> {
-  TutorialProgress _progress = const TutorialProgress();
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final p = await TutorialProgressService.load();
-    if (!mounted) return;
-    setState(() {
-      _progress = p;
-      _loading = false;
-    });
-  }
-
   Future<void> _openLesson(DrivingTutorialLesson lesson) async {
-    final changed = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => _DrivingTutorialLessonPage(lesson: lesson),
       ),
     );
-    if (changed == true && mounted) await _load();
   }
 
   @override
@@ -67,47 +47,36 @@ class _DrivingTutorialScreenState extends State<DrivingTutorialScreen> {
         backgroundColor: SwissTheme.backgroundWhite,
         foregroundColor: SwissTheme.textPrimary,
         elevation: 0,
-        title: Text('Driving controls', style: titleStyle),
+        title: Text('Controls', style: titleStyle),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              children: [
-                Text(
-                  'Practice each control once. Progress is saved to your profile.',
-                  style: bodyStyle,
-                ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: _progress.completionFraction,
-                  backgroundColor: SwissTheme.dividerBlack.withValues(alpha: 0.2),
-                  color: SwissTheme.accentRed,
-                ),
-                const SizedBox(height: 24),
-                for (final lesson in DrivingTutorialLesson.values)
-                  _LessonTile(
-                    lesson: lesson,
-                    done: _progress.isComplete(lesson),
-                    onTap: () {
-                      UiSoundService().playMenuTap();
-                      _openLesson(lesson);
-                    },
-                  ),
-              ],
+      body: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        children: [
+          Text(
+            'Use this page as a controls guide. Nothing here tracks progress.',
+            style: bodyStyle,
+          ),
+          const SizedBox(height: 24),
+          for (final lesson in DrivingTutorialLesson.values)
+            _LessonTile(
+              lesson: lesson,
+              onTap: () {
+                UiSoundService().playMenuTap();
+                _openLesson(lesson);
+              },
             ),
+        ],
+      ),
     );
   }
 }
 
 class _LessonTile extends StatelessWidget {
   final DrivingTutorialLesson lesson;
-  final bool done;
   final VoidCallback onTap;
 
   const _LessonTile({
     required this.lesson,
-    required this.done,
     required this.onTap,
   });
 
@@ -140,8 +109,8 @@ class _LessonTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
-                  done ? Icons.check_circle : Icons.play_circle_outline,
-                  color: done ? SwissTheme.accentGreen : SwissTheme.textPrimary,
+                  Icons.play_circle_outline,
+                  color: SwissTheme.textPrimary,
                   size: 28,
                 ),
                 const SizedBox(width: 12),
@@ -175,8 +144,6 @@ class _DrivingTutorialLessonPage extends StatefulWidget {
 }
 
 class _DrivingTutorialLessonPageState extends State<_DrivingTutorialLessonPage> {
-  bool _finishing = false;
-
   @override
   void initState() {
     super.initState();
@@ -195,25 +162,7 @@ class _DrivingTutorialLessonPageState extends State<_DrivingTutorialLessonPage> 
     super.dispose();
   }
 
-  Future<void> _complete() async {
-    if (_finishing) return;
-    _finishing = true;
-    await TutorialProgressService.markLessonComplete(widget.lesson);
-    HapticFeedback.mediumImpact();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${widget.lesson.title} — saved',
-          style: const TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color(0xFF1a1a2e),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    Navigator.of(context).pop(true);
-  }
+  Future<void> _complete() async {}
 
   @override
   Widget build(BuildContext context) {
@@ -247,26 +196,21 @@ class _GearboxLessonBody extends StatefulWidget {
 }
 
 class _GearboxLessonBodyState extends State<_GearboxLessonBody> {
-  static const _gears = ['P', '1', '2', '3', '4', '5', 'R'];
+  static const _gears = ['P', '1', '2', '3', '4', 'R'];
   int _currentGear = 1;
-  int _step = 0;
-
-  void _onGear(int index) {
-    setState(() => _currentGear = index);
-    if (_step == 0 && index == 0) {
-      setState(() => _step = 1);
-    } else if (_step == 1 && index == 1) {
-      unawaited(widget.onComplete());
-    }
-  }
+  void _onGear(int index) => setState(() => _currentGear = index);
 
   @override
   Widget build(BuildContext context) {
-    final hint = _step == 0
-        ? 'Tap Park (P) at the bottom of the gear pattern.'
-        : 'Now tap First gear (1) at the top-right.';
     return _LessonScaffold(
-      hint: hint,
+      title: 'Gearbox',
+      bullets: const [
+        'P - Park: locks movement.',
+        'R - Reverse: move backward.',
+        '1-4 - Forward gears: move ahead.',
+        'Lower gears (1-2): more pulling power, slower speed.',
+        'Higher gears (3-4): less pull, smoother/faster cruising.',
+      ],
       child: Center(
         child: GearboxWidget(
           currentGear: _currentGear,
@@ -289,9 +233,6 @@ class _SteeringLessonBody extends StatefulWidget {
 
 class _SteeringLessonBodyState extends State<_SteeringLessonBody> {
   final ValueNotifier<double> _rotation = ValueNotifier<double>(0);
-  bool _left = false;
-  bool _right = false;
-  bool _done = false;
 
   @override
   void dispose() {
@@ -299,19 +240,15 @@ class _SteeringLessonBodyState extends State<_SteeringLessonBody> {
     super.dispose();
   }
 
-  void _checkDone() {
-    if (_done) return;
-    if (_left && _right) {
-      _done = true;
-      unawaited(widget.onComplete());
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return _LessonScaffold(
-      hint:
-          'Drag the wheel: turn it clearly left, then clearly right. (${_left ? "✓" : "·"} left · ${_right ? "✓" : "·"} right)',
+      title: 'Steering Wheel',
+      bullets: const [
+        'Turn left -> car goes left.',
+        'Turn right -> car goes right.',
+        'Keep wheel near center for straight driving.',
+      ],
       child: Center(
         child: ValueListenableBuilder<double>(
           valueListenable: _rotation,
@@ -321,13 +258,9 @@ class _SteeringLessonBodyState extends State<_SteeringLessonBody> {
               onPanStart: (_) {},
               onPanUpdate: (d) {
                 _rotation.value = (_rotation.value + d.delta.dx * 0.05).clamp(-2.5, 2.5);
-                if (_rotation.value < -1.0) _left = true;
-                if (_rotation.value > 1.0) _right = true;
-                _checkDone();
               },
               onPanEnd: (_) {
                 _rotation.value = 0;
-                _checkDone();
               },
             );
           },
@@ -358,10 +291,6 @@ class _TurnSignalsLessonBodyState extends State<_TurnSignalsLessonBody> {
   bool _rightTurnSignalOn = false;
   Timer? _turnSignalBlinkTimer;
   bool _turnSignalBlinkVisible = true;
-
-  bool _sawLeft = false;
-  bool _sawRight = false;
-  bool _done = false;
 
   @override
   void dispose() {
@@ -399,14 +328,6 @@ class _TurnSignalsLessonBodyState extends State<_TurnSignalsLessonBody> {
     _turnSignalBlinkVisible = true;
   }
 
-  void _tryComplete() {
-    if (_done) return;
-    if (_sawLeft && _sawRight) {
-      _done = true;
-      unawaited(widget.onComplete());
-    }
-  }
-
   void _onPointerDown(PointerDownEvent event) {
     final listenerBox =
         _listenerKey.currentContext?.findRenderObject() as RenderBox?;
@@ -435,18 +356,14 @@ class _TurnSignalsLessonBodyState extends State<_TurnSignalsLessonBody> {
         setState(() {
           _leftTurnSignalOn = true;
           _rightTurnSignalOn = false;
-          _sawLeft = true;
         });
         _startBlink();
-        _tryComplete();
       } else if (n >= 3) {
         setState(() {
           _rightTurnSignalOn = true;
           _leftTurnSignalOn = false;
-          _sawRight = true;
         });
         _startBlink();
-        _tryComplete();
       }
     });
   }
@@ -454,8 +371,12 @@ class _TurnSignalsLessonBodyState extends State<_TurnSignalsLessonBody> {
   @override
   Widget build(BuildContext context) {
     return _LessonScaffold(
-      hint:
-          'Double-tap an empty area for left signal, triple-tap for right (same as in a level). ${_sawLeft ? "✓" : "·"} left · ${_sawRight ? "✓" : "·"} right',
+      title: 'Turn Signals',
+      bullets: const [
+        'Double tap empty area -> LEFT signal.',
+        'Triple tap empty area -> RIGHT signal.',
+        'Single tap while signal is ON -> turn it OFF.',
+      ],
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -553,39 +474,22 @@ class _PedalsLessonBody extends StatefulWidget {
 }
 
 class _PedalsLessonBodyState extends State<_PedalsLessonBody> {
-  Timer? _holdTimer;
-  bool _done = false;
-
-  @override
-  void dispose() {
-    _holdTimer?.cancel();
-    super.dispose();
-  }
-
-  void _onAccelDown() {
-    _holdTimer?.cancel();
-    _holdTimer = Timer(const Duration(milliseconds: 450), () {
-      if (_done || !mounted) return;
-      _done = true;
-      unawaited(widget.onComplete());
-    });
-  }
-
-  void _onAccelUp() {
-    _holdTimer?.cancel();
-  }
-
   @override
   Widget build(BuildContext context) {
     return _LessonScaffold(
-      hint: 'Hold the accelerator (green) for about half a second.',
+      title: 'Pedals',
+      bullets: const [
+        'Accelerator (green): speed up.',
+        'Brake (red): slow down.',
+        'Release both: car coasts.',
+      ],
       child: Align(
         alignment: Alignment.centerLeft,
         child: Padding(
           padding: const EdgeInsets.only(left: 24),
           child: PedalsWidget(
-            onAcceleratorDown: _onAccelDown,
-            onAcceleratorUp: _onAccelUp,
+            onAcceleratorDown: () {},
+            onAcceleratorUp: () {},
             onBrakeDown: () {},
             onBrakeUp: () {},
           ),
@@ -596,25 +500,47 @@ class _PedalsLessonBodyState extends State<_PedalsLessonBody> {
 }
 
 class _LessonScaffold extends StatelessWidget {
-  final String hint;
+  final String title;
+  final List<String> bullets;
   final Widget child;
 
-  const _LessonScaffold({required this.hint, required this.child});
+  const _LessonScaffold({
+    required this.title,
+    required this.bullets,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final headingStyle = Theme.of(context).textTheme.titleMedium?.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        );
+    final bulletStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+          color: Colors.white70,
+          height: 1.3,
+        );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Text(
-            hint,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.white70,
-                  height: 1.3,
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white10,
+            border: Border.all(color: Colors.white24),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: headingStyle),
+              const SizedBox(height: 8),
+              for (final item in bullets)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('• $item', style: bulletStyle),
                 ),
+            ],
           ),
         ),
         Expanded(child: child),

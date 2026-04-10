@@ -1,0 +1,18 @@
+Step 1: Configure Tiled Properties
+First, let's give these zones the data your game engine needs.
+
+The Yellow Box (Speed Zone):
+
+Select the yellow boxes.
+
+Change their Class to Zone_SpeedLimit.
+
+Add a Custom Property: Name: max_speed, Type: float (or int), Value: 30 (or whatever speed your game logic uses for slow driving).
+
+The Grey Box (Zig-Zag / Crossing Zone):
+
+Select the grey boxes.
+
+Ensure their Class is Zig_Zag.
+
+Add a Custom Property: Name: wait_time, Type: float, Value: 3.0 (This means a 3-second countdown).

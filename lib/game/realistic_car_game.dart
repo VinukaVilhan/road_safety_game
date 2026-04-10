@@ -46,6 +46,34 @@ class _MidTurnZone {
   });
 }
 
+class DrivingAttemptSummary {
+  final bool passed;
+  final String? failureMessage;
+  final Duration timeSpent;
+  final String expectedTurnSignal;
+  final bool enteredApproachZone;
+  final bool signaledCorrectlyInApproachZone;
+  final bool enteredMidTurnZone;
+  final bool hadCorrectSignalInMidTurnZone;
+  final bool reachedFinishZone;
+  final int nonCrashBumpCount;
+  final int score;
+
+  const DrivingAttemptSummary({
+    required this.passed,
+    required this.failureMessage,
+    required this.timeSpent,
+    required this.expectedTurnSignal,
+    required this.enteredApproachZone,
+    required this.signaledCorrectlyInApproachZone,
+    required this.enteredMidTurnZone,
+    required this.hadCorrectSignalInMidTurnZone,
+    required this.reachedFinishZone,
+    required this.nonCrashBumpCount,
+    required this.score,
+  });
+}
+
 /// Tiled: rotation in degrees clockwise around ([ox], [oy]) (pixel space, Y down).
 Offset _tiledRotateLocal(double lx, double ly, double rotationDeg) {
   if (rotationDeg == 0) return Offset(lx, ly);
@@ -136,6 +164,21 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   final List<_MidTurnZone> _midTurnZones = [];
   int _lastCompletedStepId = 0;
   bool _testFinished = false;
+  DateTime? _attemptStartedAt;
+  bool _enteredApproachZone = false;
+  bool _signalOkInApproachZone = false;
+  bool _enteredMidTurnZone = false;
+  bool _midTurnSignalWasCorrect = false;
+  bool _reachedFinishZone = false;
+  String? _latestFailureMessage;
+  int _nonCrashBumpCount = 0;
+  DateTime? _lastNonCrashBumpAt;
+  final ValueNotifier<int?> roadCrossingCountdown = ValueNotifier<int?>(null);
+  bool _roadCrossingStopActive = false;
+  bool _roadCrossingStopCompleted = false;
+  int? _roadCrossingStopStepId;
+  double _roadCrossingStopElapsed = 0.0;
+  static const double _roadCrossingStopDurationSec = 3.0;
 
   RealisticCarGame({
     this.mapAsset,
@@ -145,10 +188,14 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     this.turnSignalLeft,
     this.turnSignalRight,
   });
+
+  /// True while the zebra-crossing wait countdown is running (car in zone + Park).
+  bool get isRoadCrossingStopActive => _roadCrossingStopActive;
   
   @override
   Future<void> onLoad() async {
     super.onLoad();
+    _attemptStartedAt = DateTime.now();
     
     print('[DEBUG] onLoad() - Game size: ${size.x} x ${size.y}');
     
@@ -342,10 +389,12 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
 
         if (zoneClassLower != 'zone_check' &&
             zoneClassLower != 'zone_finish' &&
+            zoneClassLower != 'finish_zone' &&
             zoneClassLower != 'zone_fail_wt' &&
             zoneClassLower != 'zone_fail_it' &&
             layerClassLower != 'zone_check' &&
             layerClassLower != 'zone_finish' &&
+            layerClassLower != 'finish_zone' &&
             layerClassLower != 'zone_fail_wt' &&
             layerClassLower != 'zone_fail_it') {
           continue;
@@ -448,6 +497,20 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _testFinished = false;
     _zonesInsidePreviousFrame.clear();
     _lastCompletedStepId = 0;
+    _attemptStartedAt = DateTime.now();
+    _enteredApproachZone = false;
+    _signalOkInApproachZone = false;
+    _enteredMidTurnZone = false;
+    _midTurnSignalWasCorrect = false;
+    _reachedFinishZone = false;
+    _latestFailureMessage = null;
+    _nonCrashBumpCount = 0;
+    _lastNonCrashBumpAt = null;
+    _roadCrossingStopActive = false;
+    _roadCrossingStopCompleted = false;
+    _roadCrossingStopStepId = null;
+    _roadCrossingStopElapsed = 0.0;
+    roadCrossingCountdown.value = null;
     final c = car;
     if (c == null) return;
     c.velocity = Vector2.zero();
@@ -469,8 +532,81 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   @override
   void update(double dt) {
     super.update(dt);
+    _updateRoadCrossingParkCountdown(dt);
     _updateMidTurnSignalValidation();
     _updateDrivingRuleZones();
+  }
+
+  /// [road-crossing.tmx]: countdown runs only inside a Zone_Check / Zone_Approach
+  /// while the car is in **Park (P)**. Leaving the zone or shifting out of P pauses
+  /// and resets the timer.
+  void _updateRoadCrossingParkCountdown(double dt) {
+    if (!_isRoadCrossingMap() || _testFinished || car == null) return;
+
+    if (_roadCrossingStopCompleted) {
+      if (roadCrossingCountdown.value != null) {
+        roadCrossingCountdown.value = null;
+      }
+      _roadCrossingStopActive = false;
+      return;
+    }
+
+    final carRect = Rect.fromCenter(
+      center: Offset(car!.position.x, car!.position.y),
+      width: car!.size.x,
+      height: car!.size.y,
+    );
+
+    int? stepFromZone;
+    var inApproachZone = false;
+    for (final zone in _drivingZones) {
+      if (_zoneKindForScenario(zone.zoneClass) != 'zone_check') continue;
+      if (!carRect.overlaps(zone.rect)) continue;
+      inApproachZone = true;
+      stepFromZone ??= zone.stepId;
+    }
+
+    final parkedInZone = inApproachZone && car!.isInPark;
+
+    if (parkedInZone) {
+      if (!_roadCrossingStopActive) {
+        _roadCrossingStopActive = true;
+        _roadCrossingStopElapsed = 0.0;
+        _roadCrossingStopStepId = stepFromZone;
+        roadCrossingCountdown.value = _roadCrossingStopDurationSec.ceil();
+        car!.coast();
+      }
+    } else {
+      if (_roadCrossingStopActive) {
+        _roadCrossingStopActive = false;
+        _roadCrossingStopElapsed = 0.0;
+        roadCrossingCountdown.value = null;
+      }
+    }
+
+    if (!_roadCrossingStopActive) return;
+
+    _roadCrossingStopElapsed += dt;
+    final remaining = (_roadCrossingStopDurationSec - _roadCrossingStopElapsed)
+        .clamp(0.0, _roadCrossingStopDurationSec);
+    final countdown = remaining <= 0 ? 0 : remaining.ceil();
+    if (roadCrossingCountdown.value != countdown) {
+      roadCrossingCountdown.value = countdown;
+    }
+    if (_roadCrossingStopElapsed < _roadCrossingStopDurationSec) return;
+
+    _roadCrossingStopActive = false;
+    _roadCrossingStopCompleted = true;
+    roadCrossingCountdown.value = null;
+    if (_roadCrossingStopStepId != null &&
+        _roadCrossingStopStepId! == _lastCompletedStepId + 1) {
+      _lastCompletedStepId = _roadCrossingStopStepId!;
+    }
+  }
+
+  bool _isRoadCrossingMap() {
+    final asset = mapAsset?.toLowerCase() ?? '';
+    return asset.contains('road-crossing');
   }
 
   String _sanitizeFailMessage(String? raw) {
@@ -485,7 +621,94 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   }
 
   String _zoneKindForScenario(String zoneClass) {
-    return zoneClass;
+    final normalized = zoneClass.trim().toLowerCase();
+    // Allow map authors to use a clearer name for the pre-turn checkpoint.
+    if (normalized == 'zone_approach') {
+      return 'zone_check';
+    }
+    // Some maps use Finish_Zone as a restricted area to avoid.
+    if (normalized == 'finish_zone') {
+      return 'zone_fail_wt';
+    }
+    return normalized;
+  }
+
+  String _expectedSignalForSummary() {
+    for (final zone in _midTurnZones) {
+      if (zone.expectedSignal == 'left' || zone.expectedSignal == 'right') {
+        return zone.expectedSignal;
+      }
+    }
+    return 'none';
+  }
+
+  bool _signalsMatchExpectedForSummary(String expected) {
+    final leftOn = turnSignalLeft?.value ?? false;
+    final rightOn = turnSignalRight?.value ?? false;
+    return _turnSignalsMatchExpected(expected, leftOn, rightOn);
+  }
+
+  int _computeScore(Duration elapsed) {
+    final expected = _expectedSignalForSummary();
+    var score = 0;
+    if (_enteredApproachZone) score += 20;
+    if (_signalOkInApproachZone) score += 20;
+    if (_midTurnSignalWasCorrect) score += 30;
+    if (_reachedFinishZone) score += 20;
+
+    // Time bonus (0-10): full at <=30s, linearly decays to 0 at >=120s.
+    final ms = elapsed.inMilliseconds;
+    int timeBonus;
+    if (ms <= 30000) {
+      timeBonus = 10;
+    } else if (ms >= 120000) {
+      timeBonus = 0;
+    } else {
+      final t = (ms - 30000) / 90000.0; // 0..1
+      timeBonus = ((1 - t) * 10).round().clamp(0, 10);
+    }
+    score += timeBonus;
+
+    // Small guard: if expected is none, don't over-penalize approach signaling.
+    if (expected == 'none' && !_signalOkInApproachZone && score >= 5) {
+      score += 5;
+    }
+    // Penalize minor obstacle bumps (non-crash) a little, with a cap.
+    final bumpPenalty = (_nonCrashBumpCount * 2).clamp(0, 20);
+    score -= bumpPenalty;
+    return score.clamp(0, 100);
+  }
+
+  DrivingAttemptSummary getAttemptSummary({bool? passed, String? failureMessage}) {
+    final now = DateTime.now();
+    final startedAt = _attemptStartedAt ?? now;
+    final elapsed = now.difference(startedAt);
+    final expected = _expectedSignalForSummary();
+    final resolvedFailure = failureMessage ?? _latestFailureMessage;
+    return DrivingAttemptSummary(
+      passed: passed ?? (_testFinished && resolvedFailure == null),
+      failureMessage: resolvedFailure,
+      timeSpent: elapsed,
+      expectedTurnSignal: expected,
+      enteredApproachZone: _enteredApproachZone,
+      signaledCorrectlyInApproachZone: _signalOkInApproachZone,
+      enteredMidTurnZone: _enteredMidTurnZone,
+      hadCorrectSignalInMidTurnZone: _midTurnSignalWasCorrect,
+      reachedFinishZone: _reachedFinishZone,
+      nonCrashBumpCount: _nonCrashBumpCount,
+      score: _computeScore(elapsed),
+    );
+  }
+
+  void registerNonCrashBump() {
+    final now = DateTime.now();
+    // Debounce to avoid counting a continuous scrape as dozens of bumps.
+    if (_lastNonCrashBumpAt != null &&
+        now.difference(_lastNonCrashBumpAt!).inMilliseconds < 700) {
+      return;
+    }
+    _lastNonCrashBumpAt = now;
+    _nonCrashBumpCount += 1;
   }
 
   bool _turnSignalsMatchExpected(String expected, bool leftOn, bool rightOn) {
@@ -542,12 +765,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     // on/off mid-junction is still validated (e.g. straight path + blinker on).
     for (final zone in _midTurnZones) {
       if (!zone.hitPath.contains(center)) continue;
+      _enteredMidTurnZone = true;
       if (!_turnSignalsMatchExpected(zone.expectedSignal, leftOn, rightOn)) {
         _testFinished = true;
         car?.coast();
-        onTestFailed?.call(_midTurnFailMessage(zone, leftOn, rightOn));
+        final message = _midTurnFailMessage(zone, leftOn, rightOn);
+        _latestFailureMessage = message;
+        onTestFailed?.call(message);
         return;
       }
+      _midTurnSignalWasCorrect = true;
     }
   }
 
@@ -578,7 +805,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     final zoneKind = _zoneKindForScenario(zone.zoneClass);
 
     if (zoneKind == 'zone_check') {
+      _enteredApproachZone = true;
+      final expected = _expectedSignalForSummary();
+      if (_signalsMatchExpectedForSummary(expected)) {
+        _signalOkInApproachZone = true;
+      }
       final step = zone.stepId;
+      if (_isRoadCrossingMap()) {
+        // Step advances only after park + countdown in [_updateRoadCrossingParkCountdown].
+        return;
+      }
       if (step == null) return;
       if (step == _lastCompletedStepId + 1) {
         _lastCompletedStepId = step;
@@ -587,6 +823,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     }
 
     if (zoneKind == 'zone_finish') {
+      _reachedFinishZone = true;
       final requiredPreviousStep = (zone.stepId ?? 1) - 1;
       if (_lastCompletedStepId < requiredPreviousStep) {
         return;
@@ -603,9 +840,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       final defaultMessage = zoneKind == 'zone_fail_it'
           ? 'Driving in oncoming traffic!'
           : 'Wrong Turn!';
-      onTestFailed?.call(
-        zone.failMessage?.isNotEmpty == true ? zone.failMessage! : defaultMessage,
-      );
+      final message =
+          zone.failMessage?.isNotEmpty == true ? zone.failMessage! : defaultMessage;
+      _latestFailureMessage = message;
+      onTestFailed?.call(message);
     }
   }
 
@@ -613,7 +851,9 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     if (_testFinished) return;
     _testFinished = true;
     car?.coast();
-    onTestFailed?.call('High-speed crash! You hit an obstacle too fast.');
+    const message = 'High-speed crash! You hit an obstacle too fast.';
+    _latestFailureMessage = message;
+    onTestFailed?.call(message);
   }
   
   @override
@@ -799,6 +1039,8 @@ class Car extends SpriteComponent {
           acceleration = Vector2.zero();
           if (impactSpeed >= RealisticCarGame.wallHighSpeedCrashThreshold) {
             realisticGame._failFromHighSpeedWallCrash();
+          } else {
+            realisticGame.registerNonCrashBump();
           }
           break;
         }

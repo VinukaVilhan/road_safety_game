@@ -49,15 +49,26 @@ class GearboxWidget extends StatelessWidget {
     );
   }
 
+  int get _reverseGearIndex {
+    final idx = gears.lastIndexOf('R');
+    if (idx >= 0) return idx;
+    return gears.isNotEmpty ? gears.length - 1 : 0;
+  }
+
+  String _safeGearLabel(int index, {String fallback = '-'}) {
+    if (index < 0 || index >= gears.length) return fallback;
+    return gears[index];
+  }
+
   Widget _buildGearPositionOverlays() {
     return Stack(
       children: [
         // Reverse (R) - Top Left
         _buildGearHotspot(
-          gear: 6, // R position in array
+          gear: _reverseGearIndex,
           left: 15,
           top: 51,
-          label: gears[6],
+          label: _safeGearLabel(_reverseGearIndex, fallback: 'R'),
         ),
         
         // First Gear (1) - Top Right
@@ -65,7 +76,7 @@ class GearboxWidget extends StatelessWidget {
           gear: 1, // 1st gear position
           left: 46,
           top: 51,
-          label: gears[1],
+          label: _safeGearLabel(1, fallback: '1'),
         ),
         
         // Second Gear (2) - Below 1st
@@ -73,7 +84,7 @@ class GearboxWidget extends StatelessWidget {
           gear: 2,
           left: 77,
           top: 51,
-          label: gears[2],
+          label: _safeGearLabel(2, fallback: '2'),
         ),
         
         // Third Gear (3) - Center Left
@@ -81,7 +92,7 @@ class GearboxWidget extends StatelessWidget {
           gear: 3,
           left: 15,
           top: 100,
-          label: gears[3],
+          label: _safeGearLabel(3, fallback: '3'),
         ),
         
         // Fourth Gear (4) - Center Right
@@ -89,7 +100,7 @@ class GearboxWidget extends StatelessWidget {
           gear: 4,
           left: 46,
           top: 100,
-          label: gears[4],
+          label: _safeGearLabel(4, fallback: '4'),
         ),
         
         // Park (P) - Bottom Center
@@ -97,7 +108,7 @@ class GearboxWidget extends StatelessWidget {
           gear: 0, // P position
           left: 77,
           top: 100,
-          label: gears[0],
+          label: _safeGearLabel(0, fallback: 'P'),
         ),
       ],
     );
@@ -166,9 +177,9 @@ class GearboxWidget extends StatelessWidget {
 
   // Helper method to get gear-specific colors
   Color _getGearColor() {
+    if (currentGear == _reverseGearIndex) return Colors.red; // Reverse
     switch (currentGear) {
       case 0: return Colors.orange;    // Park
-      case 6: return Colors.red;       // Reverse
       case 1: return Colors.green;     // 1st gear
       case 2: return Colors.lightGreen; // 2nd gear
       case 3: return Colors.blue;      // 3rd gear

@@ -62,7 +62,9 @@ class GameScreenState extends State<GameScreen> {
   bool _leftTurnSignalOn = false;
   bool _rightTurnSignalOn = false;
   Timer? _turnSignalBlinkTimer;
+  Timer? _turnSignalAutoOffTimer;
   bool _turnSignalBlinkVisible = true;
+  static const Duration _turnSignalHoldDuration = Duration(seconds: 4);
 
   @override
   void initState() {
@@ -93,6 +95,7 @@ class GameScreenState extends State<GameScreen> {
   void dispose() {
     _turnSignalTapTimer?.cancel();
     _turnSignalBlinkTimer?.cancel();
+    _turnSignalAutoOffTimer?.cancel();
     _steeringRotation.dispose();
     _turnSignalLeftNotifier.dispose();
     _turnSignalRightNotifier.dispose();
@@ -140,6 +143,7 @@ class GameScreenState extends State<GameScreen> {
           // UI overlay - Using Positioned widgets for better control
           SafeArea(
             child: Stack(
+              fit: StackFit.expand,
               children: [
                 // Behind HUD: multi-tap turn signals (does not steal hits from controls above).
                 Positioned.fill(
@@ -343,6 +347,40 @@ class GameScreenState extends State<GameScreen> {
                       ),
                     ),
                   ),
+
+                ValueListenableBuilder<int?>(
+                  valueListenable: game.roadCrossingCountdown,
+                  builder: (context, secondsLeft, _) {
+                    if (secondsLeft == null) return const SizedBox.shrink();
+                    return Positioned.fill(
+                      child: IgnorePointer(
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.25),
+                              ),
+                            ),
+                            child: Text(
+                              'Pedestrian crossing: wait $secondsLeft',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -381,6 +419,20 @@ class GameScreenState extends State<GameScreen> {
     _turnSignalBlinkVisible = true;
   }
 
+  void _scheduleTurnSignalAutoOff() {
+    _turnSignalAutoOffTimer?.cancel();
+    _turnSignalAutoOffTimer = Timer(_turnSignalHoldDuration, () {
+      if (!mounted) return;
+      if (!_leftTurnSignalOn && !_rightTurnSignalOn) return;
+      _stopTurnSignalBlink();
+      setState(() {
+        _leftTurnSignalOn = false;
+        _rightTurnSignalOn = false;
+      });
+      _syncTurnSignalsToGame();
+    });
+  }
+
   void _onTurnSignalPointerDown(PointerDownEvent event) {
     if (_resultDialogVisible) return;
     final layerBox =
@@ -392,6 +444,7 @@ class GameScreenState extends State<GameScreen> {
     if (_leftTurnSignalOn || _rightTurnSignalOn) {
       _turnSignalTapTimer?.cancel();
       _turnSignalTapCount = 0;
+      _turnSignalAutoOffTimer?.cancel();
       _stopTurnSignalBlink();
       setState(() {
         _leftTurnSignalOn = false;
@@ -414,6 +467,7 @@ class GameScreenState extends State<GameScreen> {
         });
         _syncTurnSignalsToGame();
         _startTurnSignalBlink();
+        _scheduleTurnSignalAutoOff();
       } else if (n >= 3) {
         setState(() {
           _rightTurnSignalOn = true;
@@ -421,6 +475,7 @@ class GameScreenState extends State<GameScreen> {
         });
         _syncTurnSignalsToGame();
         _startTurnSignalBlink();
+        _scheduleTurnSignalAutoOff();
       }
     });
   }
@@ -556,6 +611,7 @@ class GameScreenState extends State<GameScreen> {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
     UiSoundService().playLevelPassed();
+    final summary = game.getAttemptSummary(passed: true);
 
     showDialog(
       context: context,
@@ -564,10 +620,7 @@ class GameScreenState extends State<GameScreen> {
         return AlertDialog(
           backgroundColor: const Color(0xFF1a1a2e),
           title: const Text('Test Passed!', style: TextStyle(color: Colors.white)),
-          content: const Text(
-            'Great drive. You followed the route correctly.',
-            style: TextStyle(color: Colors.white70),
-          ),
+          content: _buildAttemptSummaryContent(summary),
           actions: [
             TextButton(
               onPressed: () async {
@@ -591,6 +644,7 @@ class GameScreenState extends State<GameScreen> {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
     UiSoundService().playLevelFailed();
+    final summary = game.getAttemptSummary(passed: false, failureMessage: message);
 
     showDialog(
       context: context,
@@ -599,10 +653,7 @@ class GameScreenState extends State<GameScreen> {
         return AlertDialog(
           backgroundColor: const Color(0xFF1a1a2e),
           title: const Text('Test Failed', style: TextStyle(color: Colors.white)),
-          content: Text(
-            message,
-            style: const TextStyle(color: Colors.white70),
-          ),
+          content: _buildAttemptSummaryContent(summary),
           actions: [
             TextButton(
               onPressed: () {
@@ -723,6 +774,95 @@ class GameScreenState extends State<GameScreen> {
           ),
         );
       },
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  String _signalLabel(String expected) {
+    switch (expected) {
+      case 'left':
+        return 'Left signal';
+      case 'right':
+        return 'Right signal';
+      default:
+        return 'Turn signal';
+    }
+  }
+
+  Widget _buildCheckRow(String label, bool ok) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          ok ? Icons.check_circle : Icons.cancel,
+          color: ok ? Colors.greenAccent : Colors.redAccent,
+          size: 18,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(color: Colors.white70),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAttemptSummaryContent(DrivingAttemptSummary summary) {
+    final signalName = _signalLabel(summary.expectedTurnSignal);
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!summary.passed && summary.failureMessage != null) ...[
+            Text(
+              summary.failureMessage!,
+              style: const TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 10),
+          ],
+          _buildCheckRow('Entered approach zone (yellow).', summary.enteredApproachZone),
+          const SizedBox(height: 6),
+          _buildCheckRow(
+            'Used $signalName in approach zone.',
+            summary.signaledCorrectlyInApproachZone,
+          ),
+          const SizedBox(height: 6),
+          _buildCheckRow('Entered turn execution zone (purple).', summary.enteredMidTurnZone),
+          const SizedBox(height: 6),
+          _buildCheckRow(
+            'Kept $signalName while turning.',
+            summary.hadCorrectSignalInMidTurnZone,
+          ),
+          const SizedBox(height: 6),
+          _buildCheckRow('Reached finish zone (green).', summary.reachedFinishZone),
+          const SizedBox(height: 6),
+          _buildCheckRow(
+            'Minor obstacle bumps (non-crash): ${summary.nonCrashBumpCount}',
+            summary.nonCrashBumpCount == 0,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Time spent: ${_formatDuration(summary.timeSpent)}',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Score: ${summary.score}/100',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

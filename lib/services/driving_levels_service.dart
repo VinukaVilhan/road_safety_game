@@ -15,6 +15,8 @@ class DrivingLevelsService {
         return _emergencySituationsLevels;
       case DrivingTopic.Parking:
         return _parkingLevels;
+      case DrivingTopic.Practice:
+        return _practiceLevels;
     }
   }
 
@@ -26,6 +28,7 @@ class DrivingLevelsService {
       ..._roadSignsLevels,
       ..._emergencySituationsLevels,
       ..._parkingLevels,
+      ..._practiceLevels,
     ];
   }
 
@@ -186,6 +189,8 @@ class DrivingLevelsService {
       moduleId: roadMarkingsModuleOther,
       topicLevel: 3,
       unlockRequirementIds: ["markings_dashed"],
+      mapAsset: 'road-crossing.tmx',
+      scenarioId: 'markings_stop_yield',
     ),
     GameLevel(
       id: "markings_zebra",
@@ -193,11 +198,13 @@ class DrivingLevelsService {
       name: "Zebra Crossings",
       description: "Pedestrian crossings and right of way",
       difficulty: LevelDifficulty.Medium,
-      isUnlocked: false,
+      isUnlocked: true,
       topic: DrivingTopic.RoadMarkings,
       moduleId: roadMarkingsModuleOther,
       topicLevel: 4,
-      unlockRequirementIds: ["markings_stop_yield"],
+      unlockRequirementIds: [],
+      mapAsset: 'road-crossing.tmx',
+      scenarioId: 'markings_zebra_crossing',
     ),
     GameLevel(
       id: "markings_bus_lanes",
@@ -390,4 +397,7 @@ class DrivingLevelsService {
       unlockRequirementIds: ["parking_parallel_advanced", "parking_angle"],
     ),
   ];
+
+  // ========== PRACTICE MODULE ==========
+  static final List<GameLevel> _practiceLevels = [];
 }

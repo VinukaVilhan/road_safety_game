@@ -51,6 +51,7 @@ enum DrivingTopic {
   RoadSigns,
   EmergencySituations,
   Parking,
+  Practice,
 }
 
 extension DrivingTopicExtension on DrivingTopic {
@@ -66,6 +67,8 @@ extension DrivingTopicExtension on DrivingTopic {
         return 'EMERGENCY SITUATIONS';
       case DrivingTopic.Parking:
         return 'PARKING';
+      case DrivingTopic.Practice:
+        return 'CONTROLS';
     }
   }
   
@@ -81,6 +84,8 @@ extension DrivingTopicExtension on DrivingTopic {
         return 'Handle braking, breakdowns, and emergencies';
       case DrivingTopic.Parking:
         return 'Practice parallel, perpendicular, and angle parking';
+      case DrivingTopic.Practice:
+        return 'Learn what each control does';
     }
   }
   
@@ -96,6 +101,8 @@ extension DrivingTopicExtension on DrivingTopic {
         return Icons.warning_amber_rounded;
       case DrivingTopic.Parking:
         return Icons.local_parking;
+      case DrivingTopic.Practice:
+        return Icons.sports_motorsports;
     }
   }
 }

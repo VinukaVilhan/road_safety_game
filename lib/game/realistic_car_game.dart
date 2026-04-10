@@ -17,12 +17,28 @@ bool _isTiledCollisionObjectLayer(ObjectGroup layer) {
   return cls == 'collision_box';
 }
 
+double? _readNumericPropertyAsDouble(CustomProperties properties, String name) {
+  try {
+    final intValue = properties.getValue<int>(name);
+    if (intValue != null) return intValue.toDouble();
+  } catch (_) {
+    // Property exists but is not int; fall through to double read.
+  }
+  try {
+    return properties.getValue<double>(name);
+  } catch (_) {
+    return null;
+  }
+}
+
 class _DrivingZone {
   final int objectId;
   final Rect rect;
   final String zoneClass;
   final int? stepId;
   final String? failMessage;
+  final double? maxSpeed;
+  final double? waitTimeSec;
 
   const _DrivingZone({
     required this.objectId,
@@ -30,6 +46,8 @@ class _DrivingZone {
     required this.zoneClass,
     this.stepId,
     this.failMessage,
+    this.maxSpeed,
+    this.waitTimeSec,
   });
 }
 
@@ -51,6 +69,7 @@ class DrivingAttemptSummary {
   final String? failureMessage;
   final Duration timeSpent;
   final String expectedTurnSignal;
+  final bool waitedAtRoadCrossing;
   final bool enteredApproachZone;
   final bool signaledCorrectlyInApproachZone;
   final bool enteredMidTurnZone;
@@ -64,6 +83,7 @@ class DrivingAttemptSummary {
     required this.failureMessage,
     required this.timeSpent,
     required this.expectedTurnSignal,
+    required this.waitedAtRoadCrossing,
     required this.enteredApproachZone,
     required this.signaledCorrectlyInApproachZone,
     required this.enteredMidTurnZone,
@@ -174,11 +194,14 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   int _nonCrashBumpCount = 0;
   DateTime? _lastNonCrashBumpAt;
   final ValueNotifier<int?> roadCrossingCountdown = ValueNotifier<int?>(null);
+  final ValueNotifier<String?> roadCrossingApproachHint =
+      ValueNotifier<String?>(null);
   bool _roadCrossingStopActive = false;
-  bool _roadCrossingStopCompleted = false;
+  bool _roadCrossingStopSatisfied = false;
   int? _roadCrossingStopStepId;
   double _roadCrossingStopElapsed = 0.0;
   static const double _roadCrossingStopDurationSec = 3.0;
+  _DrivingZone? _activeRoadCrossingWaitZone;
 
   RealisticCarGame({
     this.mapAsset,
@@ -298,7 +321,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       }
     }
     if (baseLayer != null) {
-      final frictionProp = baseLayer.properties.getValue<double>('friction');
+      final frictionProp =
+          _readNumericPropertyAsDouble(baseLayer.properties, 'friction');
       if (frictionProp != null) {
         _baseLayerFriction = frictionProp * 400.0; // scale tile friction into force
         print('[DEBUG] _setupRoad() - Base layer friction from TMX: $frictionProp -> $_baseLayerFriction');
@@ -372,6 +396,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     for (final layer in tiledMap.tileMap.map.layers.whereType<ObjectGroup>()) {
       final layerClass = (layer.class_ ?? '').trim();
       final layerClassLower = layerClass.toLowerCase();
+      final layerNameLower = layer.name.trim().toLowerCase();
       final layerStepId = layer.properties.getValue<int>('step_id');
       final layerFailMessage = layer.properties.getValue<String>('fail_message');
 
@@ -382,21 +407,19 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
 
         final objectClass = obj.class_.trim();
         final objectType = obj.type.trim();
+        final objectName = obj.name.trim();
         final zoneClass = objectClass.isNotEmpty
             ? objectClass
-            : (objectType.isNotEmpty ? objectType : layerClass);
+            : (objectType.isNotEmpty
+                ? objectType
+                : (objectName.isNotEmpty
+                    ? objectName
+                    : (layerClass.isNotEmpty ? layerClass : layer.name)));
         final zoneClassLower = zoneClass.toLowerCase();
 
-        if (zoneClassLower != 'zone_check' &&
-            zoneClassLower != 'zone_finish' &&
-            zoneClassLower != 'finish_zone' &&
-            zoneClassLower != 'zone_fail_wt' &&
-            zoneClassLower != 'zone_fail_it' &&
-            layerClassLower != 'zone_check' &&
-            layerClassLower != 'zone_finish' &&
-            layerClassLower != 'finish_zone' &&
-            layerClassLower != 'zone_fail_wt' &&
-            layerClassLower != 'zone_fail_it') {
+        if (!_isSupportedDrivingZoneLabel(zoneClassLower) &&
+            !_isSupportedDrivingZoneLabel(layerClassLower) &&
+            !_isSupportedDrivingZoneLabel(layerNameLower)) {
           continue;
         }
 
@@ -405,6 +428,11 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
         final stepId = obj.properties.getValue<int>('step_id') ?? layerStepId;
         final failMessage =
             obj.properties.getValue<String>('fail_message') ?? layerFailMessage;
+        final maxSpeed = _readNumericPropertyAsDouble(obj.properties, 'max_speed') ??
+            _readNumericPropertyAsDouble(layer.properties, 'max_speed');
+        final waitTimeSec =
+            _readNumericPropertyAsDouble(obj.properties, 'wait_time') ??
+                _readNumericPropertyAsDouble(layer.properties, 'wait_time');
 
         _drivingZones.add(
           _DrivingZone(
@@ -413,6 +441,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
             zoneClass: effectiveZoneClass.toLowerCase(),
             stepId: stepId,
             failMessage: _sanitizeFailMessage(failMessage),
+            maxSpeed: maxSpeed,
+            waitTimeSec: waitTimeSec,
           ),
         );
       }
@@ -507,10 +537,12 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _nonCrashBumpCount = 0;
     _lastNonCrashBumpAt = null;
     _roadCrossingStopActive = false;
-    _roadCrossingStopCompleted = false;
+    _roadCrossingStopSatisfied = false;
     _roadCrossingStopStepId = null;
     _roadCrossingStopElapsed = 0.0;
+    _activeRoadCrossingWaitZone = null;
     roadCrossingCountdown.value = null;
+    roadCrossingApproachHint.value = null;
     final c = car;
     if (c == null) return;
     c.velocity = Vector2.zero();
@@ -532,54 +564,49 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   @override
   void update(double dt) {
     super.update(dt);
+    _updateRoadCrossingApproachHint();
     _updateRoadCrossingParkCountdown(dt);
+    _enforceSpeedLimitZones();
     _updateMidTurnSignalValidation();
     _updateDrivingRuleZones();
   }
 
-  /// [road-crossing.tmx]: countdown runs only inside a Zone_Check / Zone_Approach
+  /// [road-crossing.tmx]: countdown runs only inside a Zig_Zag (grey) wait zone
   /// while the car is in **Park (P)**. Leaving the zone or shifting out of P pauses
   /// and resets the timer.
   void _updateRoadCrossingParkCountdown(double dt) {
     if (!_isRoadCrossingMap() || _testFinished || car == null) return;
 
-    if (_roadCrossingStopCompleted) {
-      if (roadCrossingCountdown.value != null) {
-        roadCrossingCountdown.value = null;
-      }
-      _roadCrossingStopActive = false;
-      return;
-    }
-
-    final carRect = Rect.fromCenter(
-      center: Offset(car!.position.x, car!.position.y),
-      width: car!.size.x,
-      height: car!.size.y,
-    );
-
     int? stepFromZone;
-    var inApproachZone = false;
+    _DrivingZone? activeWaitZone;
+    var allWheelsInWaitZone = false;
     for (final zone in _drivingZones) {
-      if (_zoneKindForScenario(zone.zoneClass) != 'zone_check') continue;
-      if (!carRect.overlaps(zone.rect)) continue;
-      inApproachZone = true;
+      final zoneKind = _zoneKindForScenario(zone.zoneClass);
+      if (zoneKind != 'zig_zag') continue;
+      if (!_areAllWheelsInsideRect(zone.rect)) continue;
+      allWheelsInWaitZone = true;
+      activeWaitZone ??= zone;
       stepFromZone ??= zone.stepId;
     }
 
-    final parkedInZone = inApproachZone && car!.isInPark;
+    final parkedInZone = allWheelsInWaitZone && car!.isInPark;
+    final waitDurationSec =
+        activeWaitZone?.waitTimeSec ?? _roadCrossingStopDurationSec;
 
-    if (parkedInZone) {
+    if (parkedInZone && !_roadCrossingStopSatisfied) {
       if (!_roadCrossingStopActive) {
         _roadCrossingStopActive = true;
         _roadCrossingStopElapsed = 0.0;
         _roadCrossingStopStepId = stepFromZone;
-        roadCrossingCountdown.value = _roadCrossingStopDurationSec.ceil();
+        _activeRoadCrossingWaitZone = activeWaitZone;
+        roadCrossingCountdown.value = waitDurationSec.ceil();
         car!.coast();
       }
     } else {
       if (_roadCrossingStopActive) {
         _roadCrossingStopActive = false;
         _roadCrossingStopElapsed = 0.0;
+        _activeRoadCrossingWaitZone = null;
         roadCrossingCountdown.value = null;
       }
     }
@@ -587,26 +614,145 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     if (!_roadCrossingStopActive) return;
 
     _roadCrossingStopElapsed += dt;
-    final remaining = (_roadCrossingStopDurationSec - _roadCrossingStopElapsed)
-        .clamp(0.0, _roadCrossingStopDurationSec);
+    final activeWaitSec =
+        _activeRoadCrossingWaitZone?.waitTimeSec ?? waitDurationSec;
+    final remaining = (activeWaitSec - _roadCrossingStopElapsed)
+        .clamp(0.0, activeWaitSec);
     final countdown = remaining <= 0 ? 0 : remaining.ceil();
     if (roadCrossingCountdown.value != countdown) {
       roadCrossingCountdown.value = countdown;
     }
-    if (_roadCrossingStopElapsed < _roadCrossingStopDurationSec) return;
+    if (_roadCrossingStopElapsed < activeWaitSec) return;
 
     _roadCrossingStopActive = false;
-    _roadCrossingStopCompleted = true;
+    _roadCrossingStopSatisfied = true;
+    _activeRoadCrossingWaitZone = null;
     roadCrossingCountdown.value = null;
-    if (_roadCrossingStopStepId != null &&
-        _roadCrossingStopStepId! == _lastCompletedStepId + 1) {
-      _lastCompletedStepId = _roadCrossingStopStepId!;
+    if (_roadCrossingStopSatisfied) {
+      if (_roadCrossingStopStepId != null &&
+          _roadCrossingStopStepId! == _lastCompletedStepId + 1) {
+        _lastCompletedStepId = _roadCrossingStopStepId!;
+      } else if (_lastCompletedStepId == 0) {
+        // Fallback for maps where Zig_Zag wait zone has no explicit step_id.
+        _lastCompletedStepId = 1;
+      }
     }
   }
 
   bool _isRoadCrossingMap() {
     final asset = mapAsset?.toLowerCase() ?? '';
     return asset.contains('road-crossing');
+  }
+
+  void _updateRoadCrossingApproachHint() {
+    if (!_isRoadCrossingMap() || _testFinished || car == null) {
+      if (roadCrossingApproachHint.value != null) {
+        roadCrossingApproachHint.value = null;
+      }
+      return;
+    }
+
+    // Once inside the yellow approach zone, remove pre-approach guidance.
+    if (_enteredApproachZone) {
+      if (roadCrossingApproachHint.value != null) {
+        roadCrossingApproachHint.value = null;
+      }
+      return;
+    }
+
+    final carCenter = Offset(car!.position.x, car!.position.y);
+    double? nearestDistance;
+    for (final zone in _drivingZones) {
+      final zoneKind = _zoneKindForScenario(zone.zoneClass);
+      if (zoneKind != 'zone_check') continue; // yellow approach zone
+      final d = _distancePointToRect(carCenter, zone.rect);
+      if (nearestDistance == null || d < nearestDistance) {
+        nearestDistance = d;
+      }
+    }
+
+    // Strict requirement: warning is shown only from Zone_Check class areas.
+    // If no Zone_Check exists, hide the hint.
+    if (nearestDistance == null) {
+      if (roadCrossingApproachHint.value != null) {
+        roadCrossingApproachHint.value = null;
+      }
+      return;
+    }
+
+    final meters = (nearestDistance / 10).clamp(1, 999).toInt();
+    final hint = 'Slow down: zebra crossing ahead (${meters}m)';
+    if (roadCrossingApproachHint.value != hint) {
+      roadCrossingApproachHint.value = hint;
+    }
+  }
+
+  double _distancePointToRect(Offset p, Rect r) {
+    final dx = p.dx < r.left
+        ? r.left - p.dx
+        : (p.dx > r.right ? p.dx - r.right : 0.0);
+    final dy = p.dy < r.top
+        ? r.top - p.dy
+        : (p.dy > r.bottom ? p.dy - r.bottom : 0.0);
+    return math.sqrt((dx * dx) + (dy * dy));
+  }
+
+  bool _areAllWheelsInsideRect(Rect zoneRect) {
+    final c = car;
+    if (c == null) return false;
+    final center = c.position;
+    final halfW = c.size.x / 2;
+    final halfH = c.size.y / 2;
+    final cosA = math.cos(c.angle);
+    final sinA = math.sin(c.angle);
+
+    // Approximate 4 wheel contact points near each corner.
+    final wheelOffsets = <Offset>[
+      Offset(-halfW * 0.7, -halfH * 0.7),
+      Offset(halfW * 0.7, -halfH * 0.7),
+      Offset(-halfW * 0.7, halfH * 0.7),
+      Offset(halfW * 0.7, halfH * 0.7),
+    ];
+
+    for (final o in wheelOffsets) {
+      final rx = (o.dx * cosA) - (o.dy * sinA);
+      final ry = (o.dx * sinA) + (o.dy * cosA);
+      final wheelPoint = Offset(center.x + rx, center.y + ry);
+      if (!zoneRect.contains(wheelPoint)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _enforceSpeedLimitZones() {
+    if (_testFinished || car == null || _drivingZones.isEmpty) return;
+
+    final carRect = Rect.fromCenter(
+      center: Offset(car!.position.x, car!.position.y),
+      width: car!.size.x,
+      height: car!.size.y,
+    );
+
+    double? activeMaxSpeed;
+    for (final zone in _drivingZones) {
+      if (!carRect.overlaps(zone.rect)) continue;
+      final zoneKind = _zoneKindForScenario(zone.zoneClass);
+      final defaultZigZagLimit = zoneKind == 'zig_zag' ? 30.0 : null;
+      final zoneLimit = zone.maxSpeed ?? defaultZigZagLimit;
+      if (zoneKind != 'zone_speedlimit' && zoneKind != 'zig_zag' && zoneLimit == null) {
+        continue;
+      }
+      if (zoneLimit == null || zoneLimit <= 0) continue;
+      if (activeMaxSpeed == null || zoneLimit < activeMaxSpeed) {
+        activeMaxSpeed = zoneLimit;
+      }
+    }
+
+    if (activeMaxSpeed == null) return;
+    final currentSpeed = car!.velocity.length;
+    if (currentSpeed <= activeMaxSpeed) return;
+    car!.velocity = car!.velocity.normalized() * activeMaxSpeed;
   }
 
   String _sanitizeFailMessage(String? raw) {
@@ -622,15 +768,47 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
 
   String _zoneKindForScenario(String zoneClass) {
     final normalized = zoneClass.trim().toLowerCase();
-    // Allow map authors to use a clearer name for the pre-turn checkpoint.
-    if (normalized == 'zone_approach') {
+    if (normalized == 'zone_check' || normalized.startsWith('zone_check')) {
       return 'zone_check';
+    }
+    if (normalized == 'zig_zag' || normalized.startsWith('zig_zag')) {
+      return 'zig_zag';
+    }
+    if (normalized == 'zone_finish' || normalized.startsWith('zone_finish')) {
+      return 'zone_finish';
+    }
+    if (normalized == 'zone_fail_wt' || normalized.startsWith('zone_fail_wt')) {
+      return 'zone_fail_wt';
+    }
+    if (normalized == 'zone_fail_it' || normalized.startsWith('zone_fail_it')) {
+      return 'zone_fail_it';
+    }
+    if (normalized == 'zone_speedlimit' || normalized.startsWith('zone_speedlimit')) {
+      return 'zone_speedlimit';
     }
     // Some maps use Finish_Zone as a restricted area to avoid.
     if (normalized == 'finish_zone') {
       return 'zone_fail_wt';
     }
     return normalized;
+  }
+
+  bool _isSupportedDrivingZoneLabel(String raw) {
+    final v = raw.trim().toLowerCase();
+    return v == 'zone_check' ||
+        v.startsWith('zone_check') ||
+        v == 'zone_finish' ||
+        v.startsWith('zone_finish') ||
+        v == 'finish_zone' ||
+        v.startsWith('finish_zone') ||
+        v == 'zone_fail_wt' ||
+        v.startsWith('zone_fail_wt') ||
+        v == 'zone_fail_it' ||
+        v.startsWith('zone_fail_it') ||
+        v == 'zone_speedlimit' ||
+        v.startsWith('zone_speedlimit') ||
+        v == 'zig_zag' ||
+        v.startsWith('zig_zag');
   }
 
   String _expectedSignalForSummary() {
@@ -690,6 +868,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       failureMessage: resolvedFailure,
       timeSpent: elapsed,
       expectedTurnSignal: expected,
+      waitedAtRoadCrossing: _roadCrossingStopSatisfied,
       enteredApproachZone: _enteredApproachZone,
       signaledCorrectlyInApproachZone: _signalOkInApproachZone,
       enteredMidTurnZone: _enteredMidTurnZone,
@@ -883,21 +1062,30 @@ class Car extends SpriteComponent {
   bool isBraking = false;
   
   // Gear system properties
-  int currentGear = 1; // P=0, 1-5=forward gears, R=-1
+  int currentGear = 1; // P=0, 1-4=forward gears, R=-1
   bool isInPark = false;
   
   // Debug counter
   int _debugFrameCount = 0;
   
-  // Gear ratios for different performance characteristics
-  final Map<int, double> gearRatios = {
-    -1: 0.8,  // Reverse
-    0: 0.0,   // Park
-    1: 1.0,   // 1st gear
-    2: 0.85,  // 2nd gear
-    3: 0.7,   // 3rd gear
-    4: 0.55,  // 4th gear
-    5: 0.4,   // 5th gear
+  // Separate multipliers keep gears easier to control:
+  // lower gears = stronger pull but lower top speed.
+  final Map<int, double> gearAccelerationMultipliers = {
+    -1: 0.35, // Reverse
+    0: 0.0, // Park
+    1: 0.55, // 1st gear
+    2: 0.45, // 2nd gear
+    3: 0.35, // 3rd gear
+    4: 0.30, // 4th gear
+  };
+
+  final Map<int, double> gearSpeedMultipliers = {
+    -1: 0.18, // Reverse (~36 if maxSpeed is 200)
+    0: 0.0, // Park
+    1: 0.14, // 1st gear (~28)
+    2: 0.24, // 2nd gear (~48)
+    3: 0.36, // 3rd gear (~72)
+    4: 0.50, // 4th gear (~100)
   };
   
   @override
@@ -949,7 +1137,8 @@ class Car extends SpriteComponent {
     }
     
     // Calculate effective acceleration based on current gear
-    double effectiveAcceleration = accelerationForce * (gearRatios[currentGear] ?? 1.0);
+    double effectiveAcceleration =
+        accelerationForce * (gearAccelerationMultipliers[currentGear] ?? 0.4);
     
     // Apply continuous acceleration/braking based on button states
     // Acceleration is now in the direction the car is facing
@@ -981,7 +1170,8 @@ class Car extends SpriteComponent {
     velocity += acceleration * dt;
     
     // Calculate effective max speed based on gear
-    double effectiveMaxSpeed = maxSpeed * (gearRatios[currentGear]?.abs() ?? 1.0);
+    double effectiveMaxSpeed =
+        maxSpeed * (gearSpeedMultipliers[currentGear]?.abs() ?? 0.2);
     
     // Limit max speed based on current gear
     if (velocity.length > effectiveMaxSpeed) {

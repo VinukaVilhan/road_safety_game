@@ -15,9 +15,11 @@ class GearboxWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const frameWidth = 140.0;
+    const frameHeight = 200.0;
     return Container(
-      width: 120,
-      height: 180,
+      width: frameWidth,
+      height: frameHeight,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(15),
       ),
@@ -30,8 +32,8 @@ class GearboxWidget extends StatelessWidget {
               alignment: Alignment.bottomCenter,
               child: Image.asset(
                 'assets/images/rescaled/gearbox_cubic.png',
-                width: 140,
-                height: 200,
+                width: frameWidth,
+                height: frameHeight,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
                   debugPrint('Failed to load gearbox image: assets/images/rescaled/gearbox_cubic.png');
@@ -61,53 +63,85 @@ class GearboxWidget extends StatelessWidget {
   }
 
   Widget _buildGearPositionOverlays() {
+    // Pixel-based hotspots for the 140x200 gearbox frame.
+    // Tune these values directly if your image art/placement changes.
+    const double globalOffsetX = 0;
+    const double globalOffsetY = 0;
+
+    // Optional per-gear micro adjustments in pixels.
+    const double nudgeRx = 0;
+    const double nudgeRy = 0;
+    const double nudge1x = 0;
+    const double nudge1y = 0;
+    const double nudge2x = 0;
+    const double nudge2y = 0;
+    const double nudge3x = 0;
+    const double nudge3y = 0;
+    const double nudge4x = 0;
+    const double nudge4y = 0;
+    const double nudgePx = 0;
+    const double nudgePy = 0;
+
+    const double rX = 34;
+    const double rY = 72;
+    const double g1X = 70;
+    const double g1Y = 72;
+    const double g2X = 106;
+    const double g2Y = 72;
+    const double g3X = 34;
+    const double g3Y = 130;
+    const double g4X = 70;
+    const double g4Y = 130;
+    const double pX = 106;
+    const double pY = 130;
+
     return Stack(
       children: [
         // Reverse (R) - Top Left
         _buildGearHotspot(
           gear: _reverseGearIndex,
-          left: 15,
-          top: 51,
+          centerX: rX + globalOffsetX + nudgeRx,
+          centerY: rY + globalOffsetY + nudgeRy,
           label: _safeGearLabel(_reverseGearIndex, fallback: 'R'),
         ),
         
-        // First Gear (1) - Top Right
+        // First Gear (1) - Top middle
         _buildGearHotspot(
           gear: 1, // 1st gear position
-          left: 46,
-          top: 51,
+          centerX: g1X + globalOffsetX + nudge1x,
+          centerY: g1Y + globalOffsetY + nudge1y,
           label: _safeGearLabel(1, fallback: '1'),
         ),
         
-        // Second Gear (2) - Below 1st
+        // Second Gear (2) - Top right
         _buildGearHotspot(
           gear: 2,
-          left: 77,
-          top: 51,
+          centerX: g2X + globalOffsetX + nudge2x,
+          centerY: g2Y + globalOffsetY + nudge2y,
           label: _safeGearLabel(2, fallback: '2'),
         ),
         
-        // Third Gear (3) - Center Left
+        // Third Gear (3) - Bottom left
         _buildGearHotspot(
           gear: 3,
-          left: 15,
-          top: 100,
+          centerX: g3X + globalOffsetX + nudge3x,
+          centerY: g3Y + globalOffsetY + nudge3y,
           label: _safeGearLabel(3, fallback: '3'),
         ),
         
-        // Fourth Gear (4) - Center Right
+        // Fourth Gear (4) - Bottom middle
         _buildGearHotspot(
           gear: 4,
-          left: 46,
-          top: 100,
+          centerX: g4X + globalOffsetX + nudge4x,
+          centerY: g4Y + globalOffsetY + nudge4y,
           label: _safeGearLabel(4, fallback: '4'),
         ),
         
-        // Park (P) - Bottom Center
+        // Park (P) - Bottom right
         _buildGearHotspot(
           gear: 0, // P position
-          left: 77,
-          top: 100,
+          centerX: pX + globalOffsetX + nudgePx,
+          centerY: pY + globalOffsetY + nudgePy,
           label: _safeGearLabel(0, fallback: 'P'),
         ),
       ],
@@ -116,57 +150,68 @@ class GearboxWidget extends StatelessWidget {
 
   Widget _buildGearHotspot({
     required int gear,
-    required double left,
-    required double top,
+    required double centerX,
+    required double centerY,
     required String label,
   }) {
     final bool isSelected = currentGear == gear;
+    const hotspotSize = 30.0;
     
     return Positioned(
-      left: left,
-      top: top,
+      left: centerX - (hotspotSize / 2),
+      top: centerY - (hotspotSize / 2),
       child: GestureDetector(
         onTap: () => _selectGear(gear),
-        child: AnimatedContainer(
+        child: AnimatedScale(
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeInOut,
-          width: isSelected ? 32 : 28,
-          height: isSelected ? 32 : 28,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isSelected 
-              ? _getGearColor().withValues(alpha: 0.9)
-              : Colors.white.withValues(alpha: 0.3),
-            border: Border.all(
-              color: isSelected ? Colors.white : Colors.grey[400]!,
-              width: isSelected ? 3 : 2,
+          scale: isSelected ? 1.07 : 1.0,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            width: hotspotSize,
+            height: hotspotSize,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isSelected
+                  ? _getGearColor().withValues(alpha: 0.9)
+                  : Colors.white.withValues(alpha: 0.3),
+              border: Border.all(
+                color: isSelected ? Colors.white : Colors.grey[400]!,
+                width: isSelected ? 3 : 2,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: _getGearColor().withValues(alpha: 0.6),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
             ),
-            boxShadow: isSelected ? [
-              BoxShadow(
-                color: _getGearColor().withValues(alpha: 0.6),
-                blurRadius: 8,
-                spreadRadius: 2,
+            child: Center(
+              child: Builder(
+                builder: (context) {
+                  final theme = Theme.of(context).textTheme;
+                  return Text(
+                    label,
+                    style: (isSelected ? theme.titleSmall : theme.labelMedium)!
+                        .copyWith(
+                          color: isSelected
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.95),
+                          fontWeight: FontWeight.bold,
+                        ),
+                  );
+                },
               ),
-            ] : [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Builder(
-              builder: (context) {
-                final theme = Theme.of(context).textTheme;
-                return Text(
-                  label,
-                  style: (isSelected ? theme.titleSmall : theme.labelMedium)!.copyWith(
-                    color: isSelected ? Colors.white : Colors.grey[700],
-                    fontWeight: FontWeight.bold,
-                  ),
-                );
-              },
             ),
           ),
         ),

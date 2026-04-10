@@ -407,7 +407,7 @@
   <properties>
    <property name="step_id" type="int" value="1"/>
   </properties>
-  <object id="4" name="Zone_Check" type="Zone_Approach" x="411.704" y="507.428" width="138.333" height="69.5322">
+  <object id="4" name="Zone_Check" type="Zone_SpeedLimit" x="411.704" y="507.428" width="138.333" height="69.5322">
    <properties>
     <property name="max_speed" type="int" value="30"/>
    </properties>

@@ -36,6 +36,11 @@ class LevelSelectionScreen extends StatefulWidget {
 }
 
 class LevelSelectionScreenState extends State<LevelSelectionScreen> {
+  static const Set<String> _underDevelopmentRoadMarkingsLevelIds = {
+    'markings_stop_yield', // Level 03
+    'markings_complex', // Level 06
+  };
+
   // Cache font styles to avoid recreating them on every build
   late final TextStyle _headerStyle;
   late final TextStyle _levelNumberStyle;
@@ -127,6 +132,11 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
       );
     }
     return DrivingLevelsService.getLevelsForTopic(widget.topic!);
+  }
+
+  bool _isUnderDevelopmentLevel(GameLevel level) {
+    return level.topic == DrivingTopic.RoadMarkings &&
+        _underDevelopmentRoadMarkingsLevelIds.contains(level.id);
   }
 
   /// Big number on level cards: 01, 02 within a junctions submodule; otherwise [GameLevel.topicLevel].
@@ -223,11 +233,13 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         itemCount: levels.length,
                         itemBuilder: (context, index) {
                           final level = levels[index];
+                          final isUnderDevelopment = _isUnderDevelopmentLevel(level);
                           // Check unlock status based on completed levels
-                          final isUnlocked = DrivingLevelsService.isLevelUnlocked(
-                            level,
-                            completedLevelIds,
-                          );
+                          final isUnlocked = !isUnderDevelopment &&
+                              DrivingLevelsService.isLevelUnlocked(
+                                level,
+                                completedLevelIds,
+                              );
                           return RepaintBoundary(
                             child: _buildLevelCard(level, isUnlocked),
                           );
@@ -409,8 +421,10 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
 
   void _showLockedLevelDialog(GameLevel level) {
     String unlockMessage = 'Complete the previous levels to unlock "${level.name}".';
-    
-    if (level.unlockRequirementIds.isNotEmpty) {
+
+    if (_isUnderDevelopmentLevel(level)) {
+      unlockMessage = '"${level.name}" is under development.';
+    } else if (level.unlockRequirementIds.isNotEmpty) {
       // Resolve names from the full topic so cross-module prerequisites still show correctly.
       final pool = widget.topic != null
           ? DrivingLevelsService.getLevelsForTopic(widget.topic!)

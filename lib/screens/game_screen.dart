@@ -6,7 +6,7 @@ import 'package:flame/game.dart';
 import '../models/game_level.dart';
 import '../game/realistic_car_game.dart';
 import '../utils/app_fonts.dart';
-import '../widgets/gearbox.dart';
+import '../widgets/control_gearbox.dart';
 import '../widgets/steeringWheel.dart';
 import '../widgets/pedals.dart';
 import '../widgets/radio_tuner_sheet.dart';
@@ -27,12 +27,13 @@ class GameScreenState extends State<GameScreen> {
   final ValueNotifier<bool> _turnSignalLeftNotifier = ValueNotifier<bool>(false);
   final ValueNotifier<bool> _turnSignalRightNotifier = ValueNotifier<bool>(false);
   late RealisticCarGame game;
-  int _currentGear = 1; // Track current gear (P=0, 1,2,3,4,5,R=-1)
-  final List<String> _gears = ['P', '1', '2', '3', '4', '5', 'R'];
+  int _currentGear = 1; // Track current gear (P=0, 1,2,3,4,R=-1)
+  final List<String> _gears = ['P', '1', '2', '3', '4', 'R'];
   final ValueNotifier<double> _steeringRotation = ValueNotifier<double>(0.0);
   DateTime? _lastSteeringUpdate;
   final MusicService _musicService = MusicService();
   bool _resultDialogVisible = false;
+  bool _levelStoryShown = false;
 
   static const String _radioIconAsset = 'assets/images/Radio.png';
 
@@ -84,6 +85,55 @@ class GameScreenState extends State<GameScreen> {
     );
     // Configure the game based on the level
     _configureGameForLevel();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showLevelStoryIfAvailable();
+    });
+  }
+
+  String? _levelStoryText() {
+    switch (widget.level.scenarioId) {
+      case 'markings_zebra_crossing':
+        return 'Road Crossing Story\n\n'
+            'You are driving through a busy school-zone crossing. '
+            'A pedestrian may step onto the zebra crossing at any moment.\n\n'
+            'Your mission:\n'
+            '- Slow down and enter the approach zone safely.\n'
+            '- Stop fully and wait before the crossing.\n'
+            '- Continue only when it is safe and finish the route.';
+      default:
+        return null;
+    }
+  }
+
+  void _showLevelStoryIfAvailable() {
+    if (!mounted || _levelStoryShown) return;
+    final story = _levelStoryText();
+    if (story == null || story.trim().isEmpty) return;
+    _levelStoryShown = true;
+    final theme = Theme.of(context).textTheme;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1a1a2e),
+          title: Text(
+            'Level Briefing',
+            style: theme.titleLarge!.copyWith(color: Colors.white),
+          ),
+          content: Text(
+            story,
+            style: theme.bodyMedium!.copyWith(color: Colors.white70, height: 1.4),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Start Level'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _syncTurnSignalsToGame() {
@@ -290,7 +340,7 @@ class GameScreenState extends State<GameScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       // Gearbox above steering wheel
-                      GearboxWidget(
+                      ControlGearboxWidget(
                         currentGear: _currentGear,
                         gears: _gears,
                         onGearSelected: _onGearSelected,
@@ -372,6 +422,44 @@ class GameScreenState extends State<GameScreen> {
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                ValueListenableBuilder<String?>(
+                  valueListenable: game.roadCrossingApproachHint,
+                  builder: (context, hint, _) {
+                    if (hint == null || hint.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Positioned(
+                      top: 72,
+                      left: 0,
+                      right: 0,
+                      child: IgnorePointer(
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.68),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.amber.withValues(alpha: 0.6),
+                              ),
+                            ),
+                            child: Text(
+                              hint,
+                              style: const TextStyle(
+                                color: Colors.amberAccent,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -511,7 +599,7 @@ class GameScreenState extends State<GameScreen> {
       car.currentGear = -1;
       car.isInPark = false;
     } else {
-      // Forward gears (1-5)
+      // Forward gears (1-4)
       int gear = int.parse(currentGearString);
       car.currentGear = gear;
       car.isInPark = false;
@@ -815,6 +903,8 @@ class GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildAttemptSummaryContent(DrivingAttemptSummary summary) {
+    final isRoadCrossingLevel =
+        (widget.level.mapAsset ?? '').toLowerCase().contains('road-crossing');
     final signalName = _signalLabel(summary.expectedTurnSignal);
     return SingleChildScrollView(
       child: Column(
@@ -828,21 +918,32 @@ class GameScreenState extends State<GameScreen> {
             ),
             const SizedBox(height: 10),
           ],
-          _buildCheckRow('Entered approach zone (yellow).', summary.enteredApproachZone),
-          const SizedBox(height: 6),
-          _buildCheckRow(
-            'Used $signalName in approach zone.',
-            summary.signaledCorrectlyInApproachZone,
-          ),
-          const SizedBox(height: 6),
-          _buildCheckRow('Entered turn execution zone (purple).', summary.enteredMidTurnZone),
-          const SizedBox(height: 6),
-          _buildCheckRow(
-            'Kept $signalName while turning.',
-            summary.hadCorrectSignalInMidTurnZone,
-          ),
-          const SizedBox(height: 6),
-          _buildCheckRow('Reached finish zone (green).', summary.reachedFinishZone),
+          if (isRoadCrossingLevel) ...[
+            _buildCheckRow('Entered speed limit zone (yellow).', summary.enteredApproachZone),
+            const SizedBox(height: 6),
+            _buildCheckRow(
+              'Stopped in Park and completed zebra crossing wait (grey zig-zag zone).',
+              summary.waitedAtRoadCrossing,
+            ),
+            const SizedBox(height: 6),
+            _buildCheckRow('Reached finish zone (green).', summary.reachedFinishZone),
+          ] else ...[
+            _buildCheckRow('Entered approach zone (yellow).', summary.enteredApproachZone),
+            const SizedBox(height: 6),
+            _buildCheckRow(
+              'Used $signalName in approach zone.',
+              summary.signaledCorrectlyInApproachZone,
+            ),
+            const SizedBox(height: 6),
+            _buildCheckRow('Entered turn execution zone (purple).', summary.enteredMidTurnZone),
+            const SizedBox(height: 6),
+            _buildCheckRow(
+              'Kept $signalName while turning.',
+              summary.hadCorrectSignalInMidTurnZone,
+            ),
+            const SizedBox(height: 6),
+            _buildCheckRow('Reached finish zone (green).', summary.reachedFinishZone),
+          ],
           const SizedBox(height: 6),
           _buildCheckRow(
             'Minor obstacle bumps (non-crash): ${summary.nonCrashBumpCount}',

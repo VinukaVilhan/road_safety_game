@@ -37,14 +37,17 @@ class ControlGearboxWidget extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(15),
-            child: Image.asset(
-              'assets/images/rescaled/gearbox_cubic.png',
-              width: _frameWidth,
-              height: _frameHeight,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return _buildFallbackGearbox(context);
-              },
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Image.asset(
+                'assets/images/rescaled/gearbox_cubic.png',
+                width: _frameWidth,
+                height: _frameHeight,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return _buildFallbackGearbox(context);
+                },
+              ),
             ),
           ),
           _buildGearPositionOverlays(),
@@ -54,49 +57,58 @@ class ControlGearboxWidget extends StatelessWidget {
   }
 
   Widget _buildGearPositionOverlays() {
-    // Same column/row logic style as the original widget, tuned for this control gearbox.
-    final leftCol = _frameWidth * 0.24; // ~34
-    final midCol = _frameWidth * 0.50; // 70
-    final rightCol = _frameWidth * 0.96; // ~106
-    final topRow = _frameHeight * 0.33; // 66
-    final bottomRow = _frameHeight * 0.22; // 124
+    // Match [GearboxWidget] pixel hotspots on the 140×200 frame (Controls reference UI).
+    const double globalOffsetX = 0;
+    const double globalOffsetY = 0;
+    const double rX = 34;
+    const double rY = 72;
+    const double g1X = 70;
+    const double g1Y = 72;
+    const double g2X = 106;
+    const double g2Y = 72;
+    const double g3X = 34;
+    const double g3Y = 130;
+    const double g4X = 70;
+    const double g4Y = 130;
+    const double pX = 106;
+    const double pY = 130;
 
     return Stack(
       children: [
         _buildGearHotspot(
           gear: _reverseGearIndex,
-          centerX: leftCol,
-          centerY: topRow,
+          centerX: rX + globalOffsetX,
+          centerY: rY + globalOffsetY,
           label: _safeGearLabel(_reverseGearIndex, fallback: 'R'),
         ),
         _buildGearHotspot(
           gear: 1,
-          centerX: midCol,
-          centerY: topRow,
+          centerX: g1X + globalOffsetX,
+          centerY: g1Y + globalOffsetY,
           label: _safeGearLabel(1, fallback: '1'),
         ),
         _buildGearHotspot(
           gear: 2,
-          centerX: rightCol,
-          centerY: topRow,
+          centerX: g2X + globalOffsetX,
+          centerY: g2Y + globalOffsetY,
           label: _safeGearLabel(2, fallback: '2'),
         ),
         _buildGearHotspot(
           gear: 3,
-          centerX: leftCol,
-          centerY: bottomRow,
+          centerX: g3X + globalOffsetX,
+          centerY: g3Y + globalOffsetY,
           label: _safeGearLabel(3, fallback: '3'),
         ),
         _buildGearHotspot(
           gear: 4,
-          centerX: midCol,
-          centerY: bottomRow,
+          centerX: g4X + globalOffsetX,
+          centerY: g4Y + globalOffsetY,
           label: _safeGearLabel(4, fallback: '4'),
         ),
         _buildGearHotspot(
           gear: 0,
-          centerX: rightCol,
-          centerY: bottomRow,
+          centerX: pX + globalOffsetX,
+          centerY: pY + globalOffsetY,
           label: _safeGearLabel(0, fallback: 'P'),
         ),
       ],

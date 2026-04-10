@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../data/repositories/progress_repository.dart';
@@ -137,7 +138,10 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.pop(context);
+                    },
                     icon: const Icon(
                       Icons.arrow_back_sharp,
                       color: SwissTheme.textPrimary,
@@ -210,6 +214,7 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
   Widget _buildTestCard(TheoryTest test, bool isUnlocked) {
     return GestureDetector(
       onTap: () {
+        UiSoundService().playMenuTap();
         if (isUnlocked) {
           _startTest(test);
         } else {
@@ -424,7 +429,10 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.of(context).pop();
+                    },
                     style: TextButton.styleFrom(
                       foregroundColor: SwissTheme.accentBlue,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

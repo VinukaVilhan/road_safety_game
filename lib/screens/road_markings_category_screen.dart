@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../models/game_level.dart';
 import '../services/driving_levels_service.dart';
+import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import 'level_selection_screen.dart';
@@ -68,7 +69,8 @@ class _RoadMarkingsCategoryScreenState extends State<RoadMarkingsCategoryScreen>
     _RoadMarkingsCategory(
       moduleId: DrivingLevelsService.roadMarkingsModuleOther,
       title: 'Other markings',
-      description: 'Stop, yield, zebra, bus lanes, and more',
+      description:
+          'Stop, yield, zebra, junction box; bus lanes & special zones — under development',
       icon: Icons.grid_view_outlined,
     ),
   ];
@@ -86,7 +88,10 @@ class _RoadMarkingsCategoryScreenState extends State<RoadMarkingsCategoryScreen>
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.pop(context);
+                    },
                     icon: const Icon(
                       Icons.arrow_back_sharp,
                       color: SwissTheme.textPrimary,
@@ -139,6 +144,7 @@ class _RoadMarkingsCategoryScreenState extends State<RoadMarkingsCategoryScreen>
   Widget _buildCard(_RoadMarkingsCategory c) {
     return GestureDetector(
       onTap: () {
+        UiSoundService().playMenuTap();
         Navigator.push(
           context,
           MaterialPageRoute(

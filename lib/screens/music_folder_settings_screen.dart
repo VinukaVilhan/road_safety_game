@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/music_service.dart';
+import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
-import '../services/ui_sound_service.dart';
 
 /// Set the folder scanned for local music (Menu → Options → Music folder).
 class MusicFolderSettingsScreen extends StatefulWidget {
@@ -137,6 +137,13 @@ class _MusicFolderSettingsScreenState extends State<MusicFolderSettingsScreen> {
         backgroundColor: SwissTheme.backgroundWhite,
         elevation: 0,
         foregroundColor: SwissTheme.textPrimary,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_sharp),
+          onPressed: () {
+            UiSoundService().playMenuTap();
+            Navigator.of(context).pop();
+          },
+        ),
         title: Text(
           'MUSIC FOLDER',
           style: AppFonts.pixelifySans(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import 'driving_topic_selection_screen.dart';
@@ -80,7 +81,10 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.pop(context);
+                    },
                     icon: const Icon(
                       Icons.arrow_back_sharp,
                       color: SwissTheme.textPrimary,
@@ -157,7 +161,10 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          UiSoundService().playMenuTap();
+          onTap();
+        },
         borderRadius: BorderRadius.zero, // Sharp corners
         child: Container(
           width: double.infinity,

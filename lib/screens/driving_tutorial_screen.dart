@@ -7,7 +7,7 @@ import '../models/tutorial_progress.dart';
 import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
-import '../widgets/gearbox.dart';
+import '../widgets/control_gearbox.dart';
 import '../widgets/pedals.dart';
 import '../widgets/steeringWheel.dart';
 
@@ -47,6 +47,13 @@ class _DrivingTutorialScreenState extends State<DrivingTutorialScreen> {
         backgroundColor: SwissTheme.backgroundWhite,
         foregroundColor: SwissTheme.textPrimary,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_sharp),
+          onPressed: () {
+            UiSoundService().playMenuTap();
+            Navigator.of(context).pop();
+          },
+        ),
         title: Text('Controls', style: titleStyle),
       ),
       body: ListView(
@@ -172,6 +179,13 @@ class _DrivingTutorialLessonPageState extends State<_DrivingTutorialLessonPage> 
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_sharp),
+          onPressed: () {
+            UiSoundService().playMenuTap();
+            Navigator.of(context).pop();
+          },
+        ),
         title: Text(widget.lesson.title, style: theme.titleMedium?.copyWith(color: Colors.white)),
       ),
       body: SafeArea(
@@ -212,7 +226,7 @@ class _GearboxLessonBodyState extends State<_GearboxLessonBody> {
         'Higher gears (3-4): less pull, smoother/faster cruising.',
       ],
       child: Center(
-        child: GearboxWidget(
+        child: ControlGearboxWidget(
           currentGear: _currentGear,
           gears: _gears,
           onGearSelected: _onGear,

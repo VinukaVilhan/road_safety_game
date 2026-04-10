@@ -5,16 +5,29 @@ import 'package:just_audio/just_audio.dart';
 
 /// Short UI feedback for menus and dialogs. Uses [soundEnabled] / [vibrationEnabled]
 /// so the options screen can turn each off independently.
+///
+/// [playMenuTap] — buttons; [playMenuToggle] — `Switch` widgets; [playLevelEngineStart] — after level load / briefing.
 class UiSoundService {
   static final UiSoundService _instance = UiSoundService._();
   factory UiSoundService() => _instance;
 
   UiSoundService._();
 
-  final AudioPlayer _sfxPlayer = AudioPlayer();
+  static const String _tapAsset =
+      'assets/audio/litupsubway-ui-hover-sfx-513360.mp3';
+  static const String _toggleAsset =
+      'assets/audio/freesound_community-menu-selection-102220.mp3';
+  static const String _engineStartAsset =
+      'assets/audio/freesound_community-car-engine-starting-43705.mp3';
+
+  final AudioPlayer _tapPlayer = AudioPlayer();
+  final AudioPlayer _togglePlayer = AudioPlayer();
+  final AudioPlayer _engineStartPlayer = AudioPlayer();
   final AudioPlayer _levelPassPlayer = AudioPlayer();
   final AudioPlayer _levelFailPlayer = AudioPlayer();
-  bool _assetReady = false;
+  bool _tapReady = false;
+  bool _toggleReady = false;
+  bool _engineStartReady = false;
   bool _levelPassReady = false;
   bool _levelFailReady = false;
 
@@ -30,17 +43,64 @@ class UiSoundService {
     }
   }
 
+  /// Toggle switches (e.g. Options sound / vibration).
+  ///
+  /// When [playSfxEvenWhenSoundOff] is true, the toggle clip still plays so flipping
+  /// **Sound** from off → on is audible (otherwise [soundEnabled] would block it).
+  void playMenuToggle({bool playSfxEvenWhenSoundOff = false}) {
+    if (vibrationEnabled) {
+      HapticFeedback.lightImpact();
+    }
+    if (playSfxEvenWhenSoundOff || soundEnabled) {
+      unawaited(_playToggleSound());
+    }
+  }
+
+  /// Car engine start once the driving screen is ready and any level briefing was dismissed.
+  void playLevelEngineStart() {
+    if (!soundEnabled) return;
+    unawaited(_playEngineStartSound());
+  }
+
   Future<void> _playTapSound() async {
     try {
-      if (!_assetReady) {
-        await _sfxPlayer.setAsset('assets/audio/menu_tap.wav');
-        await _sfxPlayer.setVolume(0.45);
-        _assetReady = true;
+      if (!_tapReady) {
+        await _tapPlayer.setAsset(_tapAsset);
+        await _tapPlayer.setVolume(0.5);
+        _tapReady = true;
       }
-      await _sfxPlayer.seek(Duration.zero);
-      await _sfxPlayer.play();
+      await _tapPlayer.seek(Duration.zero);
+      await _tapPlayer.play();
     } catch (_) {
       SystemSound.play(SystemSoundType.click);
+    }
+  }
+
+  Future<void> _playToggleSound() async {
+    try {
+      if (!_toggleReady) {
+        await _togglePlayer.setAsset(_toggleAsset);
+        await _togglePlayer.setVolume(0.55);
+        _toggleReady = true;
+      }
+      await _togglePlayer.seek(Duration.zero);
+      await _togglePlayer.play();
+    } catch (_) {
+      SystemSound.play(SystemSoundType.click);
+    }
+  }
+
+  Future<void> _playEngineStartSound() async {
+    try {
+      if (!_engineStartReady) {
+        await _engineStartPlayer.setAsset(_engineStartAsset);
+        await _engineStartPlayer.setVolume(0.65);
+        _engineStartReady = true;
+      }
+      await _engineStartPlayer.seek(Duration.zero);
+      await _engineStartPlayer.play();
+    } catch (_) {
+      // Optional SFX
     }
   }
 

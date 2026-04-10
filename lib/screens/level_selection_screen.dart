@@ -7,6 +7,7 @@ import '../utils/app_fonts.dart';
 import '../models/game_level.dart';
 import '../services/driving_levels_service.dart';
 import '../services/level_progress_service.dart';
+import '../services/ui_sound_service.dart';
 import 'game_screen.dart';
 
 class LevelSelectionScreen extends StatefulWidget {
@@ -38,6 +39,7 @@ class LevelSelectionScreen extends StatefulWidget {
 class LevelSelectionScreenState extends State<LevelSelectionScreen> {
   static const Set<String> _underDevelopmentRoadMarkingsLevelIds = {
     'markings_stop_yield', // Level 03
+    'markings_bus_lanes', // Level 05 — bus lanes & special zones
     'markings_complex', // Level 06
   };
 
@@ -181,7 +183,10 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.pop(context);
+                    },
                     icon: const Icon(
                       Icons.arrow_back_sharp,
                       color: SwissTheme.textPrimary,
@@ -241,7 +246,11 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                                 completedLevelIds,
                               );
                           return RepaintBoundary(
-                            child: _buildLevelCard(level, isUnlocked),
+                            child: _buildLevelCard(
+                              level,
+                              isUnlocked,
+                              underDevelopment: isUnderDevelopment,
+                            ),
                           );
                         },
                       ),
@@ -253,9 +262,14 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     );
   }
 
-  Widget _buildLevelCard(GameLevel level, bool isUnlocked) {
+  Widget _buildLevelCard(
+    GameLevel level,
+    bool isUnlocked, {
+    bool underDevelopment = false,
+  }) {
     return GestureDetector(
       onTap: () {
+        UiSoundService().playMenuTap();
         if (isUnlocked) {
           _startGame(level);
         } else {
@@ -362,6 +376,18 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         maxLines: null, // Allow unlimited lines
                         overflow: TextOverflow.clip,
                       ),
+                      if (underDevelopment && !isUnlocked) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'UNDER DEVELOPMENT',
+                          style: AppFonts.pixelifySans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                            color: SwissTheme.accentOrange,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -471,7 +497,10 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.of(context).pop();
+                    },
                     style: TextButton.styleFrom(
                       foregroundColor: SwissTheme.accentBlue,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

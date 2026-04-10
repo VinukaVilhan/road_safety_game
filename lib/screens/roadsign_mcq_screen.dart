@@ -6,6 +6,7 @@ import '../data/repositories/progress_repository.dart';
 import '../models/theory_test.dart';
 import '../models/mcq_question.dart';
 import '../services/road_signs_questions_service.dart';
+import '../services/ui_sound_service.dart';
 
 /// Full-screen MCQ test for road signs. Shows one question at a time with optional image.
 class RoadSignMcqScreen extends StatefulWidget {
@@ -92,6 +93,7 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
 
   void _onOptionSelected(int index) {
     if (_hasAnswered) return;
+    UiSoundService().playMenuTap();
     setState(() {
       _selectedOptionIndex = index;
       _hasAnswered = true;
@@ -114,6 +116,7 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
   }
 
   void _exitTest() {
+    UiSoundService().playMenuTap();
     Navigator.of(context).pop();
   }
 
@@ -163,7 +166,10 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => _showExitConfirm(),
+            onPressed: () {
+              UiSoundService().playMenuTap();
+              _showExitConfirm();
+            },
             icon: const Icon(Icons.arrow_back_sharp, color: SwissTheme.textPrimary, size: 24),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
@@ -317,7 +323,10 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
       child: SizedBox(
         width: double.infinity,
         child: TextButton(
-          onPressed: _nextQuestion,
+          onPressed: () {
+            UiSoundService().playMenuTap();
+            _nextQuestion();
+          },
           style: TextButton.styleFrom(
             backgroundColor: SwissTheme.accentBlue,
             foregroundColor: Colors.white,
@@ -417,7 +426,10 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
+            onPressed: () {
+              UiSoundService().playMenuTap();
+              Navigator.of(ctx).pop();
+            },
             child: Text('Cancel', style: TextStyle(color: SwissTheme.accentBlue)),
           ),
           TextButton(

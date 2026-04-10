@@ -311,7 +311,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                       value: uiSound.soundEnabled,
                       activeColor: SwissTheme.accentRed,
                       onChanged: (bool value) {
-                        uiSound.playMenuTap();
+                        uiSound.playMenuToggle(playSfxEvenWhenSoundOff: true);
                         setDialogState(() => uiSound.soundEnabled = value);
                         unawaited(ProgressRepository.instance.saveSetting(
                           settingKey: 'sound_enabled',
@@ -336,7 +336,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                       value: uiSound.vibrationEnabled,
                       activeColor: SwissTheme.accentRed,
                       onChanged: (bool value) {
-                        uiSound.playMenuTap();
+                        uiSound.playMenuToggle(playSfxEvenWhenSoundOff: true);
                         setDialogState(() => uiSound.vibrationEnabled = value);
                         unawaited(ProgressRepository.instance.saveSetting(
                           settingKey: 'vibration_enabled',

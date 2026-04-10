@@ -6,7 +6,7 @@ import 'package:flame/game.dart';
 import '../models/game_level.dart';
 import '../game/realistic_car_game.dart';
 import '../utils/app_fonts.dart';
-import '../widgets/control_gearbox.dart';
+import '../widgets/gearbox.dart';
 import '../widgets/steeringWheel.dart';
 import '../widgets/pedals.dart';
 import '../widgets/radio_tuner_sheet.dart';
@@ -106,12 +106,16 @@ class GameScreenState extends State<GameScreen> {
   }
 
   void _showLevelStoryIfAvailable() {
-    if (!mounted || _levelStoryShown) return;
+    if (!mounted) return;
     final story = _levelStoryText();
-    if (story == null || story.trim().isEmpty) return;
+    if (story == null || story.trim().isEmpty) {
+      UiSoundService().playLevelEngineStart();
+      return;
+    }
+    if (_levelStoryShown) return;
     _levelStoryShown = true;
     final theme = Theme.of(context).textTheme;
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
@@ -127,13 +131,18 @@ class GameScreenState extends State<GameScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () {
+                UiSoundService().playMenuTap();
+                Navigator.of(context).pop();
+              },
               child: const Text('Start Level'),
             ),
           ],
         );
       },
-    );
+    ).then((_) {
+      if (mounted) UiSoundService().playLevelEngineStart();
+    });
   }
 
   void _syncTurnSignalsToGame() {
@@ -219,6 +228,7 @@ class GameScreenState extends State<GameScreen> {
                         children: [
                           IconButton(
                             onPressed: () {
+                              UiSoundService().playMenuTap();
                               _showPauseDialog();
                             },
                             icon: const Icon(
@@ -228,7 +238,10 @@ class GameScreenState extends State<GameScreen> {
                             ),
                           ),
                           IconButton(
-                            onPressed: _showMusicSheet,
+                            onPressed: () {
+                              UiSoundService().playMenuTap();
+                              _showMusicSheet();
+                            },
                             style: IconButton.styleFrom(
                               minimumSize: const Size(48, 48),
                               fixedSize: const Size(48, 48),
@@ -340,7 +353,7 @@ class GameScreenState extends State<GameScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       // Gearbox above steering wheel
-                      ControlGearboxWidget(
+                      GearboxWidget(
                         currentGear: _currentGear,
                         gears: _gears,
                         onGearSelected: _onGearSelected,
@@ -673,7 +686,10 @@ class GameScreenState extends State<GameScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(), // Resume game
+              onPressed: () {
+                UiSoundService().playMenuTap();
+                Navigator.of(context).pop(); // Resume game
+              },
               child: Text(
                 'Resume',
                 style: theme.labelLarge!.copyWith(color: Colors.green),
@@ -681,6 +697,7 @@ class GameScreenState extends State<GameScreen> {
             ),
             TextButton(
               onPressed: () {
+                UiSoundService().playMenuTap();
                 Navigator.of(context).pop(); // Close dialog
                 Navigator.of(context).pop(); // Return to level selection
               },
@@ -712,6 +729,7 @@ class GameScreenState extends State<GameScreen> {
           actions: [
             TextButton(
               onPressed: () async {
+                UiSoundService().playMenuTap();
                 await LevelProgressService.markLevelCompleted(
                   widget.level.id,
                   moduleId: widget.level.moduleId,
@@ -745,6 +763,7 @@ class GameScreenState extends State<GameScreen> {
           actions: [
             TextButton(
               onPressed: () {
+                UiSoundService().playMenuTap();
                 Navigator.of(context).pop();
                 if (!mounted) return;
                 // Restart in place so this route is not disposed (dispose forces
@@ -758,6 +777,7 @@ class GameScreenState extends State<GameScreen> {
             ),
             TextButton(
               onPressed: () {
+                UiSoundService().playMenuTap();
                 Navigator.of(context).pop();
                 Navigator.of(context).pop();
               },
@@ -812,6 +832,7 @@ class GameScreenState extends State<GameScreen> {
                     style: theme.bodySmall!.copyWith(color: Colors.white54),
                   ),
                   onTap: () {
+                    UiSoundService().playMenuTap();
                     Navigator.pop(sheetContext);
                     RadioTunerSheet.show(context);
                   },
@@ -829,6 +850,7 @@ class GameScreenState extends State<GameScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   onTap: () async {
+                    UiSoundService().playMenuTap();
                     Navigator.pop(sheetContext);
                     if (MusicService.musicFolderPath == null || MusicService.musicFolderPath!.isEmpty) {
                       if (!mounted) return;

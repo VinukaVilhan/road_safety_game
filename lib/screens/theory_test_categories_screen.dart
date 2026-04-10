@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import 'theory_test_selection_screen.dart';
@@ -9,12 +10,14 @@ class TheoryTestCategory {
   final String title;
   final String description;
   final IconData icon;
+  final bool isUnderDevelopment;
 
   TheoryTestCategory({
     required this.id,
     required this.title,
     required this.description,
     required this.icon,
+    this.isUnderDevelopment = false,
   });
 }
 
@@ -92,30 +95,35 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
       title: 'BEST PRACTICES',
       description: 'Essential driving rules and safety tips',
       icon: Icons.check_circle_outline,
+      isUnderDevelopment: true,
     ),
     TheoryTestCategory(
       id: 'traffic_rules',
       title: 'TRAFFIC RULES',
       description: 'Sri Lankan traffic regulations and laws',
       icon: Icons.gavel,
+      isUnderDevelopment: true,
     ),
     TheoryTestCategory(
       id: 'parking',
       title: 'PARKING',
       description: 'Parking rules, zones, and restrictions',
       icon: Icons.local_parking,
+      isUnderDevelopment: true,
     ),
     TheoryTestCategory(
       id: 'vehicle_control',
       title: 'VEHICLE CONTROL',
       description: 'Steering, braking, and gear operations',
       icon: Icons.settings,
+      isUnderDevelopment: true,
     ),
     TheoryTestCategory(
       id: 'safety_procedures',
       title: 'SAFETY PROCEDURES',
       description: 'Emergency situations and safe responses',
       icon: Icons.warning_amber_rounded,
+      isUnderDevelopment: true,
     ),
   ];
 
@@ -133,7 +141,10 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.pop(context);
+                    },
                     icon: const Icon(
                       Icons.arrow_back_sharp,
                       color: SwissTheme.textPrimary,
@@ -185,7 +196,14 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
 
   Widget _buildCategoryCard(TheoryTestCategory category) {
     return GestureDetector(
-      onTap: () => _startCategoryTest(category),
+      onTap: () {
+        UiSoundService().playMenuTap();
+        if (category.isUnderDevelopment) {
+          _showUnderDevelopmentMessage();
+          return;
+        }
+        _startCategoryTest(category);
+      },
       child: Container(
         decoration: BoxDecoration(
           color: SwissTheme.backgroundWhite,
@@ -205,7 +223,9 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
               Icon(
                 category.icon,
                 size: 40,
-                color: SwissTheme.textPrimary,
+                color: category.isUnderDevelopment
+                    ? SwissTheme.textSecondary
+                    : SwissTheme.textPrimary,
               ),
               
               const Spacer(),
@@ -217,7 +237,9 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
                   Text(
                     category.title,
                     style: _categoryTitleStyle.copyWith(
-                      color: SwissTheme.textPrimary,
+                      color: category.isUnderDevelopment
+                          ? SwissTheme.textSecondary
+                          : SwissTheme.textPrimary,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -232,11 +254,35 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
                     maxLines: null, // Allow unlimited lines
                     overflow: TextOverflow.clip,
                   ),
+                  if (category.isUnderDevelopment) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'UNDER DEVELOPMENT',
+                      style: _categoryTitleStyle.copyWith(
+                        fontSize: 11,
+                        letterSpacing: 1.0,
+                        color: SwissTheme.textSecondary,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showUnderDevelopmentMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'This category is under development.',
+          style: _snackbarStyle,
+        ),
+        backgroundColor: SwissTheme.textPrimary,
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

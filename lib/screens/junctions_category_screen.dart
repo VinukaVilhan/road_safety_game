@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../models/game_level.dart';
 import '../services/driving_levels_service.dart';
+import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import 'level_selection_screen.dart';
@@ -91,7 +92,10 @@ class _JunctionsCategoryScreenState extends State<JunctionsCategoryScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.pop(context);
+                    },
                     icon: const Icon(
                       Icons.arrow_back_sharp,
                       color: SwissTheme.textPrimary,
@@ -144,6 +148,7 @@ class _JunctionsCategoryScreenState extends State<JunctionsCategoryScreen> {
   Widget _buildCard(_JunctionCategory c) {
     return GestureDetector(
       onTap: () {
+        UiSoundService().playMenuTap();
         Navigator.push(
           context,
           MaterialPageRoute(

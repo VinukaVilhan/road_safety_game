@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show Path;
 
@@ -5,6 +6,7 @@ import 'package:flame/camera.dart';
 import 'package:flame/components.dart';
 import 'package:flame/experimental.dart';
 import 'package:flame/game.dart';
+import 'package:flame_audio/flame_audio.dart';
 import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -148,6 +150,15 @@ bool _isMidTurnValidationObject(TiledObject obj, ObjectGroup layer) {
   return false;
 }
 
+/// Tile layer used to mark junction-box hatched area (UK: do not stop inside).
+bool _isJunctionBoxTileLayer(TileLayer layer) {
+  if (!layer.visible) return false;
+  final cls = (layer.class_ ?? '').replaceAll(' ', '_').toLowerCase().trim();
+  if (cls == 'zone_junctionbox' || cls.contains('junctionbox')) return true;
+  final nm = layer.name.replaceAll(' ', '_').toLowerCase();
+  return nm == 'junction_box' || nm.contains('junction_box');
+}
+
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   Car? car; // Make car accessible - nullable to handle initialization order
   late SpriteComponent roadBackground;
@@ -203,6 +214,17 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   static const double _roadCrossingStopDurationSec = 3.0;
   _DrivingZone? _activeRoadCrossingWaitZone;
 
+  /// Filled from a tile layer (class [Zone_JunctionBox] or name `Junction_Box`).
+  List<bool>? _junctionBoxTileMask;
+  int? _junctionBoxMaskWidthTiles;
+  int? _junctionBoxMaskHeightTiles;
+  double _junctionBoxStoppedElapsedSec = 0.0;
+  static const double _junctionBoxTileWorldSize = 16.0;
+  static const double _junctionBoxStoppedSpeedThreshold = 18.0;
+  static const double _junctionBoxStoppedSecondsToFail = 0.28;
+
+  final VehicleSfx _vehicleSfx = VehicleSfx();
+
   RealisticCarGame({
     this.mapAsset,
     this.scenarioId,
@@ -219,6 +241,15 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   Future<void> onLoad() async {
     super.onLoad();
     _attemptStartedAt = DateTime.now();
+
+    // Only preload assets that exist under assets/audio/ (see pubspec assets).
+    try {
+      await FlameAudio.audioCache.loadAll([
+        'Reverse_Sound.m4a',
+      ]);
+    } catch (e, st) {
+      debugPrint('Vehicle SFX preload failed: $e\n$st');
+    }
     
     print('[DEBUG] onLoad() - Game size: ${size.x} x ${size.y}');
     
@@ -331,6 +362,34 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       }
     } else {
       print('[DEBUG] _setupRoad() - No Base layer found, using default friction: $_baseLayerFriction');
+    }
+
+    // Junction box tiles: fail the level if the player stops inside (see [_updateJunctionBoxStopFail]).
+    _junctionBoxTileMask = null;
+    _junctionBoxMaskWidthTiles = null;
+    _junctionBoxMaskHeightTiles = null;
+    for (final layer in tiledMap.tileMap.map.layers.whereType<TileLayer>()) {
+      if (!_isJunctionBoxTileLayer(layer)) continue;
+      final data = layer.data;
+      if (data == null || data.length != layer.width * layer.height) {
+        print(
+          '[DEBUG] _setupRoad() - Junction box layer "${layer.name}" has missing/invalid tile data',
+        );
+        continue;
+      }
+      _junctionBoxMaskWidthTiles = layer.width;
+      _junctionBoxMaskHeightTiles = layer.height;
+      const gidMask = 0x1FFFFFFF; // strip Tiled flip flags from GID
+      _junctionBoxTileMask = List<bool>.generate(
+        data.length,
+        (i) => (data[i] & gidMask) != 0,
+      );
+      final marked =
+          _junctionBoxTileMask!.where((cell) => cell).length;
+      print(
+        '[DEBUG] _setupRoad() - Junction box tile layer "${layer.name}" ($marked tiles)',
+      );
+      break;
     }
 
     // Read collision rectangles from Tiled object layers:
@@ -543,6 +602,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _activeRoadCrossingWaitZone = null;
     roadCrossingCountdown.value = null;
     roadCrossingApproachHint.value = null;
+    _junctionBoxStoppedElapsedSec = 0.0;
     final c = car;
     if (c == null) return;
     c.velocity = Vector2.zero();
@@ -562,13 +622,21 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   }
 
   @override
+  void onRemove() {
+    _vehicleSfx.dispose();
+    super.onRemove();
+  }
+
+  @override
   void update(double dt) {
     super.update(dt);
+    _vehicleSfx.tick(dt, car);
     _updateRoadCrossingApproachHint();
     _updateRoadCrossingParkCountdown(dt);
     _enforceSpeedLimitZones();
     _updateMidTurnSignalValidation();
     _updateDrivingRuleZones();
+    _updateJunctionBoxStopFail(dt);
   }
 
   /// [road-crossing.tmx]: countdown runs only inside a Zig_Zag (grey) wait zone
@@ -957,6 +1025,75 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     }
   }
 
+  bool _carRectOverlapsJunctionBoxTiles(Rect carWorldRect) {
+    final mask = _junctionBoxTileMask;
+    final mw = _junctionBoxMaskWidthTiles;
+    final mh = _junctionBoxMaskHeightTiles;
+    if (mask == null || mw == null || mh == null) return false;
+
+    final tw = _junctionBoxTileWorldSize;
+    var tx0 = (carWorldRect.left / tw).floor();
+    var tx1 = (carWorldRect.right / tw).ceil() - 1;
+    var ty0 = (carWorldRect.top / tw).floor();
+    var ty1 = (carWorldRect.bottom / tw).ceil() - 1;
+    tx0 = math.max(0, math.min(mw - 1, tx0));
+    tx1 = math.max(0, math.min(mw - 1, tx1));
+    ty0 = math.max(0, math.min(mh - 1, ty0));
+    ty1 = math.max(0, math.min(mh - 1, ty1));
+
+    for (var ty = ty0; ty <= ty1; ty++) {
+      final row = ty * mw;
+      for (var tx = tx0; tx <= tx1; tx++) {
+        final idx = row + tx;
+        if (idx >= 0 && idx < mask.length && mask[idx]) return true;
+      }
+    }
+    return false;
+  }
+
+  void _failStoppedInJunctionBox(String message) {
+    if (_testFinished) return;
+    _testFinished = true;
+    car?.coast();
+    _latestFailureMessage = message;
+    onTestFailed?.call(message);
+  }
+
+  /// UK-style junction box: stopping or parking on hatched tiles fails the level.
+  void _updateJunctionBoxStopFail(double dt) {
+    if (_testFinished || car == null || _junctionBoxTileMask == null) return;
+
+    final carRect = Rect.fromCenter(
+      center: Offset(car!.position.x, car!.position.y),
+      width: car!.size.x,
+      height: car!.size.y,
+    );
+    final inBox = _carRectOverlapsJunctionBoxTiles(carRect);
+    if (!inBox) {
+      _junctionBoxStoppedElapsedSec = 0.0;
+      return;
+    }
+
+    if (car!.isInPark) {
+      _failStoppedInJunctionBox(
+        'Do not stop or park in the junction box — wait behind the line until you can clear the junction.',
+      );
+      return;
+    }
+
+    final speed = car!.velocity.length;
+    if (speed < _junctionBoxStoppedSpeedThreshold) {
+      _junctionBoxStoppedElapsedSec += dt;
+      if (_junctionBoxStoppedElapsedSec >= _junctionBoxStoppedSecondsToFail) {
+        _failStoppedInJunctionBox(
+          'Do not stop in the junction box. Keep moving or wait behind the line until the way is clear.',
+        );
+      }
+    } else {
+      _junctionBoxStoppedElapsedSec = 0.0;
+    }
+  }
+
   void _updateDrivingRuleZones() {
     if (_testFinished || car == null || _drivingZones.isEmpty) return;
 
@@ -1052,10 +1189,10 @@ class Car extends SpriteComponent {
   
   // Steering properties
   double steerAngle = 0;
-  double maxSteerAngle = 50.0; // Maximum steering angle in degrees (allows sharp turns for U-turns)
+  double maxSteerAngle = 72.0; // Maximum steering angle in degrees (wheel input cap)
   double steerReturnSpeed = 300.0; // how fast steering returns to center
   bool isSteering = false; // Track if user is actively steering
-  double turnRate = 3.0; // Changed from 3.0 to 1.5 (reduced for smoother, less rapid turning)
+  double turnRate = 4.25; // Scales how steering translates to rotation (higher = tighter turns)
   
   // Control flags to maintain acceleration/braking states
   bool isAccelerating = false;
@@ -1327,5 +1464,142 @@ class Car extends SpriteComponent {
   
   double getCurrentSpeed() {
     return velocity.length;
+  }
+}
+
+/// Engine, brake, and reverse-beep sounds using [FlameAudio] (`assets/audio/`).
+/// Optional: add `accelerate.mp3` for engine loop and `brake.wav` for heavy-brake ticks.
+class VehicleSfx {
+  static const String _engineLoopAsset = 'accelerate.mp3';
+  static const String _brakeAsset = 'brake.wav';
+  static const String _reverseLoopAsset = 'Reverse_Sound.m4a';
+
+  static const double _engineVol = 0.28;
+  static const double _reverseVol = 0.24;
+  static const double _brakeVol = 0.34;
+
+  AudioPlayer? _engine;
+  AudioPlayer? _reverse;
+  int _engineSeq = 0;
+  int _reverseSeq = 0;
+  bool _wantEngine = false;
+  bool _wantReverse = false;
+  double _brakeRepeat = 0;
+
+  void tick(double dt, Car? car) {
+    if (car == null) return;
+
+    final canMove = !car.isInPark && car.currentGear != 0;
+    final speed = car.getCurrentSpeed();
+    final wantEngine =
+        car.isAccelerating && canMove && car.currentGear != -1;
+    final wantReverse = car.currentGear == -1 &&
+        !car.isInPark &&
+        (car.isAccelerating || speed > 6);
+
+    if (wantEngine != _wantEngine) {
+      _wantEngine = wantEngine;
+      if (wantEngine) {
+        unawaited(_startEngine());
+      } else {
+        unawaited(_stopEngine());
+      }
+    }
+
+    if (wantReverse != _wantReverse) {
+      _wantReverse = wantReverse;
+      if (wantReverse) {
+        unawaited(_startReverse());
+      } else {
+        unawaited(_stopReverse());
+      }
+    }
+
+    if (car.isBraking && speed > 14) {
+      _brakeRepeat -= dt;
+      if (_brakeRepeat <= 0) {
+        _brakeRepeat = 0.32;
+        unawaited(_playBrakeIfAvailable());
+      }
+    } else {
+      _brakeRepeat = 0;
+    }
+  }
+
+  static Future<void> _playBrakeIfAvailable() async {
+    try {
+      await FlameAudio.play(_brakeAsset, volume: _brakeVol);
+    } catch (_) {
+      // Optional asset; folder may only ship reverse / UI clips.
+    }
+  }
+
+  void dispose() {
+    unawaited(_stopEngine());
+    unawaited(_stopReverse());
+  }
+
+  Future<void> _startEngine() async {
+    await _stopEngineInternal();
+    final seq = ++_engineSeq;
+    try {
+      final p = await FlameAudio.loop(_engineLoopAsset, volume: _engineVol);
+      if (seq != _engineSeq) {
+        await p.stop();
+        await p.dispose();
+        return;
+      }
+      _engine = p;
+    } catch (e, st) {
+      debugPrint('VehicleSfx engine loop failed: $e\n$st');
+    }
+  }
+
+  Future<void> _stopEngine() async {
+    _engineSeq++;
+    await _stopEngineInternal();
+  }
+
+  Future<void> _stopEngineInternal() async {
+    final p = _engine;
+    _engine = null;
+    if (p != null) {
+      try {
+        await p.stop();
+      } catch (_) {}
+      await p.dispose();
+    }
+  }
+
+  Future<void> _startReverse() async {
+    await _stopReverseInternal();
+    final seq = ++_reverseSeq;
+    try {
+      final p = await FlameAudio.loop(_reverseLoopAsset, volume: _reverseVol);
+      if (seq != _reverseSeq) {
+        await p.stop();
+        await p.dispose();
+        return;
+      }
+      _reverse = p;
+    } catch (e, st) {
+      debugPrint('VehicleSfx reverse loop failed: $e\n$st');
+    }
+  }
+
+  Future<void> _stopReverse() async {
+    _reverseSeq++;
+    await _stopReverseInternal();
+  }
+
+  Future<void> _stopReverseInternal() async {
+    final p = _reverse;
+    _reverse = null;
+    if (p != null) {
+      try {
+        await p.stop();
+      } catch (_) {}
+      await p.dispose();
+    }
   }
 }

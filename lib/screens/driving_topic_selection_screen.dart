@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../models/game_level.dart';
@@ -86,7 +87,10 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
               child: Row(
                 children: [
                   IconButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.pop(context);
+                    },
                     icon: const Icon(
                       Icons.arrow_back_sharp,
                       color: SwissTheme.textPrimary,
@@ -196,6 +200,7 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
   }
 
   void _selectTopic(DrivingTopic topic) {
+    UiSoundService().playMenuTap();
     if (topic == DrivingTopic.Junctions) {
       Navigator.push(
         context,

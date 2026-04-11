@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -12,6 +15,7 @@ import '../data/sync/sync_service.dart';
 import '../game/realistic_car_game.dart';
 import '../models/game_level.dart';
 import '../models/last_driving_report.dart';
+import 'cloudinary_upload_service.dart';
 
 /// Persists the latest finished practical driving attempt per level (for level cards).
 class LastDrivingReportService {
@@ -227,7 +231,38 @@ class LastDrivingReportService {
   Future<void> recordAttempt({
     required DrivingAttemptSummary summary,
     required GameLevel level,
+    Uint8List? screenshotBytes,
   }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    String? screenshotPath;
+    String? screenshotUrl;
+
+    if (screenshotBytes != null && screenshotBytes.isNotEmpty) {
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final safeId = level.id.replaceAll(RegExp(r'[^\w\-]+'), '_');
+      final objectName = '${safeId}_$ts.png';
+
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final screenshotsDir = Directory('${dir.path}/driving_screenshots');
+        if (!await screenshotsDir.exists()) {
+          await screenshotsDir.create(recursive: true);
+        }
+        final file = File('${screenshotsDir.path}/$objectName');
+        await file.writeAsBytes(screenshotBytes, flush: true);
+        screenshotPath = file.path;
+      } catch (_) {
+        screenshotPath = null;
+      }
+
+      if (uid != null && uid.isNotEmpty) {
+        screenshotUrl = await CloudinaryUploadService.uploadImageBytes(
+          bytes: screenshotBytes,
+          fileName: objectName,
+        );
+      }
+    }
+
     final road = LastDrivingReport.isRoadCrossingMap(level.mapAsset);
     final counts = _rubricCounts(summary, roadCrossingLayout: road);
     final mistakeDetails = mistakeDetailLines(summary, roadCrossingLayout: road);
@@ -243,13 +278,14 @@ class LastDrivingReportService {
       recordedAt: DateTime.now().toUtc(),
       failureMessage: summary.failureMessage,
       roadCrossingLayout: road,
+      screenshotPath: screenshotPath,
+      screenshotUrl: screenshotUrl,
     );
     final all = await _readAllRaw();
     all[level.id] = report.toJson();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefsMapKey, jsonEncode(all));
 
-    final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null && uid.isNotEmpty) {
       final opId = const Uuid().v4();
       final payload = <String, dynamic>{

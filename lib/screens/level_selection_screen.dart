@@ -11,6 +11,8 @@ import '../services/ui_sound_service.dart';
 import '../services/last_driving_report_service.dart';
 import '../widgets/last_driving_report_dialog.dart';
 import 'game_screen.dart';
+import '../models/assistant_launch_context.dart';
+import '../widgets/assistant_button.dart';
 
 class LevelSelectionScreen extends StatefulWidget {
   final DrivingTopic? topic; // Optional: if null, shows all levels (backward compatible)
@@ -177,8 +179,19 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final levelIds = levels.map((e) => e.id).toList();
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: AssistantButton(
+        heroTag: 'assistant_level_select',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Level list — $headerTitle',
+          drivingTopic: widget.topic,
+          levelIdsForReportDigest: levelIds,
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

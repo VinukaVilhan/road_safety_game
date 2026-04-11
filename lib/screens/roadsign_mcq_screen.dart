@@ -7,6 +7,8 @@ import '../models/theory_test.dart';
 import '../models/mcq_question.dart';
 import '../services/road_signs_questions_service.dart';
 import '../services/ui_sound_service.dart';
+import '../models/assistant_launch_context.dart';
+import '../widgets/assistant_button.dart';
 
 /// Full-screen MCQ test for road signs. Shows one question at a time with optional image.
 class RoadSignMcqScreen extends StatefulWidget {
@@ -141,6 +143,17 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
     }
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: AssistantButton(
+        mini: true,
+        heroTag: 'assistant_roadsign_mcq',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Road sign theory test',
+          theoryTestName: widget.test.name,
+          includeFullRoadSignCatalog: true,
+          currentMcqQuestion: _questions.isNotEmpty ? _questions[_currentIndex] : null,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -346,6 +359,16 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
     final score = _questions.isEmpty ? 0 : ((_correctCount / _questions.length) * 100).round();
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: AssistantButton(
+        mini: true,
+        heroTag: 'assistant_roadsign_result',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Road sign theory test — results',
+          theoryTestName: widget.test.name,
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),

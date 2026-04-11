@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/assistant_launch_context.dart';
 import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
+import '../widgets/assistant_button.dart';
 import '../data/repositories/progress_repository.dart';
 import '../models/theory_test.dart';
 import '../services/theory_tests_service.dart';
@@ -128,6 +130,14 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: AssistantButton(
+        heroTag: 'assistant_theory_tests_${widget.categoryId}',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Theory tests — $categoryDisplayName',
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

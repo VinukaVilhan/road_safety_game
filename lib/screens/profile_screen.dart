@@ -4,9 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../models/assistant_launch_context.dart';
 import '../services/odometer_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
+import '../widgets/assistant_button.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -52,6 +54,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: const AssistantButton(
+        heroTag: 'assistant_profile',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Profile',
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       appBar: AppBar(
         backgroundColor: SwissTheme.backgroundWhite,
         foregroundColor: SwissTheme.textPrimary,

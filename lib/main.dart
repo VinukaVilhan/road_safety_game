@@ -1,5 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'config/assistant_config.dart';
+import 'config/cloudinary_config.dart';
 import 'firebase_options.dart';
 import 'data/local/local_db.dart';
 import 'data/sync/sync_service.dart';
@@ -12,6 +14,8 @@ import 'services/music_service.dart';
 /// This ensures UI shows immediately while resources load in background
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AssistantConfig.ensureLoaded();
+  await CloudinaryConfig.ensureLoaded();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );

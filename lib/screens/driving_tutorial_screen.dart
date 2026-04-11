@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/assistant_launch_context.dart';
 import '../models/tutorial_progress.dart';
 import '../services/ui_sound_service.dart';
+import '../widgets/assistant_button.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../widgets/control_gearbox.dart';
@@ -43,6 +45,14 @@ class _DrivingTutorialScreenState extends State<DrivingTutorialScreen> {
 
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: const AssistantButton(
+        heroTag: 'assistant_driving_tutorial_menu',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Controls — driving tutorials',
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       appBar: AppBar(
         backgroundColor: SwissTheme.backgroundWhite,
         foregroundColor: SwissTheme.textPrimary,

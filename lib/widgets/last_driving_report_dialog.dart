@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../models/last_driving_report.dart';
@@ -51,6 +53,70 @@ class _DocTheme {
     fontWeight: FontWeight.w500,
     color: inkMuted,
   );
+}
+
+bool _hasFailureScreenshot(LastDrivingReport report) {
+  final u = report.screenshotUrl?.trim();
+  if (u != null && u.isNotEmpty) return true;
+  final p = report.screenshotPath?.trim();
+  return p != null && p.isNotEmpty;
+}
+
+/// Prefers remote screenshot URL; falls back to local file path.
+class _FailureScreenshotImage extends StatelessWidget {
+  final LastDrivingReport report;
+
+  const _FailureScreenshotImage({required this.report});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = report.screenshotUrl?.trim();
+    final path = report.screenshotPath?.trim();
+    if (url != null && url.isNotEmpty) {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          if (path != null && path.isNotEmpty) {
+            return Image.file(
+              File(path),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              errorBuilder: (context, e, s) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('Screenshot unavailable.', style: _DocTheme.small),
+              ),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Screenshot could not be loaded.',
+              style: _DocTheme.small,
+            ),
+          );
+        },
+      );
+    }
+    if (path != null && path.isNotEmpty) {
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Screenshot file is no longer available.',
+              style: _DocTheme.small,
+            ),
+          );
+        },
+      );
+    }
+    return const SizedBox.shrink();
+  }
 }
 
 /// Read-only session report shown from the level card (document-style layout).
@@ -227,6 +293,24 @@ class _DrivingReportDocument extends StatelessWidget {
                               'No checklist deductions on file for this attempt.',
                               style: _DocTheme.small,
                             ),
+                          if (_hasFailureScreenshot(report)) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              'Screenshot at failure',
+                              style: _DocTheme.label.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: _DocTheme.ink,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxHeight: 220),
+                                child: _FailureScreenshotImage(report: report),
+                              ),
+                            ),
+                          ],
                           if (report.failureMessage != null &&
                               report.failureMessage!.trim().isNotEmpty) ...[
                             const SizedBox(height: 16),

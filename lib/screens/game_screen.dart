@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flame/game.dart';
 import '../models/game_level.dart';
@@ -15,6 +17,8 @@ import '../services/level_progress_service.dart';
 import '../services/last_driving_report_service.dart';
 import '../services/odometer_service.dart';
 import '../services/ui_sound_service.dart';
+import '../models/assistant_launch_context.dart';
+import '../widgets/assistant_button.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLevel level;
@@ -57,6 +61,7 @@ class GameScreenState extends State<GameScreen> {
   final GlobalKey _excludeHudLeftKey = GlobalKey();
   final GlobalKey _excludeHudRightKey = GlobalKey();
   final GlobalKey _turnSignalHitLayerKey = GlobalKey();
+  final GlobalKey _gameRepaintKey = GlobalKey();
 
   /// Double-tap → left turn signal; triple-tap → right; single tap while on → off.
   Timer? _turnSignalTapTimer;
@@ -83,7 +88,7 @@ class GameScreenState extends State<GameScreen> {
       mapAsset: widget.level.mapAsset,
       scenarioId: widget.level.scenarioId,
       onTestPassed: _handleTestPassed,
-      onTestFailed: _handleTestFailed,
+      onTestFailed: (message) => unawaited(_handleTestFailed(message)),
       onOdometerDeltaMeters: OdometerService.instance.recordSessionDelta,
       turnSignalLeft: _turnSignalLeftNotifier,
       turnSignalRight: _turnSignalRightNotifier,
@@ -206,8 +211,11 @@ class GameScreenState extends State<GameScreen> {
       backgroundColor: Colors.black, // Match game background so letterboxing isn't jarring
       body: Stack(
         children: [
-          // The game widget
-          GameWidget(game: game),
+          // The game widget (RepaintBoundary enables failure-time screenshots)
+          RepaintBoundary(
+            key: _gameRepaintKey,
+            child: GameWidget(game: game),
+          ),
           
           // UI overlay - Using Positioned widgets for better control
           SafeArea(
@@ -351,7 +359,22 @@ class GameScreenState extends State<GameScreen> {
                     ),
                   ),
                 ),
-                
+
+                // AI instructor (below speed readout)
+                Positioned(
+                  top: 78,
+                  right: 20,
+                  child: AssistantButton(
+                    mini: true,
+                    heroTag: 'assistant_game_${widget.level.id}',
+                    tooltip: 'AI instructor',
+                    launchContext: AssistantLaunchContext(
+                      screenTitle: 'Practical driving test',
+                      level: widget.level,
+                    ),
+                  ),
+                ),
+
                 // Bottom-right: Gearbox above Steering Wheel
                 Positioned(
                   bottom: 20,
@@ -722,6 +745,19 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
+  Future<Uint8List?> _captureGameScreenshot() async {
+    try {
+      final boundary =
+          _gameRepaintKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null || !boundary.attached) return null;
+      final image = await boundary.toImage(pixelRatio: 1.5);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      return byteData?.buffer.asUint8List();
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _handleTestPassed() {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
@@ -762,15 +798,17 @@ class GameScreenState extends State<GameScreen> {
     ).then((_) => _resultDialogVisible = false);
   }
 
-  void _handleTestFailed(String message) {
+  Future<void> _handleTestFailed(String message) async {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
+    final screenshotBytes = await _captureGameScreenshot();
     UiSoundService().playLevelFailed();
     final summary = game.getAttemptSummary(passed: false, failureMessage: message);
     unawaited(
       LastDrivingReportService.instance.recordAttempt(
         summary: summary,
         level: widget.level,
+        screenshotBytes: screenshotBytes,
       ),
     );
 

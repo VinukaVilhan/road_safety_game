@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/assistant_launch_context.dart';
 import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
+import '../widgets/assistant_button.dart';
 import 'driving_topic_selection_screen.dart';
 import 'theory_test_categories_screen.dart';
 
@@ -71,6 +73,14 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: const AssistantButton(
+        heroTag: 'assistant_select_mode',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Select mode — theory or driving',
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

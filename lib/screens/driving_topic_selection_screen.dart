@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../models/assistant_launch_context.dart';
 import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
+import '../widgets/assistant_button.dart';
 import '../models/game_level.dart';
 import 'junctions_category_screen.dart';
 import 'level_selection_screen.dart';
@@ -77,6 +79,14 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: const AssistantButton(
+        heroTag: 'assistant_driving_topics',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Driving test — choose topic',
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

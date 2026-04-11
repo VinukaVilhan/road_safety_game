@@ -25,6 +25,9 @@ class RoadSignsQuestionsService {
 
   static const String _assetPath = 'assets/roadsigns';
 
+  /// All bundled road-sign MCQs (for AI assistant / reference text).
+  static List<McqQuestion> allQuestionsForAssistant() => _getAllRoadSignQuestions();
+
   static List<McqQuestion> _getAllRoadSignQuestions() {
     return [
       // --- Warning signs ---

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 
 import '../services/level_progress_service.dart';
-import '../services/odometer_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../data/repositories/progress_repository.dart';
@@ -13,6 +12,8 @@ import 'test_selection_screen.dart';
 import 'profile_screen.dart';
 import 'driving_tutorial_screen.dart';
 import 'music_folder_settings_screen.dart';
+import '../models/assistant_launch_context.dart';
+import '../widgets/assistant_button.dart';
 
 class MenuScreen extends StatefulWidget {
   @override
@@ -89,7 +90,6 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
 
       // Push local level completions to Firestore (same schema as sync outbox).
       unawaited(LevelProgressService.uploadLocalCompletedLevelsToFirestore());
-      unawaited(OdometerService.instance.refreshDisplayMiles());
     });
     
     _animationController = AnimationController(
@@ -125,6 +125,14 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: const AssistantButton(
+        heroTag: 'assistant_menu',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Main menu',
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
@@ -153,24 +161,6 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                           width: double.infinity,
                           height: 5,
                           color: SwissTheme.accentRed,
-                        ),
-                        const SizedBox(height: 12),
-                        ValueListenableBuilder<double>(
-                          valueListenable: OdometerService.instance.totalMiles,
-                          builder: (context, miles, _) {
-                            final label = miles < 0.01
-                                ? 'Distance driven — under 0.01 mi (approx.)'
-                                : 'Distance driven — ${miles.toStringAsFixed(2)} mi (approx.)';
-                            return Text(
-                              label,
-                              style: AppFonts.pixelifySans(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: SwissTheme.textSecondary,
-                                height: 1.3,
-                              ),
-                            );
-                          },
                         ),
                       ],
                     ),

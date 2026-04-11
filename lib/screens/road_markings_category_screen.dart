@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/assistant_launch_context.dart';
 import '../models/game_level.dart';
 import '../services/driving_levels_service.dart';
 import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
+import '../widgets/assistant_button.dart';
 import 'level_selection_screen.dart';
 
 /// First step under Road markings: pick lane lines (solid / dashed) or other markings.
@@ -79,6 +81,15 @@ class _RoadMarkingsCategoryScreenState extends State<RoadMarkingsCategoryScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: AssistantButton(
+        heroTag: 'assistant_road_markings_categories',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Road markings — choose category',
+          drivingTopic: DrivingTopic.RoadMarkings,
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

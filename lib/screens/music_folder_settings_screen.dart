@@ -3,10 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/assistant_launch_context.dart';
 import '../services/music_service.dart';
 import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
+import '../widgets/assistant_button.dart';
 
 /// Set the folder scanned for local music (Menu → Options → Music folder).
 class MusicFolderSettingsScreen extends StatefulWidget {
@@ -133,6 +135,14 @@ class _MusicFolderSettingsScreenState extends State<MusicFolderSettingsScreen> {
 
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: const AssistantButton(
+        heroTag: 'assistant_music_folder',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Music folder settings',
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       appBar: AppBar(
         backgroundColor: SwissTheme.backgroundWhite,
         elevation: 0,

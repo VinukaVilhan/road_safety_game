@@ -14,6 +14,10 @@ class LastDrivingReport {
   final DateTime recordedAt;
   final String? failureMessage;
   final bool roadCrossingLayout;
+  /// Local filesystem path to a PNG captured at rule failure (null if none or passed).
+  final String? screenshotPath;
+  /// Remote image URL (e.g. Cloudinary) when upload succeeded (null otherwise).
+  final String? screenshotUrl;
 
   const LastDrivingReport({
     required this.levelId,
@@ -27,10 +31,18 @@ class LastDrivingReport {
     required this.recordedAt,
     this.failureMessage,
     required this.roadCrossingLayout,
+    this.screenshotPath,
+    this.screenshotUrl,
   });
 
   static bool isRoadCrossingMap(String? mapAsset) =>
       (mapAsset ?? '').toLowerCase().contains('road-crossing');
+
+  static String? _optionalNonEmptyPath(dynamic v) {
+    if (v is! String) return null;
+    final t = v.trim();
+    return t.isEmpty ? null : t;
+  }
 
   static List<String> _stringListFromJson(dynamic v) {
     if (v is! List) return const [];
@@ -49,6 +61,8 @@ class LastDrivingReport {
         'recordedAtIso': recordedAt.toIso8601String(),
         if (failureMessage != null && failureMessage!.isNotEmpty) 'failureMessage': failureMessage,
         'roadCrossingLayout': roadCrossingLayout,
+        if (screenshotPath != null && screenshotPath!.isNotEmpty) 'screenshotPath': screenshotPath,
+        if (screenshotUrl != null && screenshotUrl!.isNotEmpty) 'screenshotUrl': screenshotUrl,
       };
 
   factory LastDrivingReport.fromJson(Map<String, dynamic> json) {
@@ -67,6 +81,8 @@ class LastDrivingReport {
           DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
       failureMessage: json['failureMessage'] as String?,
       roadCrossingLayout: json['roadCrossingLayout'] as bool? ?? false,
+      screenshotPath: _optionalNonEmptyPath(json['screenshotPath']),
+      screenshotUrl: _optionalNonEmptyPath(json['screenshotUrl']),
     );
   }
 }

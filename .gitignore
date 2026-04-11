@@ -118,6 +118,10 @@ build/
 *.dSYM.zip
 *.dSYM
 
+# Local AI assistant secrets (never commit API keys)
+lib/config/assistant_secrets.json
+lib/config/*.secret.dart
+
 # Generated files
 *.g.dart
 *.freezed.dart

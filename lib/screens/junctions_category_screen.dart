@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/assistant_launch_context.dart';
 import '../models/game_level.dart';
 import '../services/driving_levels_service.dart';
 import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
+import '../widgets/assistant_button.dart';
 import 'level_selection_screen.dart';
 
 /// First step under Junctions: pick T-junctions (left/right), cross junctions, or roundabouts.
@@ -83,6 +85,15 @@ class _JunctionsCategoryScreenState extends State<JunctionsCategoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
+      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
+      floatingActionButton: AssistantButton(
+        heroTag: 'assistant_junctions_categories',
+        launchContext: AssistantLaunchContext(
+          screenTitle: 'Junctions — choose category',
+          drivingTopic: DrivingTopic.Junctions,
+          includeFullRoadSignCatalog: true,
+        ),
+      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

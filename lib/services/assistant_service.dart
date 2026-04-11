@@ -10,6 +10,14 @@ class AssistantService {
   AssistantService._();
   static final AssistantService instance = AssistantService._();
 
+  /// User message text when they send a road-sign photo without typing.
+  static const String imageOnlyUserPrompt =
+      'I attached a photo of a road sign or road scene. Identify any UK-style traffic signs if visible, explain their meanings briefly, and say if you are uncertain.';
+
+  /// UI label for an image-only user send (also used to recover old saved transcripts).
+  static const String imageOnlyDisplayPlaceholder =
+      '(Road sign / scene photo — see instructor reply)';
+
   ChatSession? _chat;
   String? _initError;
 
@@ -41,8 +49,12 @@ $augmentedContext
 ''';
   }
 
-  /// Starts a fresh chat with the given augmented context in the system prompt.
-  Future<void> init({required String augmentedContext}) async {
+  /// Starts a chat with the given augmented context in the system prompt.
+  /// [history] restores prior turns for multi-turn continuity (text only).
+  Future<void> init({
+    required String augmentedContext,
+    List<Content> history = const [],
+  }) async {
     _chat = null;
     _initError = null;
 
@@ -58,7 +70,7 @@ $augmentedContext
         apiKey: AssistantConfig.geminiApiKey,
         systemInstruction: Content.system(_baseSystemPrompt(augmentedContext)),
       );
-      _chat = model.startChat();
+      _chat = model.startChat(history: List<Content>.from(history));
     } catch (e, st) {
       _initError = 'Failed to start assistant: $e';
       assert(() {
@@ -97,9 +109,7 @@ $augmentedContext
       mime = 'image/png';
     }
 
-    final textPart = trimmed.isEmpty
-        ? 'I attached a photo of a road sign or road scene. Identify any UK-style traffic signs if visible, explain their meanings briefly, and say if you are uncertain.'
-        : trimmed;
+    final textPart = trimmed.isEmpty ? imageOnlyUserPrompt : trimmed;
 
     try {
       final Content content;

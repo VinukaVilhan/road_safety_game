@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui'
-    show Canvas, Color, Paint, Path, PictureRecorder, Radius, Rect, RRect;
+    show Canvas, Color, Offset, Paint, Path, PictureRecorder, Radius, Rect, RRect;
 
 import 'package:flame/camera.dart';
 import 'package:flame/components.dart';
@@ -235,28 +235,62 @@ Vector2? _pickPlayerSpawnFromObjectGroups(Iterable<ObjectGroup> groups) {
   return null;
 }
 
-/// First marker in `Ambulance_Spawn` (decoration only; uses Tiled object rotation if set).
-({Vector2 position, double angle})? _ambulanceSpawnDecorationFromGroups(
+/// First marker in `Ambulance_Spawn` (decoration; uses Tiled object rotation if set).
+/// [sirenVolume] comes from the layer's `sirenVolume` custom property (default 0.8).
+({Vector2 position, double angle, double sirenVolume})? _readAmbulanceSpawnConfig(
   Iterable<ObjectGroup> groups,
 ) {
   for (final layer in groups) {
     final t = _tiledLayerTag(layer);
     if (!(t.contains('ambulance') && t.contains('spawn'))) continue;
+    var sirenVol = 0.8;
+    final sv = _readNumericPropertyAsDouble(layer.properties, 'sirenVolume');
+    if (sv != null) {
+      sirenVol = sv.clamp(0.0, 1.0);
+    }
     for (final obj in layer.objects) {
       if (!obj.visible) continue;
       final spawnX = obj.isPoint ? obj.x : obj.x + (obj.width / 2);
       final spawnY = obj.isPoint ? obj.y : obj.y + (obj.height / 2);
       final angle = -math.pi / 2 + obj.rotation * math.pi / 180;
-      return (position: Vector2(spawnX, spawnY), angle: angle);
+      return (position: Vector2(spawnX, spawnY), angle: angle, sirenVolume: sirenVol);
     }
   }
   return null;
+}
+
+/// Axis-aligned rectangles from object layers named/classed like `Siren_Layer` / `Siren_Triggers`.
+void _collectSirenTriggerRects(
+  Iterable<ObjectGroup> groups,
+  List<Rect> out,
+) {
+  out.clear();
+  for (final layer in groups) {
+    final tag = _tiledLayerTag(layer);
+    final layerClass = (layer.class_ ?? '').replaceAll(' ', '_').toLowerCase();
+    final isSiren = tag.contains('siren') || layerClass.contains('siren');
+    if (!isSiren) continue;
+    for (final obj in layer.objects) {
+      if (!obj.visible || obj.width <= 0 || obj.height <= 0) continue;
+      if (obj.isPoint || obj.isPolygon || obj.isPolyline || obj.isEllipse) continue;
+      if (obj.rotation != 0) continue;
+      out.add(Rect.fromLTWH(obj.x, obj.y, obj.width, obj.height));
+    }
+  }
 }
 
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   Car? car; // Make car accessible - nullable to handle initialization order
   /// Stationary ambulance graphic from `Ambulance_Spawn` on [ambulance-reaction.tmx].
   SpriteComponent? _ambulanceDecoration;
+  /// When the map has [Siren_Layer] rects, the ambulance is hidden until the car overlaps one.
+  final List<Rect> _sirenTriggerRects = [];
+  ({Vector2 position, double angle, double sirenVolume})? _ambulanceSpawnConfig;
+  bool _ambulanceSirenRevealDone = false;
+  AudioPlayer? _ambulanceSirenPlayer;
+
+  /// Add `assets/audio/Ambulance_Siren.wav` (short looping clip) for siren when entering [Siren_Layer].
+  static const String _ambulanceSirenAsset = 'Ambulance_Siren.wav';
   late SpriteComponent roadBackground;
   double roadSpeed = 200.0;
   List<TiledComponent> roadTiles = [];
@@ -360,6 +394,11 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       ]);
     } catch (e, st) {
       debugPrint('Vehicle SFX preload failed: $e\n$st');
+    }
+    try {
+      await FlameAudio.audioCache.load(_ambulanceSirenAsset);
+    } catch (_) {
+      // Optional: add assets/audio/Ambulance_Siren.wav for ambulance-reaction level.
     }
     
     print('[DEBUG] onLoad() - Game size: ${size.x} x ${size.y}');
@@ -639,9 +678,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     roadTiles.add(mapInstance);
     world.add(mapInstance);  // Add to world, not game
 
-    await _setupAmbulanceDecorationFromTmx(
-      tiledMap.tileMap.map.layers.whereType<ObjectGroup>(),
-    );
+    final objectGroupLayers =
+        tiledMap.tileMap.map.layers.whereType<ObjectGroup>().toList();
+    _collectSirenTriggerRects(objectGroupLayers, _sirenTriggerRects);
+    if (_sirenTriggerRects.isNotEmpty) {
+      print(
+        '[DEBUG] _setupRoad() - Siren_Layer: ${_sirenTriggerRects.length} trigger rect(s); '
+        'ambulance will appear when the player enters one.',
+      );
+    }
+    await _setupAmbulanceDecorationFromTmx(objectGroupLayers);
     
     _roadInitialized = true;
     
@@ -678,13 +724,29 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     camera.viewfinder.zoom = finalZoom;
   }
 
-  /// Draws an ambulance sprite at the TMX `Ambulance_Spawn` layer (e.g. emergency vehicles level).
-  /// Uses [assets/images/Ambulance.png] when present; otherwise a built-in marker sprite.
+  /// Draws an ambulance at `Ambulance_Spawn`. If the map has [Siren_Layer] trigger rects,
+  /// the sprite (and siren) appear only after the player's car overlaps a trigger.
   Future<void> _setupAmbulanceDecorationFromTmx(
     Iterable<ObjectGroup> objectLayers,
   ) async {
-    final marker = _ambulanceSpawnDecorationFromGroups(objectLayers);
-    if (marker == null) return;
+    _ambulanceSpawnConfig = _readAmbulanceSpawnConfig(objectLayers);
+    if (_ambulanceSpawnConfig == null) return;
+
+    if (_sirenTriggerRects.isNotEmpty) {
+      print(
+        '[DEBUG] _setupRoad() - Ambulance spawn deferred until Siren_Layer overlap '
+        'at ${_ambulanceSpawnConfig!.position}',
+      );
+      return;
+    }
+
+    await _placeAmbulanceDecoration(_ambulanceSpawnConfig!);
+  }
+
+  Future<void> _placeAmbulanceDecoration(
+    ({Vector2 position, double angle, double sirenVolume}) cfg,
+  ) async {
+    if (_ambulanceDecoration != null) return;
 
     Sprite sprite;
     try {
@@ -696,18 +758,70 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _ambulanceDecoration?.removeFromParent();
     final deco = SpriteComponent(
       sprite: sprite,
-      position: marker.position,
+      position: cfg.position,
       size: Vector2(52, 78),
       anchor: Anchor.center,
-      angle: marker.angle,
+      angle: cfg.angle,
       priority: 0,
     );
     _ambulanceDecoration = deco;
     world.add(deco);
     print(
-      '[DEBUG] _setupRoad() - Ambulance decoration at ${marker.position} '
-      'angle=${marker.angle * 180 / math.pi}°',
+      '[DEBUG] Ambulance decoration at ${cfg.position} '
+      'angle=${cfg.angle * 180 / math.pi}°',
     );
+  }
+
+  Future<void> _stopAmbulanceSiren() async {
+    final p = _ambulanceSirenPlayer;
+    _ambulanceSirenPlayer = null;
+    if (p == null) return;
+    try {
+      await p.stop();
+    } catch (_) {}
+    try {
+      await p.dispose();
+    } catch (_) {}
+  }
+
+  Future<void> _startAmbulanceSiren(double volume) async {
+    await _stopAmbulanceSiren();
+    try {
+      _ambulanceSirenPlayer = await FlameAudio.loop(
+        _ambulanceSirenAsset,
+        volume: volume.clamp(0.0, 1.0),
+      );
+    } catch (e, st) {
+      debugPrint(
+        'Ambulance siren failed (add assets/audio/$_ambulanceSirenAsset): $e\n$st',
+      );
+    }
+  }
+
+  void _updateAmbulanceSirenTrigger() {
+    if (_testFinished || car == null) return;
+    if (_ambulanceSirenRevealDone) return;
+    if (_ambulanceSpawnConfig == null || _sirenTriggerRects.isEmpty) return;
+    if (_ambulanceDecoration != null) return;
+
+    final carRect = Rect.fromCenter(
+      center: Offset(car!.position.x, car!.position.y),
+      width: car!.size.x,
+      height: car!.size.y,
+    );
+    for (final r in _sirenTriggerRects) {
+      if (!carRect.overlaps(r)) continue;
+      _ambulanceSirenRevealDone = true;
+      unawaited(_revealAmbulanceAndPlaySiren(_ambulanceSpawnConfig!));
+      break;
+    }
+  }
+
+  Future<void> _revealAmbulanceAndPlaySiren(
+    ({Vector2 position, double angle, double sirenVolume}) cfg,
+  ) async {
+    await _placeAmbulanceDecoration(cfg);
+    await _startAmbulanceSiren(cfg.sirenVolume);
   }
 
   /// Reset scenario after failure so the player can retry without replacing [GameScreen]
@@ -734,6 +848,13 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     roadCrossingCountdown.value = null;
     roadCrossingApproachHint.value = null;
     _junctionBoxStoppedElapsedSec = 0.0;
+    _ambulanceDecoration?.removeFromParent();
+    _ambulanceDecoration = null;
+    _ambulanceSirenRevealDone = false;
+    unawaited(_stopAmbulanceSiren());
+    if (_ambulanceSpawnConfig != null && _sirenTriggerRects.isEmpty) {
+      unawaited(_placeAmbulanceDecoration(_ambulanceSpawnConfig!));
+    }
     final c = car;
     if (c == null) return;
     c.velocity = Vector2.zero();
@@ -758,6 +879,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _vehicleSfx.dispose();
     _ambulanceDecoration?.removeFromParent();
     _ambulanceDecoration = null;
+    unawaited(_stopAmbulanceSiren());
     super.onRemove();
   }
 
@@ -765,6 +887,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   void update(double dt) {
     super.update(dt);
     _vehicleSfx.tick(dt, car);
+    _updateAmbulanceSirenTrigger();
     _updateRoadCrossingApproachHint();
     _updateRoadCrossingParkCountdown(dt);
     _enforceSpeedLimitZones();
@@ -1312,6 +1435,51 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   }
 }
 
+/// Named attachment points on the player car sprite in **local** coordinates.
+/// With [Car.anchor] center and default angle, `y = 0` is the **front** of the car.
+/// Kept next to [Car] as the single place that maps sprite space to logical zones.
+class CarZones {
+  final Vector2 size;
+  const CarZones(this.size);
+
+  // Wheels (inset 12% from sides, 18% from ends)
+  Vector2 get frontLeft => Vector2(size.x * 0.12, size.y * 0.18);
+  Vector2 get frontRight => Vector2(size.x * 0.88, size.y * 0.18);
+  Vector2 get rearLeft => Vector2(size.x * 0.12, size.y * 0.82);
+  Vector2 get rearRight => Vector2(size.x * 0.88, size.y * 0.82);
+
+  // Bumpers (center of front/rear edge)
+  Vector2 get frontBumper => Vector2(size.x / 2, 0);
+  Vector2 get rearBumper => Vector2(size.x / 2, size.y);
+
+  // Side midpoints
+  Vector2 get leftSide => Vector2(0, size.y / 2);
+  Vector2 get rightSide => Vector2(size.x, size.y / 2);
+
+  /// Which named zone is closest to [localPoint] (for diagnostics / impacts).
+  String closestZoneName(Vector2 localPoint) {
+    var bestName = 'frontLeft';
+    var bestDist = double.infinity;
+    void consider(String name, Vector2 p) {
+      final d = localPoint.distanceToSquared(p);
+      if (d < bestDist) {
+        bestDist = d;
+        bestName = name;
+      }
+    }
+
+    consider('frontLeft', frontLeft);
+    consider('frontRight', frontRight);
+    consider('rearLeft', rearLeft);
+    consider('rearRight', rearRight);
+    consider('frontBumper', frontBumper);
+    consider('rearBumper', rearBumper);
+    consider('leftSide', leftSide);
+    consider('rightSide', rightSide);
+    return bestName;
+  }
+}
+
 class Car extends SpriteComponent {
   // Physics properties
   Vector2 velocity = Vector2.zero();
@@ -1365,7 +1533,9 @@ class Car extends SpriteComponent {
     3: 0.36, // 3rd gear (~72)
     4: 0.50, // 4th gear (~100)
   };
-  
+
+  late final CarZones zones;
+
   @override
   Future<void> onLoad() async {
     super.onLoad();
@@ -1377,6 +1547,7 @@ class Car extends SpriteComponent {
     size = Vector2(60, 60);
     anchor = Anchor.center;
     angle = -math.pi / 2; // Car starts facing up (negative Y direction)
+    zones = CarZones(size);
   }
   
   @override

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/assistant_launch_context.dart';
 import '../models/assistant_message.dart';
+import '../services/assistant_chat_history_service.dart';
 import '../services/assistant_context_builder.dart';
 import '../services/assistant_image_prepare.dart';
 import '../services/assistant_service.dart';
@@ -41,6 +44,22 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     'What does this sign mean? (attach a photo)',
   ];
 
+  static AssistantMessage _welcomeMessage() {
+    return AssistantMessage(
+      role: AssistantMessageRole.assistant,
+      text:
+          "Hi — I'm your Road Rules instructor. Ask about signs, procedures, "
+          'in-game checklists, or your latest level reports. Tap the image icon '
+          'to attach a photo of a real road sign.',
+      at: DateTime.now(),
+    );
+  }
+
+  Future<void> _persistMessages() async {
+    if (_messages.isEmpty) return;
+    await AssistantChatHistoryService.instance.save(_messages);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -61,27 +80,36 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       _bootstrapping = true;
       _banner = null;
     });
+    var saved = <AssistantMessage>[];
+    try {
+      saved = await AssistantChatHistoryService.instance.load();
+    } catch (_) {}
     try {
       final augmented = await AssistantContextBuilder.build(widget.launchContext);
-      await AssistantService.instance.init(augmentedContext: augmented);
+      final geminiHistory = AssistantChatHistoryService.toGeminiHistory(saved);
+      await AssistantService.instance.init(
+        augmentedContext: augmented,
+        history: geminiHistory,
+      );
       if (!AssistantService.instance.isReady) {
         setState(() {
           _banner = AssistantService.instance.initError ??
               'Assistant could not start. Check your API key.';
+          _messages
+            ..clear()
+            ..addAll(saved);
+        });
+      } else if (saved.isNotEmpty) {
+        setState(() {
+          _messages
+            ..clear()
+            ..addAll(saved);
         });
       } else {
         setState(() {
-          _messages.add(
-            AssistantMessage(
-              role: AssistantMessageRole.assistant,
-              text:
-                  "Hi — I'm your Road Rules instructor. Ask about signs, procedures, "
-                  'in-game checklists, or your latest level reports. Tap the image icon '
-                  'to attach a photo of a real road sign.',
-              at: DateTime.now(),
-            ),
-          );
+          _messages.add(_welcomeMessage());
         });
+        await _persistMessages();
       }
     } catch (e) {
       setState(() {
@@ -97,6 +125,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 
   @override
   void dispose() {
+    unawaited(AssistantChatHistoryService.instance.save(List<AssistantMessage>.from(_messages)));
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -106,6 +135,41 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _clearHistory() async {
+    if (_bootstrapping || _sending) return;
+    UiSoundService().playMenuTap();
+    setState(() {
+      _bootstrapping = true;
+      _banner = null;
+    });
+    await AssistantChatHistoryService.instance.clear();
+    try {
+      final augmented = await AssistantContextBuilder.build(widget.launchContext);
+      await AssistantService.instance.init(augmentedContext: augmented, history: const []);
+      if (!mounted) return;
+      setState(() {
+        _messages.clear();
+        if (AssistantService.instance.isReady) {
+          _messages.add(_welcomeMessage());
+        }
+        _banner = AssistantService.instance.isReady
+            ? null
+            : (AssistantService.instance.initError ??
+                'Assistant could not start. Check your API key.');
+      });
+      await _persistMessages();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _banner = 'Could not reset chat: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _bootstrapping = false);
+        _scrollToBottom();
+      }
+    }
   }
 
   void _scrollToBottom() {
@@ -164,9 +228,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     if (trimmed.isEmpty && imageBytes == null) return;
 
     UiSoundService().playMenuTap();
-    final displayText = trimmed.isEmpty
-        ? '(Road sign / scene photo — see instructor reply)'
-        : trimmed;
+    final displayText =
+        trimmed.isEmpty ? AssistantService.imageOnlyDisplayPlaceholder : trimmed;
+    final modelUserText =
+        trimmed.isEmpty && imageBytes != null ? AssistantService.imageOnlyUserPrompt : trimmed;
     setState(() {
       _messages.add(
         AssistantMessage(
@@ -174,12 +239,14 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           text: displayText,
           at: DateTime.now(),
           hasUserImage: imageBytes != null,
+          userModelText: modelUserText == displayText ? null : modelUserText,
         ),
       );
       _sending = true;
       _pendingImageBytes = null;
       _pendingMimeType = 'image/jpeg';
     });
+    unawaited(_persistMessages());
     _controller.clear();
     _scrollToBottom();
 
@@ -195,6 +262,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       );
       _sending = false;
     });
+    await _persistMessages();
     _scrollToBottom();
   }
 
@@ -219,6 +287,20 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         backgroundColor: SwissTheme.backgroundWhite,
         foregroundColor: SwissTheme.textPrimary,
         title: Text('AI INSTRUCTOR', style: titleStyle),
+        actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'clear') _clearHistory();
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(
+                value: 'clear',
+                child: Text('Clear chat history'),
+              ),
+            ],
+          ),
+        ],
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),

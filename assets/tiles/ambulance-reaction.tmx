@@ -226,7 +226,11 @@
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,653,654,655,656,657,658,659,660,661,662,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </data>
  </layer>
- <objectgroup id="4" name="Ambulance_Start">
+ <objectgroup color="#aa0000" id="4" name="Ambulance_Spawn">
+  <properties>
+   <property name="sirenVolume" type="float" value="0.8"/>
+   <property name="spawnId" value="Ambulance"/>
+  </properties>
   <object id="3" x="525" y="703">
    <point/>
   </object>
@@ -236,10 +240,10 @@
    <point/>
   </object>
  </objectgroup>
- <objectgroup color="#ffff00" id="7" name="Siren_Layer" tintcolor="#ffff7f">
+ <objectgroup color="#ffff00" id="7" name="Siren_Layer" class="Siren_Triggers" tintcolor="#ffff7f">
   <object id="4" x="598" y="603" width="67" height="138"/>
  </objectgroup>
- <objectgroup id="8" name="Safe_Zone">
+ <objectgroup id="8" name="Safe_Zone" class="Safe_Stop">
   <object id="5" x="1069" y="5" width="32" height="576"/>
   <object id="6" x="950" y="-7" width="32" height="592"/>
   <object id="7" x="959" y="604" width="32" height="277" rotation="90"/>
@@ -247,7 +251,7 @@
   <object id="9" x="1061.64" y="635.04" width="32" height="104" rotation="51.3734"/>
   <object id="10" x="1069.54" y="587.628" width="32" height="46.2629" rotation="14.1313"/>
  </objectgroup>
- <objectgroup color="#000000" id="9" name="Obstacles_Layer">
+ <objectgroup color="#000000" id="9" name="Obstacles_Layer" class="Collision_Box">
   <object id="11" x="18" y="16" width="916" height="563"/>
   <object id="12" x="18" y="620" width="378" height="968"/>
   <object id="13" x="600" y="774" width="666" height="818"/>

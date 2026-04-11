@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:ui' show Path;
+import 'dart:ui'
+    show Canvas, Color, Paint, Path, PictureRecorder, Radius, Rect, RRect;
 
 import 'package:flame/camera.dart';
 import 'package:flame/components.dart';
@@ -159,8 +160,103 @@ bool _isJunctionBoxTileLayer(TileLayer layer) {
   return nm == 'junction_box' || nm.contains('junction_box');
 }
 
+/// UK-style ambulance marker for [ambulance-reaction.tmx] when `Ambulance.png` is absent.
+Future<Sprite> _proceduralAmbulanceSprite() async {
+  const w = 48;
+  const h = 80;
+  final recorder = PictureRecorder();
+  final canvas = Canvas(recorder);
+  final body = RRect.fromRectAndRadius(
+    Rect.fromLTWH(6, 14, 36, 50),
+    const Radius.circular(7),
+  );
+  canvas.drawRRect(body, Paint()..color = const Color(0xFFF2F2F2));
+  canvas.drawRect(
+    Rect.fromLTWH(6, 32, 36, 10),
+    Paint()..color = const Color(0xFFD32F2F),
+  );
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(
+      Rect.fromLTWH(16, 6, 16, 12),
+      const Radius.circular(3),
+    ),
+    Paint()..color = const Color(0xFF1565C0),
+  );
+  canvas.drawCircle(
+    const Offset(24, 12),
+    3,
+    Paint()..color = const Color(0xFFFFEB3B),
+  );
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(w, h);
+  return Sprite(image);
+}
+
+String _tiledLayerTag(ObjectGroup layer) =>
+    layer.name.replaceAll(' ', '_').toLowerCase();
+
+/// Prefer `Player_Spawn` over other layers whose names contain "spawn" (e.g. ambulance marker).
+Vector2? _pickPlayerSpawnFromObjectGroups(Iterable<ObjectGroup> groups) {
+  Vector2? pickFromLayer(ObjectGroup layer) {
+    final layerTag = _tiledLayerTag(layer);
+    final layerClassTag = (layer.class_ ?? '').replaceAll(' ', '_').toLowerCase();
+    final isSpawnLayer =
+        layerTag.contains('spawn') || layerClassTag.contains('spawn');
+    for (final obj in layer.objects) {
+      final objectClassTag = obj.class_.replaceAll(' ', '_').toLowerCase();
+      final objectTypeTag = obj.type.replaceAll(' ', '_').toLowerCase();
+      final objectNameTag = obj.name.replaceAll(' ', '_').toLowerCase();
+      final isSpawnObject = objectClassTag.contains('spawn') ||
+          objectTypeTag.contains('spawn') ||
+          objectNameTag.contains('spawn');
+      if (!isSpawnLayer && !isSpawnObject) continue;
+      final spawnX = obj.isPoint ? obj.x : obj.x + (obj.width / 2);
+      final spawnY = obj.isPoint ? obj.y : obj.y + (obj.height / 2);
+      return Vector2(spawnX, spawnY);
+    }
+    return null;
+  }
+
+  for (final layer in groups) {
+    final t = _tiledLayerTag(layer);
+    if (t.contains('player') && t.contains('spawn')) {
+      final p = pickFromLayer(layer);
+      if (p != null) {
+        return p;
+      }
+    }
+  }
+  for (final layer in groups) {
+    final t = _tiledLayerTag(layer);
+    if (t.contains('ambulance') && t.contains('spawn')) continue;
+    final p = pickFromLayer(layer);
+    if (p != null) return p;
+  }
+  return null;
+}
+
+/// First marker in `Ambulance_Spawn` (decoration only; uses Tiled object rotation if set).
+({Vector2 position, double angle})? _ambulanceSpawnDecorationFromGroups(
+  Iterable<ObjectGroup> groups,
+) {
+  for (final layer in groups) {
+    final t = _tiledLayerTag(layer);
+    if (!(t.contains('ambulance') && t.contains('spawn'))) continue;
+    for (final obj in layer.objects) {
+      if (!obj.visible) continue;
+      final spawnX = obj.isPoint ? obj.x : obj.x + (obj.width / 2);
+      final spawnY = obj.isPoint ? obj.y : obj.y + (obj.height / 2);
+      final angle = -math.pi / 2 + obj.rotation * math.pi / 180;
+      return (position: Vector2(spawnX, spawnY), angle: angle);
+    }
+  }
+  return null;
+}
+
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   Car? car; // Make car accessible - nullable to handle initialization order
+  /// Stationary ambulance graphic from `Ambulance_Spawn` on [ambulance-reaction.tmx].
+  SpriteComponent? _ambulanceDecoration;
   late SpriteComponent roadBackground;
   double roadSpeed = 200.0;
   List<TiledComponent> roadTiles = [];
@@ -333,29 +429,12 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     print('[DEBUG] _setupRoad() - Map dimensions: ${_mapWidth} x ${_mapHeight}');
     print('[DEBUG] _setupRoad() - Map tiles: ${tiledMap.tileMap.map.width} x ${tiledMap.tileMap.map.height}');
 
-    // Read spawn point from object groups (layer/object class, type, or name can mark spawn).
-    _spawnPoint = null;
-    for (final layer in tiledMap.tileMap.map.layers.whereType<ObjectGroup>()) {
-      final layerTag = layer.name.replaceAll(' ', '_').toLowerCase();
-      final layerClassTag = (layer.class_ ?? '').replaceAll(' ', '_').toLowerCase();
-      final isSpawnLayer = layerTag.contains('spawn') || layerClassTag.contains('spawn');
-      for (final obj in layer.objects) {
-        final objectClassTag =
-            obj.class_.replaceAll(' ', '_').toLowerCase();
-        final objectTypeTag = obj.type.replaceAll(' ', '_').toLowerCase();
-        final objectNameTag = obj.name.replaceAll(' ', '_').toLowerCase();
-        final isSpawnObject = objectClassTag.contains('spawn') ||
-            objectTypeTag.contains('spawn') ||
-            objectNameTag.contains('spawn');
-        if (!isSpawnLayer && !isSpawnObject) continue;
-
-        final spawnX = obj.isPoint ? obj.x : obj.x + (obj.width / 2);
-        final spawnY = obj.isPoint ? obj.y : obj.y + (obj.height / 2);
-        _spawnPoint = Vector2(spawnX, spawnY);
-        print('[DEBUG] _setupRoad() - Spawn point loaded: $_spawnPoint');
-        break;
-      }
-      if (_spawnPoint != null) break;
+    // Read spawn point (prefer Player_Spawn over Ambulance_Spawn marker layers).
+    _spawnPoint = _pickPlayerSpawnFromObjectGroups(
+      tiledMap.tileMap.map.layers.whereType<ObjectGroup>(),
+    );
+    if (_spawnPoint != null) {
+      print('[DEBUG] _setupRoad() - Spawn point loaded: $_spawnPoint');
     }
 
     // Read friction from the "Base" layer if available (Tiled layer property)
@@ -559,6 +638,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     roadTiles.add(mapInstance);
     world.add(mapInstance);  // Add to world, not game
+
+    await _setupAmbulanceDecorationFromTmx(
+      tiledMap.tileMap.map.layers.whereType<ObjectGroup>(),
+    );
     
     _roadInitialized = true;
     
@@ -593,6 +676,38 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     final minZoomToAvoidVoid = math.max(size.x / _mapWidth!, size.y / _mapHeight!);
     final finalZoom = math.max(preferredCameraZoom, minZoomToAvoidVoid);
     camera.viewfinder.zoom = finalZoom;
+  }
+
+  /// Draws an ambulance sprite at the TMX `Ambulance_Spawn` layer (e.g. emergency vehicles level).
+  /// Uses [assets/images/Ambulance.png] when present; otherwise a built-in marker sprite.
+  Future<void> _setupAmbulanceDecorationFromTmx(
+    Iterable<ObjectGroup> objectLayers,
+  ) async {
+    final marker = _ambulanceSpawnDecorationFromGroups(objectLayers);
+    if (marker == null) return;
+
+    Sprite sprite;
+    try {
+      sprite = await Sprite.load('Ambulance.png');
+    } catch (_) {
+      sprite = await _proceduralAmbulanceSprite();
+    }
+
+    _ambulanceDecoration?.removeFromParent();
+    final deco = SpriteComponent(
+      sprite: sprite,
+      position: marker.position,
+      size: Vector2(52, 78),
+      anchor: Anchor.center,
+      angle: marker.angle,
+      priority: 0,
+    );
+    _ambulanceDecoration = deco;
+    world.add(deco);
+    print(
+      '[DEBUG] _setupRoad() - Ambulance decoration at ${marker.position} '
+      'angle=${marker.angle * 180 / math.pi}°',
+    );
   }
 
   /// Reset scenario after failure so the player can retry without replacing [GameScreen]
@@ -641,6 +756,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   @override
   void onRemove() {
     _vehicleSfx.dispose();
+    _ambulanceDecoration?.removeFromParent();
+    _ambulanceDecoration = null;
     super.onRemove();
   }
 

@@ -67,6 +67,15 @@ class FirestoreApi {
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
         return;
+      /// Latest practical driving summary per level (`entityId` == [GameLevel.id]).
+      case 'driving_last_run':
+        await userDoc.collection('driving_last_runs').doc(entityId).set({
+          ...payload,
+          'opId': opId,
+          'syncedAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        return;
       default:
         throw UnsupportedError('Unknown entityType: $entityType');
     }

@@ -150,6 +150,8 @@ class SyncService {
             await isar.localUserSettings.put(row);
           }
           return;
+        case 'driving_last_run':
+          return;
       }
     });
   }

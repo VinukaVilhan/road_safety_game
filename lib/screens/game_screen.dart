@@ -12,6 +12,7 @@ import '../widgets/pedals.dart';
 import '../widgets/radio_tuner_sheet.dart';
 import '../services/music_service.dart';
 import '../services/level_progress_service.dart';
+import '../services/last_driving_report_service.dart';
 import '../services/ui_sound_service.dart';
 
 class GameScreen extends StatefulWidget {
@@ -717,6 +718,12 @@ class GameScreenState extends State<GameScreen> {
     _resultDialogVisible = true;
     UiSoundService().playLevelPassed();
     final summary = game.getAttemptSummary(passed: true);
+    unawaited(
+      LastDrivingReportService.instance.recordAttempt(
+        summary: summary,
+        level: widget.level,
+      ),
+    );
 
     showDialog(
       context: context,
@@ -751,6 +758,12 @@ class GameScreenState extends State<GameScreen> {
     _resultDialogVisible = true;
     UiSoundService().playLevelFailed();
     final summary = game.getAttemptSummary(passed: false, failureMessage: message);
+    unawaited(
+      LastDrivingReportService.instance.recordAttempt(
+        summary: summary,
+        level: widget.level,
+      ),
+    );
 
     showDialog(
       context: context,

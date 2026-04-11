@@ -8,6 +8,8 @@ import '../models/game_level.dart';
 import '../services/driving_levels_service.dart';
 import '../services/level_progress_service.dart';
 import '../services/ui_sound_service.dart';
+import '../services/last_driving_report_service.dart';
+import '../widgets/last_driving_report_dialog.dart';
 import 'game_screen.dart';
 
 class LevelSelectionScreen extends StatefulWidget {
@@ -53,6 +55,9 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
 
   // Track completed levels from Firebase.
   Set<String> completedLevelIds = {};
+
+  /// Levels with a saved "last run" summary (document icon on card).
+  Set<String> _levelIdsWithReport = {};
 
   @override
   void initState() {
@@ -101,6 +106,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     });
 
     _loadCompletedLevels();
+    unawaited(_refreshSavedDrivingReports());
   }
 
   @override
@@ -286,6 +292,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
           borderRadius: BorderRadius.zero,
         ),
         child: Stack(
+          clipBehavior: Clip.none,
           children: [
             // Locked overlay pattern
             if (!isUnlocked)
@@ -393,7 +400,42 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                 ],
               ),
             ),
+            if (_levelIdsWithReport.contains(level.id))
+              Positioned(
+                top: 4,
+                right: 4,
+                child: _lastRunDocButton(level),
+              ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _lastRunDocButton(GameLevel level) {
+    return Tooltip(
+      message: 'Last run summary',
+      child: Material(
+        color: SwissTheme.backgroundWhite,
+        shape: const CircleBorder(
+          side: BorderSide(color: SwissTheme.borderBlack, width: 1),
+        ),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () async {
+            UiSoundService().playMenuTap();
+            final report = await LastDrivingReportService.instance.loadReportForLevel(level.id);
+            if (!mounted || report == null) return;
+            showLastDrivingReportDialog(context, report);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Icon(
+              Icons.description_outlined,
+              size: 18,
+              color: SwissTheme.accentBlue,
+            ),
+          ),
         ),
       ),
     );
@@ -424,6 +466,17 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     }
   }
 
+  Future<void> _refreshSavedDrivingReports() async {
+    try {
+      await LastDrivingReportService.instance.mergeRemoteSummariesIfSignedIn();
+      final ids = await LastDrivingReportService.instance.levelIdsWithSavedReports();
+      if (!mounted) return;
+      setState(() => _levelIdsWithReport = ids);
+    } catch (_) {
+      if (mounted) setState(() => _levelIdsWithReport = {});
+    }
+  }
+
   Future<void> _startGame(GameLevel level) async {
     // Use MaterialPageRoute for better performance
     final result = await Navigator.push<Object?>(
@@ -442,6 +495,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     }
 
     await _loadCompletedLevels();
+    await _refreshSavedDrivingReports();
     unawaited(LevelProgressService.uploadLocalCompletedLevelsToFirestore());
   }
 

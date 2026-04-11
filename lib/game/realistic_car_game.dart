@@ -245,6 +245,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     // Only preload assets that exist under assets/audio/ (see pubspec assets).
     try {
       await FlameAudio.audioCache.loadAll([
+        'Car_Start.m4a',
+        'Car_Idle.m4a',
         'Reverse_Sound.m4a',
       ]);
     } catch (e, st) {
@@ -583,6 +585,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   /// Reset scenario after failure so the player can retry without replacing [GameScreen]
   /// (avoids dispose/orientation races with `Navigator.pushReplacement`).
   void restartLevel() {
+    _vehicleSfx.resetForLevelRestart();
     _testFinished = false;
     _zonesInsidePreviousFrame.clear();
     _lastCompletedStepId = 0;
@@ -1467,45 +1470,93 @@ class Car extends SpriteComponent {
   }
 }
 
-/// Engine, brake, and reverse-beep sounds using [FlameAudio] (`assets/audio/`).
-/// Optional: add `accelerate.mp3` for engine loop and `brake.wav` for heavy-brake ticks.
+/// Engine audio: Car_Start.m4a (one-shot) → Car_Idle.m4a (seamless loop with
+/// dynamic pitch + volume). Uses [AudioPlayer] in [PlayerMode.mediaPlayer]
+/// directly so that [AudioPlayer.setPlaybackRate] and [ReleaseMode.loop] work
+/// reliably on Android (SoundPool / lowLatency does NOT support these).
 class VehicleSfx {
-  static const String _engineLoopAsset = 'accelerate.mp3';
-  static const String _brakeAsset = 'brake.wav';
+  static const String _engineIdleLoopAsset = 'Car_Idle.m4a';
+  static const String _engineStartAsset = 'Car_Start.m4a';
   static const String _reverseLoopAsset = 'Reverse_Sound.m4a';
+  static const String _brakeAsset = 'brake.wav';
 
-  static const double _engineVol = 0.28;
+  static const double _engineStartVol = 0.55;
+  static const double _idleEngineVol = 0.32;
+  static const double _maxEngineVol = 0.72;
   static const double _reverseVol = 0.24;
   static const double _brakeVol = 0.34;
 
+  /// Playback rate = pitch multiplier. 0.85 = low idle rumble, 2.0 = screaming.
+  /// Clamped to 0.5–2.0 which is the universal safe range across platforms.
+  static const double _idlePitch = 0.85;
+  static const double _maxPitch = 2.0;
+
+  AudioPlayer? _startPlayer;
   AudioPlayer? _engine;
   AudioPlayer? _reverse;
-  int _engineSeq = 0;
+
+  /// Incremented whenever forward-engine audio is torn down; lets async tasks
+  /// detect they are stale and bail out without touching new players.
+  int _forwardSeq = 0;
   int _reverseSeq = 0;
-  bool _wantEngine = false;
+
+  bool _wantForwardEngine = false;
   bool _wantReverse = false;
+
+  /// dt-accumulator so the idle loop starts after the start clip finishes.
+  double _startElapsed = 0.0;
+  /// How long Car_Start.m4a runs before we switch to the idle loop.
+  static const double _startDuration = 2.4;
+  bool _inStartPhase = false;
+
+  double _lastPitch = -1;
+  double _lastVol = -1;
   double _brakeRepeat = 0;
+
+  /// After the first [Car_Start] in a level, only the idle loop is used when
+  /// returning from P/R to forward gears (see [resetForLevelRestart] on retry).
+  bool _playedCarStartForLevel = false;
+
+  /// Call when the driving level restarts (e.g. Retry) so [Car_Start] plays again.
+  void resetForLevelRestart() {
+    _playedCarStartForLevel = false;
+  }
 
   void tick(double dt, Car? car) {
     if (car == null) return;
 
-    final canMove = !car.isInPark && car.currentGear != 0;
     final speed = car.getCurrentSpeed();
-    final wantEngine =
-        car.isAccelerating && canMove && car.currentGear != -1;
+    final wantForward = !car.isInPark && car.currentGear > 0;
     final wantReverse = car.currentGear == -1 &&
         !car.isInPark &&
         (car.isAccelerating || speed > 6);
 
-    if (wantEngine != _wantEngine) {
-      _wantEngine = wantEngine;
-      if (wantEngine) {
-        unawaited(_startEngine());
+    // ── Forward engine state machine ──
+    if (wantForward != _wantForwardEngine) {
+      _wantForwardEngine = wantForward;
+      if (wantForward) {
+        unawaited(_beginForwardEngine());
       } else {
-        unawaited(_stopEngine());
+        _stopForwardEngine();
       }
     }
 
+    // Advance start-sound timer → switch to idle loop
+    if (_wantForwardEngine && _inStartPhase) {
+      _startElapsed += dt;
+      if (_startElapsed >= _startDuration) {
+        _inStartPhase = false;
+        final seq = _forwardSeq;
+        unawaited(_launchIdleLoop(seq));
+      }
+    }
+
+    // Modulate idle loop every frame
+    if (_wantForwardEngine && _engine != null) {
+      _modulateEngine(car);
+    }
+
+    // ── Reverse ──
     if (wantReverse != _wantReverse) {
       _wantReverse = wantReverse;
       if (wantReverse) {
@@ -1515,6 +1566,7 @@ class VehicleSfx {
       }
     }
 
+    // ── Brake tick ──
     if (car.isBraking && speed > 14) {
       _brakeRepeat -= dt;
       if (_brakeRepeat <= 0) {
@@ -1526,59 +1578,140 @@ class VehicleSfx {
     }
   }
 
-  static Future<void> _playBrakeIfAvailable() async {
-    try {
-      await FlameAudio.play(_brakeAsset, volume: _brakeVol);
-    } catch (_) {
-      // Optional asset; folder may only ship reverse / UI clips.
-    }
-  }
-
   void dispose() {
-    unawaited(_stopEngine());
+    _stopForwardEngine();
     unawaited(_stopReverse());
   }
 
-  Future<void> _startEngine() async {
-    await _stopEngineInternal();
-    final seq = ++_engineSeq;
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  void _stopForwardEngine() {
+    _forwardSeq++;
+    _inStartPhase = false;
+    _startElapsed = 0;
+    _lastPitch = -1;
+    _lastVol = -1;
+    _disposePlayer(_startPlayer);
+    _startPlayer = null;
+    _disposePlayer(_engine);
+    _engine = null;
+  }
+
+  static void _disposePlayer(AudioPlayer? p) {
+    if (p == null) return;
+    unawaited(() async {
+      try { await p.stop(); } catch (_) {}
+      await p.dispose();
+    }());
+  }
+
+  /// Creates a fresh [AudioPlayer] that uses [PlayerMode.mediaPlayer] (default).
+  /// This is the only mode that reliably supports [setPlaybackRate] and
+  /// [ReleaseMode.loop] on all platforms.
+  static AudioPlayer _makePlayer() {
+    return AudioPlayer()..audioCache = FlameAudio.audioCache;
+  }
+
+  Future<void> _beginForwardEngine() async {
+    final seq = _forwardSeq;
+    _inStartPhase = false;
+    _startElapsed = 0;
+    _lastPitch = -1;
+    _lastVol = -1;
+
+    // Stop any previous engine audio
+    _disposePlayer(_engine);
+    _engine = null;
+    _disposePlayer(_startPlayer);
+    _startPlayer = null;
+
+    // First forward engagement this level: Car_Start → idle. Later P/R→D: idle only.
+    if (_playedCarStartForLevel) {
+      unawaited(_launchIdleLoop(seq));
+      return;
+    }
+
     try {
-      final p = await FlameAudio.loop(_engineLoopAsset, volume: _engineVol);
-      if (seq != _engineSeq) {
-        await p.stop();
-        await p.dispose();
+      final p = _makePlayer();
+      await p.setReleaseMode(ReleaseMode.release);
+      await p.play(AssetSource(_engineStartAsset), volume: _engineStartVol);
+      if (seq != _forwardSeq) {
+        _disposePlayer(p);
+        return;
+      }
+      _playedCarStartForLevel = true;
+      _startPlayer = p;
+      _inStartPhase = true;
+    } catch (e, st) {
+      debugPrint('VehicleSfx start failed: $e\n$st');
+      _playedCarStartForLevel = true;
+      if (seq == _forwardSeq) {
+        unawaited(_launchIdleLoop(seq));
+      }
+    }
+  }
+
+  Future<void> _launchIdleLoop(int seq) async {
+    if (seq != _forwardSeq) return;
+
+    // Dispose start player now that we are done with it
+    _disposePlayer(_startPlayer);
+    _startPlayer = null;
+
+    try {
+      final p = _makePlayer();
+      await p.setReleaseMode(ReleaseMode.loop);
+      await p.play(AssetSource(_engineIdleLoopAsset), volume: _idleEngineVol);
+      await p.setPlaybackRate(_idlePitch);
+      if (seq != _forwardSeq) {
+        _disposePlayer(p);
         return;
       }
       _engine = p;
+      _lastPitch = _idlePitch;
+      _lastVol = _idleEngineVol;
     } catch (e, st) {
-      debugPrint('VehicleSfx engine loop failed: $e\n$st');
+      debugPrint('VehicleSfx idle loop failed: $e\n$st');
     }
   }
 
-  Future<void> _stopEngine() async {
-    _engineSeq++;
-    await _stopEngineInternal();
-  }
-
-  Future<void> _stopEngineInternal() async {
+  void _modulateEngine(Car car) {
     final p = _engine;
-    _engine = null;
-    if (p != null) {
-      try {
-        await p.stop();
-      } catch (_) {}
-      await p.dispose();
+    if (p == null) return;
+
+    final gearCap =
+        car.maxSpeed * (car.gearSpeedMultipliers[car.currentGear]?.abs() ?? 0.2);
+    if (gearCap <= 1e-6) return;
+
+    final ratio = (car.getCurrentSpeed() / gearCap).clamp(0.0, 1.0);
+    final pitch = (_idlePitch + ratio * (_maxPitch - _idlePitch)).clamp(0.5, 2.0);
+    final vol = _idleEngineVol + ratio * (_maxEngineVol - _idleEngineVol);
+
+    // Skip trivial updates to avoid hammering the platform channel
+    if ((pitch - _lastPitch).abs() < 0.015 && (vol - _lastVol).abs() < 0.02) {
+      return;
     }
+    _lastPitch = pitch;
+    _lastVol = vol;
+    unawaited(p.setPlaybackRate(pitch));
+    unawaited(p.setVolume(vol));
+  }
+
+  static Future<void> _playBrakeIfAvailable() async {
+    try {
+      await FlameAudio.play(_brakeAsset, volume: _brakeVol);
+    } catch (_) {}
   }
 
   Future<void> _startReverse() async {
     await _stopReverseInternal();
     final seq = ++_reverseSeq;
     try {
-      final p = await FlameAudio.loop(_reverseLoopAsset, volume: _reverseVol);
+      final p = _makePlayer();
+      await p.setReleaseMode(ReleaseMode.loop);
+      await p.play(AssetSource(_reverseLoopAsset), volume: _reverseVol);
       if (seq != _reverseSeq) {
-        await p.stop();
-        await p.dispose();
+        _disposePlayer(p);
         return;
       }
       _reverse = p;
@@ -1596,9 +1729,7 @@ class VehicleSfx {
     final p = _reverse;
     _reverse = null;
     if (p != null) {
-      try {
-        await p.stop();
-      } catch (_) {}
+      try { await p.stop(); } catch (_) {}
       await p.dispose();
     }
   }

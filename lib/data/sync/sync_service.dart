@@ -152,6 +152,8 @@ class SyncService {
           return;
         case 'driving_last_run':
           return;
+        case 'odometer_increment':
+          return;
       }
     });
   }

@@ -13,6 +13,7 @@ import '../widgets/radio_tuner_sheet.dart';
 import '../services/music_service.dart';
 import '../services/level_progress_service.dart';
 import '../services/last_driving_report_service.dart';
+import '../services/odometer_service.dart';
 import '../services/ui_sound_service.dart';
 
 class GameScreen extends StatefulWidget {
@@ -68,6 +69,8 @@ class GameScreenState extends State<GameScreen> {
   bool _turnSignalBlinkVisible = true;
   static const Duration _turnSignalHoldDuration = Duration(seconds: 4);
 
+  Timer? _odometerFlushTimer;
+
   @override
   void initState() {
     super.initState();
@@ -81,6 +84,7 @@ class GameScreenState extends State<GameScreen> {
       scenarioId: widget.level.scenarioId,
       onTestPassed: _handleTestPassed,
       onTestFailed: _handleTestFailed,
+      onOdometerDeltaMeters: OdometerService.instance.recordSessionDelta,
       turnSignalLeft: _turnSignalLeftNotifier,
       turnSignalRight: _turnSignalRightNotifier,
     );
@@ -88,6 +92,9 @@ class GameScreenState extends State<GameScreen> {
     _configureGameForLevel();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showLevelStoryIfAvailable();
+    });
+    _odometerFlushTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      unawaited(OdometerService.instance.flushPendingToPersistence());
     });
   }
 
@@ -153,6 +160,8 @@ class GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
+    _odometerFlushTimer?.cancel();
+    unawaited(OdometerService.instance.flushPendingToPersistence());
     _turnSignalTapTimer?.cancel();
     _turnSignalBlinkTimer?.cancel();
     _turnSignalAutoOffTimer?.cancel();

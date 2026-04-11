@@ -76,6 +76,19 @@ class FirestoreApi {
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
         return;
+      case 'odometer_increment':
+        final delta = (payload['deltaMeters'] as num?)?.toDouble() ?? 0.0;
+        if (delta <= 0) return;
+        await userDoc.collection('stats').doc('driving').set(
+          {
+            'totalMeters': FieldValue.increment(delta),
+            'opId': opId,
+            'syncedAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+        return;
       default:
         throw UnsupportedError('Unknown entityType: $entityType');
     }

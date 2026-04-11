@@ -1,12 +1,28 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../services/odometer_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(OdometerService.instance.refreshDisplayMiles());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,6 +89,18 @@ class ProfileScreen extends StatelessWidget {
                   user.displayName?.isNotEmpty == true ? user.displayName! : '—',
                   style: valueStyle,
                 ),
+                const SizedBox(height: 24),
+                Text('DISTANCE DRIVEN (APPROX.)', style: labelStyle),
+                const SizedBox(height: 4),
+                ValueListenableBuilder<double>(
+                  valueListenable: OdometerService.instance.totalMiles,
+                  builder: (context, miles, _) {
+                    final line = miles < 0.01
+                        ? 'Under 0.01 mi — syncs when signed in'
+                        : '${miles.toStringAsFixed(2)} mi — synced with your account';
+                    return Text(line, style: valueStyle);
+                  },
+                ),
                 const SizedBox(height: 48),
                 const Divider(color: SwissTheme.dividerBlack, thickness: 1),
                 const SizedBox(height: 24),
@@ -80,7 +108,6 @@ class ProfileScreen extends StatelessWidget {
                   color: Colors.transparent,
                   child: InkWell(
                     onTap: () async {
-                      // Sign out first so AuthWrapper switches to AuthScreen, then pop so user sees it
                       try {
                         const webClientId =
                             '860711284288-sel11579st8pfgh3jqs7e68blp6fm3tf.apps.googleusercontent.com';
@@ -108,11 +135,21 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-              ] else
-                Text(
-                  'Not signed in',
-                  style: valueStyle,
+              ] else ...[
+                Text('Not signed in', style: valueStyle),
+                const SizedBox(height: 24),
+                Text('DISTANCE DRIVEN (APPROX., THIS DEVICE)', style: labelStyle),
+                const SizedBox(height: 4),
+                ValueListenableBuilder<double>(
+                  valueListenable: OdometerService.instance.totalMiles,
+                  builder: (context, miles, _) {
+                    final line = miles < 0.01
+                        ? 'Under 0.01 mi — sign in to sync across devices'
+                        : '${miles.toStringAsFixed(2)} mi on this device';
+                    return Text(line, style: valueStyle);
+                  },
                 ),
+              ],
             ],
           ),
         ),

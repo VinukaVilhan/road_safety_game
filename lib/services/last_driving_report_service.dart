@@ -49,6 +49,80 @@ class LastDrivingReportService {
     return (correct: correct, mistakes: total - correct, total: total);
   }
 
+  static String _signalPhrase(String expected) {
+    switch (expected) {
+      case 'left':
+        return 'left turn signal';
+      case 'right':
+        return 'right turn signal';
+      default:
+        return 'no turn signal (straight / no turning manoeuvre)';
+    }
+  }
+
+  /// One explanatory sentence per failed checklist row (matches in-game rubric).
+  static List<String> mistakeDetailLines(
+    DrivingAttemptSummary s, {
+    required bool roadCrossingLayout,
+  }) {
+    final lines = <String>[];
+    if (roadCrossingLayout) {
+      if (!s.enteredApproachZone) {
+        lines.add(
+          'Approach control — yellow speed-limit zone was not entered as required before the attempt ended.',
+        );
+      }
+      if (!s.waitedAtRoadCrossing) {
+        lines.add(
+          'Zebra crossing — full stop in Park and the completed wait within the grey zig-zag zone were not satisfied.',
+        );
+      }
+      if (!s.reachedFinishZone) {
+        lines.add(
+          'Route completion — the vehicle did not reach the green finish zone.',
+        );
+      }
+      if (s.nonCrashBumpCount > 0) {
+        lines.add(
+          'Obstacle discipline — recorded ${s.nonCrashBumpCount} minor non-crash contact(s); a clean run requires none.',
+        );
+      }
+    } else {
+      final sig = _signalPhrase(s.expectedTurnSignal);
+      if (!s.enteredApproachZone) {
+        lines.add(
+          'Approach zone — the yellow marked approach zone was not entered.',
+        );
+      }
+      if (!s.signaledCorrectlyInApproachZone) {
+        lines.add(
+          'Signalling (approach) — the correct $sig was not shown in the yellow approach zone.',
+        );
+      }
+      if (!s.enteredMidTurnZone) {
+        lines.add(
+          'Turn execution — the purple turn execution zone was not entered.',
+        );
+      }
+      if (!s.hadCorrectSignalInMidTurnZone) {
+        lines.add(
+          'Signalling (during turn) — the required $sig was not maintained throughout the purple zone.',
+        );
+      }
+      if (!s.reachedFinishZone) {
+        lines.add(
+          'Route completion — the green finish zone was not reached.',
+        );
+      }
+      if (s.nonCrashBumpCount > 0) {
+        lines.add(
+          'Obstacle discipline — recorded ${s.nonCrashBumpCount} minor non-crash contact(s); a clean run requires none.',
+        );
+      }
+    }
+    return lines;
+  }
+
   Future<Map<String, dynamic>> _readAllRaw() async {
     final prefs = await SharedPreferences.getInstance();
     Map<String, dynamic> all = {};
@@ -156,6 +230,7 @@ class LastDrivingReportService {
   }) async {
     final road = LastDrivingReport.isRoadCrossingMap(level.mapAsset);
     final counts = _rubricCounts(summary, roadCrossingLayout: road);
+    final mistakeDetails = mistakeDetailLines(summary, roadCrossingLayout: road);
     final report = LastDrivingReport(
       levelId: level.id,
       levelName: level.name,
@@ -163,6 +238,7 @@ class LastDrivingReportService {
       score: summary.score,
       correctMoves: counts.correct,
       mistakes: counts.mistakes,
+      mistakeDetails: mistakeDetails,
       timeSpentMs: summary.timeSpent.inMilliseconds,
       recordedAt: DateTime.now().toUtc(),
       failureMessage: summary.failureMessage,

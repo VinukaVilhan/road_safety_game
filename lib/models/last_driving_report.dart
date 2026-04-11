@@ -8,6 +8,8 @@ class LastDrivingReport {
   final int correctMoves;
   /// Checklist items missed (each failed row counts as one; bumps row fails if any bump).
   final int mistakes;
+  /// Human-readable explanation for each failed rubric row (empty if none).
+  final List<String> mistakeDetails;
   final int timeSpentMs;
   final DateTime recordedAt;
   final String? failureMessage;
@@ -20,6 +22,7 @@ class LastDrivingReport {
     required this.score,
     required this.correctMoves,
     required this.mistakes,
+    this.mistakeDetails = const [],
     required this.timeSpentMs,
     required this.recordedAt,
     this.failureMessage,
@@ -29,6 +32,11 @@ class LastDrivingReport {
   static bool isRoadCrossingMap(String? mapAsset) =>
       (mapAsset ?? '').toLowerCase().contains('road-crossing');
 
+  static List<String> _stringListFromJson(dynamic v) {
+    if (v is! List) return const [];
+    return v.map((e) => e.toString().trim()).where((s) => s.isNotEmpty).toList();
+  }
+
   Map<String, dynamic> toJson() => {
         'levelId': levelId,
         'levelName': levelName,
@@ -36,6 +44,7 @@ class LastDrivingReport {
         'score': score,
         'correctMoves': correctMoves,
         'mistakes': mistakes,
+        'mistakeDetails': mistakeDetails,
         'timeSpentMs': timeSpentMs,
         'recordedAtIso': recordedAt.toIso8601String(),
         if (failureMessage != null && failureMessage!.isNotEmpty) 'failureMessage': failureMessage,
@@ -43,13 +52,16 @@ class LastDrivingReport {
       };
 
   factory LastDrivingReport.fromJson(Map<String, dynamic> json) {
+    final details = _stringListFromJson(json['mistakeDetails']);
+    final mistakeCount = (json['mistakes'] as num?)?.toInt() ?? 0;
     return LastDrivingReport(
       levelId: json['levelId'] as String? ?? '',
       levelName: json['levelName'] as String? ?? 'Unknown level',
       passed: json['passed'] as bool? ?? false,
       score: (json['score'] as num?)?.toInt() ?? 0,
       correctMoves: (json['correctMoves'] as num?)?.toInt() ?? 0,
-      mistakes: (json['mistakes'] as num?)?.toInt() ?? 0,
+      mistakes: mistakeCount,
+      mistakeDetails: details,
       timeSpentMs: (json['timeSpentMs'] as num?)?.toInt() ?? 0,
       recordedAt: DateTime.tryParse(json['recordedAtIso'] as String? ?? '')?.toUtc() ??
           DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),

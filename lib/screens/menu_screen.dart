@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 
 import '../services/level_progress_service.dart';
+import '../services/odometer_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../data/repositories/progress_repository.dart';
@@ -88,6 +89,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
 
       // Push local level completions to Firestore (same schema as sync outbox).
       unawaited(LevelProgressService.uploadLocalCompletedLevelsToFirestore());
+      unawaited(OdometerService.instance.refreshDisplayMiles());
     });
     
     _animationController = AnimationController(
@@ -151,6 +153,24 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                           width: double.infinity,
                           height: 5,
                           color: SwissTheme.accentRed,
+                        ),
+                        const SizedBox(height: 12),
+                        ValueListenableBuilder<double>(
+                          valueListenable: OdometerService.instance.totalMiles,
+                          builder: (context, miles, _) {
+                            final label = miles < 0.01
+                                ? 'Distance driven — under 0.01 mi (approx.)'
+                                : 'Distance driven — ${miles.toStringAsFixed(2)} mi (approx.)';
+                            return Text(
+                              label,
+                              style: AppFonts.pixelifySans(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: SwissTheme.textSecondary,
+                                height: 1.3,
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

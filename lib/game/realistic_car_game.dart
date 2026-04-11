@@ -179,12 +179,18 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   /// hitting a Collision_Box / Obstacles_Layer wall fails the test as a crash.
   static const double wallHighSpeedCrashThreshold = 125.0;
 
+  /// Converts world-space travel (same units as [Car.velocity]) to metres for the odometer.
+  static const double worldUnitsToMeters = 0.022;
+
   /// Optional TMX map path (e.g. 'assets/tiles/T-junction-left.tmx'). If null, default map is used.
   final String? mapAsset;
   /// Optional scenario key to alter objective routing on a shared map.
   final String? scenarioId;
   final void Function(String message)? onTestFailed;
   final VoidCallback? onTestPassed;
+
+  /// Optional: approximate distance driven this session (metres) for profile / stats.
+  final void Function(double deltaMeters)? onOdometerDeltaMeters;
 
   /// Synced from [GameScreen] turn-signal UI; required for [Zone_MidTurn] checks.
   final ValueNotifier<bool>? turnSignalLeft;
@@ -230,9 +236,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     this.scenarioId,
     this.onTestFailed,
     this.onTestPassed,
+    this.onOdometerDeltaMeters,
     this.turnSignalLeft,
     this.turnSignalRight,
   });
+
+  void reportOdometerMeters(double deltaMeters) {
+    if (_testFinished) return;
+    if (deltaMeters <= 0 || deltaMeters.isNaN || deltaMeters.isInfinite) return;
+    onOdometerDeltaMeters?.call(deltaMeters);
+  }
 
   /// True while the zebra-crossing wait countdown is running (car in zone + Park).
   bool get isRoadCrossingStopActive => _roadCrossingStopActive;
@@ -621,6 +634,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       final cy = (_mapHeight ?? 1600) / 2;
       c.position = Vector2(cx, cy);
     }
+    c.markOdometerTeleport();
     camera.follow(c);
   }
 
@@ -1207,6 +1221,13 @@ class Car extends SpriteComponent {
   
   // Debug counter
   int _debugFrameCount = 0;
+
+  /// After respawn / teleport, skip one odometer sample so spawn jumps are not counted.
+  bool _ignoreOdometerOnce = false;
+
+  void markOdometerTeleport() {
+    _ignoreOdometerOnce = true;
+  }
   
   // Separate multipliers keep gears easier to control:
   // lower gears = stronger pull but lower top speed.
@@ -1422,6 +1443,17 @@ class Car extends SpriteComponent {
       _debugFrameCount++;
       if (_debugFrameCount % 60 == 0) {
         print('[DEBUG] Car.update() - Map dimensions not set! _mapWidth=${realisticGame._mapWidth}, _mapHeight=${realisticGame._mapHeight}');
+      }
+    }
+
+    if (_ignoreOdometerOnce) {
+      _ignoreOdometerOnce = false;
+    } else {
+      final movedWorld = (position - oldPosition).length;
+      final maxStep = math.max(velocity.length, 8.0) * dt * 2.5;
+      final clamped = movedWorld > maxStep ? maxStep : movedWorld;
+      if (clamped > 1e-6) {
+        realisticGame.reportOdometerMeters(clamped * RealisticCarGame.worldUnitsToMeters);
       }
     }
     

@@ -152,6 +152,37 @@ class ProgressRepository {
     );
   }
 
+  /// Module ids for which the user completed the non-MCQ (e.g. study) flow.
+  Future<Set<String>> getRoadSignsLearnViewedModuleIds() async {
+    final uid = _uid;
+    if (uid == null) return <String>{};
+    final rows = await _isar.localRoadSignsModuleProgress
+        .filter()
+        .uidEqualTo(uid)
+        .and()
+        .contentViewedEqualTo(true)
+        .findAll();
+    return rows.map((e) => e.moduleId).toSet();
+  }
+
+  Future<void> markRoadSignsLearnModuleViewed(String moduleId) async {
+    final uid = _uid;
+    final mid = moduleId.trim();
+    if (uid == null || mid.isEmpty) return;
+    final key = '$uid::$mid';
+    final now = DateTime.now().toUtc();
+    final existing = await _isar.localRoadSignsModuleProgress.filter().keyEqualTo(key).findFirst();
+    final row = existing ?? LocalRoadSignsModuleProgress()
+      ..key = key
+      ..uid = uid
+      ..moduleId = mid;
+    row.contentViewed = true;
+    row.updatedAt = now;
+    await _isar.writeTxn(() async {
+      await _isar.localRoadSignsModuleProgress.put(row);
+    });
+  }
+
   /// Returns the stored value for [settingKey] for the current user, or null.
   Future<String?> readSetting(String settingKey) async {
     final uid = _uid;

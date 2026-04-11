@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 /// Model for MCQ theory tests
 class TheoryTest {
   final String id; // Unique identifier: "road_signs_basics_01"
@@ -11,6 +9,8 @@ class TheoryTest {
   final bool isUnlocked;
   final List<String> unlockRequirementIds; // IDs of tests that must be completed first
   final int questionCount; // Number of questions in this test
+  /// When set (e.g. road-signs curriculum), MCQ questions load from this pool id instead of [id].
+  final String? mcqQuestionPoolId;
 
   TheoryTest({
     required this.id,
@@ -22,6 +22,7 @@ class TheoryTest {
     required this.isUnlocked,
     this.unlockRequirementIds = const [],
     this.questionCount = 10, // Default to 10 questions
+    this.mcqQuestionPoolId,
   });
 }
 

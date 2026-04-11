@@ -8,9 +8,8 @@ class RoadSignsQuestionsService {
     final all = _getAllRoadSignQuestions();
     final forTest = all.where((q) => _testIdToQuestionIds[testId]?.contains(q.id) ?? false).toList();
     if (forTest.isEmpty) {
-      // Fallback: use first N from full list for this category
-      final roadSignsTests = ['road_signs_basics', 'road_signs_regulatory', 'road_signs_priority', 'road_signs_advanced'];
-      if (roadSignsTests.contains(testId)) {
+      final roadSignsPools = _testIdToQuestionIds.keys;
+      if (roadSignsPools.contains(testId)) {
         final take = count ?? 10;
         return all.take(take).toList();
       }
@@ -211,25 +210,29 @@ class RoadSignsQuestionsService {
     ];
   }
 
-  /// Map testId to question IDs for that test (optional; if not set, first N questions are used).
+  /// Map curriculum MCQ pool id → question ids (see assets/config/road_signs_curriculum.json).
   static const Map<String, Set<String>> _testIdToQuestionIds = {
-    'road_signs_basics': {
-      'rs_stop', 'rs_give_way', 'rs_slippery', 'rs_children', 'rs_cattle',
-      'rs_curve_left', 'rs_curve_right', 'rs_road_works', 'rs_pedestrian_crossing', 'rs_level_crossing',
+    'warning_signs_mcq': {
+      'rs_slippery', 'rs_children', 'rs_cattle', 'rs_curve_left', 'rs_curve_right',
+      'rs_road_works', 'rs_pedestrian_crossing', 'rs_level_crossing', 'rs_hump', 'rs_narrow_road',
     },
-    'road_signs_regulatory': {
-      'rs_no_entry', 'rs_speed_50', 'rs_no_parking', 'rs_no_overtaking', 'rs_keep_left',
-      'rs_no_horn', 'rs_compulsory_left', 'rs_compulsory_right', 'rs_no_left_turn', 'rs_no_right_turn',
+    'control_restrictive_mcq': {
+      'rs_no_entry', 'rs_speed_50', 'rs_no_parking', 'rs_no_overtaking',
+      'rs_no_horn', 'rs_no_left_turn', 'rs_no_right_turn',
     },
-    'road_signs_priority': {
-      'rs_main_road', 'rs_roundabout', 'rs_give_way', 'rs_stop', 'rs_keep_left',
-      'rs_compulsory_left', 'rs_compulsory_right', 'rs_no_entry', 'rs_two_way', 'rs_narrow_road',
+    'control_boundary_mcq': {
+      'rs_two_way', 'rs_narrow_road', 'rs_speed_50', 'rs_hump', 'rs_pedestrian_crossing',
+      'rs_level_crossing', 'rs_road_works', 'rs_slippery',
     },
-    'road_signs_advanced': {
-      'rs_stop', 'rs_give_way', 'rs_slippery', 'rs_no_entry', 'rs_speed_50',
-      'rs_main_road', 'rs_roundabout', 'rs_no_overtaking', 'rs_level_crossing', 'rs_hump',
-      'rs_no_parking', 'rs_pedestrian_crossing', 'rs_road_works', 'rs_children', 'rs_two_way',
-      'rs_compulsory_left', 'rs_no_left_turn', 'rs_narrow_road', 'rs_cattle', 'rs_no_horn',
+    'control_additional_mcq': {
+      'rs_no_parking', 'rs_no_horn', 'rs_no_overtaking', 'rs_road_works',
+      'rs_no_left_turn', 'rs_no_right_turn', 'rs_no_entry', 'rs_speed_50',
+    },
+    'control_command_mcq': {
+      'rs_keep_left', 'rs_compulsory_left', 'rs_compulsory_right',
+    },
+    'control_priority_mcq': {
+      'rs_stop', 'rs_give_way', 'rs_main_road', 'rs_roundabout',
     },
   };
 }

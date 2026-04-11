@@ -5,6 +5,7 @@ import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../widgets/assistant_button.dart';
+import 'road_signs_hub_screen.dart';
 import 'theory_test_selection_screen.dart';
 
 class TheoryTestCategory {
@@ -298,7 +299,13 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
   }
 
   void _startCategoryTest(TheoryTestCategory category) {
-    // Navigate to test selection screen for this category
+    if (category.id == 'road_signs') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const RoadSignsHubScreen()),
+      );
+      return;
+    }
     Navigator.push(
       context,
       MaterialPageRoute(

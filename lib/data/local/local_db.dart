@@ -25,6 +25,7 @@ class LocalDb {
         LocalLevelProgressSchema,
         LocalTheoryTestProgressSchema,
         LocalTheoryAttemptSchema,
+        LocalRoadSignsModuleProgressSchema,
         LocalUserSettingSchema,
         SyncOutboxItemSchema,
       ],

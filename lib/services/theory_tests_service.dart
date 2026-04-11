@@ -6,7 +6,8 @@ class TheoryTestsService {
   static List<TheoryTest> getTestsForCategory(String categoryId) {
     switch (categoryId) {
       case 'road_signs':
-        return _roadSignsTests;
+        // Road signs use hierarchical curriculum JSON + dedicated screens.
+        return const [];
       case 'best_practices':
         return _bestPracticesTests;
       case 'traffic_rules':
@@ -25,7 +26,6 @@ class TheoryTestsService {
   /// Get all tests (across all categories)
   static List<TheoryTest> getAllTests() {
     return [
-      ..._roadSignsTests,
       ..._bestPracticesTests,
       ..._trafficRulesTests,
       ..._parkingTests,
@@ -42,54 +42,6 @@ class TheoryTestsService {
     // Check if all requirements are completed
     return test.unlockRequirementIds.every((reqId) => completedTestIds.contains(reqId));
   }
-
-  // ========== ROAD SIGNS TESTS ==========
-  static final List<TheoryTest> _roadSignsTests = [
-    TheoryTest(
-      id: "road_signs_basics",
-      categoryId: "road_signs",
-      testNumber: 1,
-      name: "Warning Signs Basics",
-      description: "Learn basic warning signs and their meanings",
-      difficulty: TestDifficulty.Easy,
-      isUnlocked: true,
-      unlockRequirementIds: [],
-      questionCount: 10,
-    ),
-    TheoryTest(
-      id: "road_signs_regulatory",
-      categoryId: "road_signs",
-      testNumber: 2,
-      name: "Regulatory Signs",
-      description: "Understand speed limits, parking, and traffic rules",
-      difficulty: TestDifficulty.Easy,
-      isUnlocked: false,
-      unlockRequirementIds: ["road_signs_basics"],
-      questionCount: 10,
-    ),
-    TheoryTest(
-      id: "road_signs_priority",
-      categoryId: "road_signs",
-      testNumber: 3,
-      name: "Priority & Information Signs",
-      description: "Give way, stop signs, and directional information",
-      difficulty: TestDifficulty.Medium,
-      isUnlocked: false,
-      unlockRequirementIds: ["road_signs_regulatory"],
-      questionCount: 15,
-    ),
-    TheoryTest(
-      id: "road_signs_advanced",
-      categoryId: "road_signs",
-      testNumber: 4,
-      name: "Complex Sign Combinations",
-      description: "Multiple signs in complex scenarios",
-      difficulty: TestDifficulty.Hard,
-      isUnlocked: false,
-      unlockRequirementIds: ["road_signs_priority"],
-      questionCount: 20,
-    ),
-  ];
 
   // ========== BEST PRACTICES TESTS ==========
   static final List<TheoryTest> _bestPracticesTests = [

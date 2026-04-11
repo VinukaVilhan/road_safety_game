@@ -38,12 +38,13 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
   @override
   void initState() {
     super.initState();
+    final poolId = widget.test.mcqQuestionPoolId ?? widget.test.id;
     _questions = RoadSignsQuestionsService.getQuestionsForTest(
-      widget.test.id,
+      poolId,
       count: widget.test.questionCount,
     );
     if (_questions.isEmpty) {
-      _questions = RoadSignsQuestionsService.getQuestionsForTest('road_signs_basics', count: 10);
+      _questions = RoadSignsQuestionsService.getQuestionsForTest('warning_signs_mcq', count: 10);
     }
     _initStyles();
     WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -13,6 +13,7 @@ import '../data/local/local_db.dart';
 import '../data/sync/sync_outbox.dart';
 import '../data/sync/sync_service.dart';
 import '../game/realistic_car_game.dart';
+import '../config/cloudinary_config.dart';
 import '../models/game_level.dart';
 import '../models/last_driving_report.dart';
 import 'cloudinary_upload_service.dart';
@@ -228,44 +229,128 @@ class LastDrivingReportService {
     }
   }
 
+  /// Persists [report] to SharedPreferences under [level.id].
+  Future<void> _persistReportToPrefs(LastDrivingReport report, String levelId) async {
+    final all = await _readAllRaw();
+    all[levelId] = report.toJson();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefsMapKey, jsonEncode(all));
+  }
+
+  /// Firestore payload: never send device-local [screenshotPath].
+  Map<String, dynamic> _firestorePayload(LastDrivingReport report, GameLevel level) {
+    final j = Map<String, dynamic>.from(report.toJson());
+    j.remove('screenshotPath');
+    if (level.moduleId != null && level.moduleId!.trim().isNotEmpty) {
+      j['moduleId'] = level.moduleId!.trim();
+    }
+    return j;
+  }
+
+  Future<void> _enqueueDrivingLastRun(
+    String uid,
+    GameLevel level,
+    Map<String, dynamic> payload,
+  ) async {
+    final opId = const Uuid().v4();
+    final outbox = SyncOutbox(LocalDb.instance.isar);
+    await outbox.enqueue(
+      opId: opId,
+      uid: uid,
+      entityType: 'driving_last_run',
+      entityId: level.id,
+      payload: payload,
+    );
+    unawaited(SyncService.instance.syncNow());
+  }
+
+  Future<String?> _writeScreenshotToDisk(Uint8List bytes, String objectName) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final screenshotsDir = Directory('${dir.path}/driving_screenshots');
+      if (!await screenshotsDir.exists()) {
+        await screenshotsDir.create(recursive: true);
+      }
+      final file = File('${screenshotsDir.path}/$objectName');
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// After local save, uploads to Cloudinary and updates prefs + Firestore when signed in.
+  Future<void> _finalizeCloudinaryUpload({
+    required LastDrivingReport baseReport,
+    required Uint8List screenshotBytes,
+    required String objectName,
+    required String safeId,
+    required int ts,
+    required GameLevel level,
+    String? uid,
+  }) async {
+    await CloudinaryConfig.ensureLoaded();
+    String? url;
+    if (CloudinaryConfig.isConfigured) {
+      final owner = (uid != null && uid.isNotEmpty) ? uid : 'guest';
+      url = await CloudinaryUploadService.uploadImageBytes(
+        bytes: screenshotBytes,
+        fileName: objectName,
+        publicId: '${owner}_${safeId}_$ts',
+      );
+    }
+    if (url == null || url.isEmpty) {
+      if (uid != null && uid.isNotEmpty) {
+        await _enqueueDrivingLastRun(uid, level, _firestorePayload(baseReport, level));
+      }
+      return;
+    }
+
+    final updated = LastDrivingReport(
+      levelId: baseReport.levelId,
+      levelName: baseReport.levelName,
+      passed: baseReport.passed,
+      score: baseReport.score,
+      correctMoves: baseReport.correctMoves,
+      mistakes: baseReport.mistakes,
+      mistakeDetails: baseReport.mistakeDetails,
+      timeSpentMs: baseReport.timeSpentMs,
+      recordedAt: baseReport.recordedAt,
+      failureMessage: baseReport.failureMessage,
+      roadCrossingLayout: baseReport.roadCrossingLayout,
+      screenshotPath: baseReport.screenshotPath,
+      screenshotUrl: url,
+    );
+    await _persistReportToPrefs(updated, level.id);
+
+    if (uid != null && uid.isNotEmpty) {
+      await _enqueueDrivingLastRun(uid, level, _firestorePayload(updated, level));
+    }
+  }
+
   Future<void> recordAttempt({
     required DrivingAttemptSummary summary,
     required GameLevel level,
     Uint8List? screenshotBytes,
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    String? screenshotPath;
-    String? screenshotUrl;
-
-    if (screenshotBytes != null && screenshotBytes.isNotEmpty) {
-      final ts = DateTime.now().millisecondsSinceEpoch;
-      final safeId = level.id.replaceAll(RegExp(r'[^\w\-]+'), '_');
-      final objectName = '${safeId}_$ts.png';
-
-      try {
-        final dir = await getApplicationDocumentsDirectory();
-        final screenshotsDir = Directory('${dir.path}/driving_screenshots');
-        if (!await screenshotsDir.exists()) {
-          await screenshotsDir.create(recursive: true);
-        }
-        final file = File('${screenshotsDir.path}/$objectName');
-        await file.writeAsBytes(screenshotBytes, flush: true);
-        screenshotPath = file.path;
-      } catch (_) {
-        screenshotPath = null;
-      }
-
-      if (uid != null && uid.isNotEmpty) {
-        screenshotUrl = await CloudinaryUploadService.uploadImageBytes(
-          bytes: screenshotBytes,
-          fileName: objectName,
-        );
-      }
-    }
-
     final road = LastDrivingReport.isRoadCrossingMap(level.mapAsset);
     final counts = _rubricCounts(summary, roadCrossingLayout: road);
     final mistakeDetails = mistakeDetailLines(summary, roadCrossingLayout: road);
+    final recordedAt = DateTime.now().toUtc();
+
+    String? screenshotPath;
+    int? uploadTs;
+    String? uploadSafeId;
+    String? objectName;
+
+    if (screenshotBytes != null && screenshotBytes.isNotEmpty) {
+      uploadTs = DateTime.now().millisecondsSinceEpoch;
+      uploadSafeId = level.id.replaceAll(RegExp(r'[^\w\-]+'), '_');
+      objectName = '${uploadSafeId}_$uploadTs.png';
+      screenshotPath = await _writeScreenshotToDisk(screenshotBytes, objectName);
+    }
+
     final report = LastDrivingReport(
       levelId: level.id,
       levelName: level.name,
@@ -275,32 +360,36 @@ class LastDrivingReportService {
       mistakes: counts.mistakes,
       mistakeDetails: mistakeDetails,
       timeSpentMs: summary.timeSpent.inMilliseconds,
-      recordedAt: DateTime.now().toUtc(),
+      recordedAt: recordedAt,
       failureMessage: summary.failureMessage,
       roadCrossingLayout: road,
       screenshotPath: screenshotPath,
-      screenshotUrl: screenshotUrl,
+      screenshotUrl: null,
     );
-    final all = await _readAllRaw();
-    all[level.id] = report.toJson();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsMapKey, jsonEncode(all));
+
+    await _persistReportToPrefs(report, level.id);
+
+    if (screenshotBytes != null &&
+        screenshotBytes.isNotEmpty &&
+        objectName != null &&
+        uploadTs != null &&
+        uploadSafeId != null) {
+      unawaited(
+        _finalizeCloudinaryUpload(
+          baseReport: report,
+          screenshotBytes: screenshotBytes,
+          objectName: objectName,
+          safeId: uploadSafeId,
+          ts: uploadTs,
+          level: level,
+          uid: uid,
+        ),
+      );
+      return;
+    }
 
     if (uid != null && uid.isNotEmpty) {
-      final opId = const Uuid().v4();
-      final payload = <String, dynamic>{
-        ...report.toJson(),
-        if (level.moduleId != null && level.moduleId!.trim().isNotEmpty) 'moduleId': level.moduleId!.trim(),
-      };
-      final outbox = SyncOutbox(LocalDb.instance.isar);
-      await outbox.enqueue(
-        opId: opId,
-        uid: uid,
-        entityType: 'driving_last_run',
-        entityId: level.id,
-        payload: payload,
-      );
-      unawaited(SyncService.instance.syncNow());
+      await _enqueueDrivingLastRun(uid, level, _firestorePayload(report, level));
     }
   }
 

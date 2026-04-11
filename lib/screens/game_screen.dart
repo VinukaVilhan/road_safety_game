@@ -804,12 +804,10 @@ class GameScreenState extends State<GameScreen> {
     final screenshotBytes = await _captureGameScreenshot();
     UiSoundService().playLevelFailed();
     final summary = game.getAttemptSummary(passed: false, failureMessage: message);
-    unawaited(
-      LastDrivingReportService.instance.recordAttempt(
-        summary: summary,
-        level: widget.level,
-        screenshotBytes: screenshotBytes,
-      ),
+    await LastDrivingReportService.instance.recordAttempt(
+      summary: summary,
+      level: widget.level,
+      screenshotBytes: screenshotBytes,
     );
 
     showDialog(

@@ -1,0 +1,175 @@
+{
+  "version": 1,
+  "groups": [
+    {
+      "id": "warning_signs",
+      "title": "Warning signs",
+      "description": "Hazard and caution signs that warn you of conditions ahead.",
+      "subgroups": [],
+      "modules": [
+        {
+          "id": "warning_signs_learn",
+          "kind": "learn",
+          "order": 1,
+          "title": "Study: warning signs",
+          "description": "Read through typical warning signs and what they tell you.",
+          "unlockRequirementIds": []
+        },
+        {
+          "id": "warning_signs_mcq",
+          "kind": "mcq",
+          "order": 2,
+          "title": "MCQ: warning signs",
+          "description": "Multiple choice on hazard and caution signs.",
+          "mcqTestId": "warning_signs_mcq",
+          "questionCount": 10,
+          "difficulty": "easy",
+          "unlockRequirementIds": ["warning_signs_learn"]
+        }
+      ]
+    },
+    {
+      "id": "control_signs",
+      "title": "Control signs",
+      "description": "Signs that give orders, set limits, or show who has priority.",
+      "subgroups": [
+        {
+          "id": "restrictive",
+          "order": 1,
+          "title": "Restrictive signs",
+          "description": "Prohibitions and limits (no entry, speed, no parking, etc.).",
+          "modules": [
+            {
+              "id": "control_restrictive_learn",
+              "kind": "learn",
+              "order": 1,
+              "title": "Study: restrictive signs",
+              "description": "What restrictive signs require from drivers.",
+              "unlockRequirementIds": []
+            },
+            {
+              "id": "control_restrictive_mcq",
+              "kind": "mcq",
+              "order": 2,
+              "title": "MCQ: restrictive signs",
+              "description": "Practice prohibitions and limit signs.",
+              "mcqTestId": "control_restrictive_mcq",
+              "questionCount": 10,
+              "difficulty": "easy",
+              "unlockRequirementIds": ["control_restrictive_learn"]
+            }
+          ]
+        },
+        {
+          "id": "boundary",
+          "order": 2,
+          "title": "Boundary signs",
+          "description": "Signs at edges of zones, traffic types, or road character.",
+          "modules": [
+            {
+              "id": "control_boundary_learn",
+              "kind": "learn",
+              "order": 1,
+              "title": "Study: boundary signs",
+              "description": "How boundary-type signs change the rules on a road.",
+              "unlockRequirementIds": []
+            },
+            {
+              "id": "control_boundary_mcq",
+              "kind": "mcq",
+              "order": 2,
+              "title": "MCQ: boundary signs",
+              "description": "Apply knowledge of zone and layout boundaries.",
+              "mcqTestId": "control_boundary_mcq",
+              "questionCount": 8,
+              "difficulty": "medium",
+              "unlockRequirementIds": ["control_boundary_learn"]
+            }
+          ]
+        },
+        {
+          "id": "additional",
+          "order": 3,
+          "title": "Additional signs",
+          "description": "Supplementary plates and extra instructions with other signs.",
+          "modules": [
+            {
+              "id": "control_additional_learn",
+              "kind": "learn",
+              "order": 1,
+              "title": "Study: additional signs",
+              "description": "How supplementary information changes the main sign.",
+              "unlockRequirementIds": []
+            },
+            {
+              "id": "control_additional_mcq",
+              "kind": "mcq",
+              "order": 2,
+              "title": "MCQ: additional signs",
+              "description": "Context and combined sign meanings.",
+              "mcqTestId": "control_additional_mcq",
+              "questionCount": 8,
+              "difficulty": "medium",
+              "unlockRequirementIds": ["control_additional_learn"]
+            }
+          ]
+        },
+        {
+          "id": "command",
+          "order": 4,
+          "title": "Command signs",
+          "description": "Mandatory movement — keep left/right, turn only, etc.",
+          "modules": [
+            {
+              "id": "control_command_learn",
+              "kind": "learn",
+              "order": 1,
+              "title": "Study: command signs",
+              "description": "Blue mandatory signs and what you must do.",
+              "unlockRequirementIds": []
+            },
+            {
+              "id": "control_command_mcq",
+              "kind": "mcq",
+              "order": 2,
+              "title": "MCQ: command signs",
+              "description": "Compulsory direction and lane discipline.",
+              "mcqTestId": "control_command_mcq",
+              "questionCount": 3,
+              "difficulty": "easy",
+              "unlockRequirementIds": ["control_command_learn"]
+            }
+          ]
+        },
+        {
+          "id": "priority",
+          "order": 5,
+          "title": "Priority signs",
+          "description": "Stop, give way, main road, and roundabout priority.",
+          "modules": [
+            {
+              "id": "control_priority_learn",
+              "kind": "learn",
+              "order": 1,
+              "title": "Study: priority signs",
+              "description": "Who goes first at junctions and merges.",
+              "unlockRequirementIds": []
+            },
+            {
+              "id": "control_priority_mcq",
+              "kind": "mcq",
+              "order": 2,
+              "title": "MCQ: priority signs",
+              "description": "Stop, give way, and priority at junctions.",
+              "mcqTestId": "control_priority_mcq",
+              "questionCount": 4,
+              "difficulty": "medium",
+              "unlockRequirementIds": ["control_priority_learn"]
+            }
+          ]
+        }
+      ],
+      "modules": []
+    }
+  ]
+}

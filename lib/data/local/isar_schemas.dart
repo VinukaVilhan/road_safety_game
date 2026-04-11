@@ -49,6 +49,27 @@ class LocalTheoryTestProgress {
   String? lastOpId;
 }
 
+/// Tracks non-MCQ road-signs curriculum modules (e.g. study completed).
+/// MCQ outcomes remain in [LocalTheoryTestProgress] keyed by module id.
+@collection
+class LocalRoadSignsModuleProgress {
+  Id id = Isar.autoIncrement;
+
+  @Index(unique: true, replace: true)
+  late String key;
+
+  @Index()
+  late String uid;
+
+  @Index()
+  late String moduleId;
+
+  /// True when the user finished the learn / non-MCQ flow for this module.
+  bool contentViewed = false;
+
+  DateTime updatedAt = DateTime.now().toUtc();
+}
+
 @collection
 class LocalTheoryAttempt {
   Id id = Isar.autoIncrement;

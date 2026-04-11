@@ -341,8 +341,8 @@ class DrivingLevelsService {
       topic: DrivingTopic.EmergencySituations,
       topicLevel: 3,
       unlockRequirementIds: ["emergency_breakdown"],
-      mapAsset: 'ambulance-map.tmx',
-      scenarioId: 'cross_junction_basics',
+      mapAsset: 'ambulance-reaction.tmx',
+      scenarioId: 'emergency_ambulance',
     ),
     GameLevel(
       id: "emergency_weather",

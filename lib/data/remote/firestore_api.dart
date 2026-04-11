@@ -59,6 +59,15 @@ class FirestoreApi {
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
         return;
+      /// Learn / non-MCQ road-signs curriculum modules (`entityId` == curriculum module id).
+      case 'road_signs_module_progress':
+        await userDoc.collection('road_signs_module_progress').doc(entityId).set({
+          ...payload,
+          'opId': opId,
+          'syncedAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        return;
       case 'user_setting':
         await userDoc.collection('settings').doc(entityId).set({
           ...payload,

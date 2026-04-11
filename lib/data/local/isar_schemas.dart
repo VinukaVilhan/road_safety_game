@@ -68,6 +68,8 @@ class LocalRoadSignsModuleProgress {
   bool contentViewed = false;
 
   DateTime updatedAt = DateTime.now().toUtc();
+  bool synced = false;
+  String? lastOpId;
 }
 
 @collection

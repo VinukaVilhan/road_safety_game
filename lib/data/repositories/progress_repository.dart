@@ -171,6 +171,7 @@ class ProgressRepository {
     if (uid == null || mid.isEmpty) return;
     final key = '$uid::$mid';
     final now = DateTime.now().toUtc();
+    final opId = _uuid.v4();
     final existing = await _isar.localRoadSignsModuleProgress.filter().keyEqualTo(key).findFirst();
     final row = existing ?? LocalRoadSignsModuleProgress()
       ..key = key
@@ -178,9 +179,25 @@ class ProgressRepository {
       ..moduleId = mid;
     row.contentViewed = true;
     row.updatedAt = now;
+    row.synced = false;
+    row.lastOpId = opId;
     await _isar.writeTxn(() async {
       await _isar.localRoadSignsModuleProgress.put(row);
     });
+
+    await _outbox.enqueue(
+      opId: opId,
+      uid: uid,
+      entityType: 'road_signs_module_progress',
+      entityId: mid,
+      payload: {
+        'moduleId': mid,
+        'contentViewed': true,
+        'updatedAt': now.toIso8601String(),
+      },
+    );
+
+    unawaited(SyncService.instance.syncNow());
   }
 
   /// Returns the stored value for [settingKey] for the current user, or null.

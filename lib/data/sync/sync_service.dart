@@ -142,6 +142,14 @@ class SyncService {
             await isar.localTheoryAttempts.put(row);
           }
           return;
+        case 'road_signs_module_progress':
+          final rsKey = '$uid::${item.entityId}';
+          final rsRow = await isar.localRoadSignsModuleProgress.filter().keyEqualTo(rsKey).findFirst();
+          if (rsRow != null) {
+            rsRow.synced = true;
+            await isar.localRoadSignsModuleProgress.put(rsRow);
+          }
+          return;
         case 'user_setting':
           final key = '$uid::${item.entityId}';
           final row = await isar.localUserSettings.filter().keyEqualTo(key).findFirst();

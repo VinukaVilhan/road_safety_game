@@ -8,7 +8,7 @@ import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../widgets/assistant_button.dart';
 
-/// Introduction to the three-color traffic signal (uses [signal_light.png] art).
+/// Document-style introduction to the three-color traffic signal ([signal_light.png]).
 class TrafficColorLightsIntroScreen extends StatelessWidget {
   final RoadSignsModule module;
   final String breadcrumb;
@@ -21,6 +21,9 @@ class TrafficColorLightsIntroScreen extends StatelessWidget {
 
   static const _imageAsset = 'assets/images/signal_light.png';
 
+  static const _docLead =
+      'Traffic lights are signals at junctions and crossings. They use a simple color code so everyone knows when to stop, when to prepare, and when it may be safe to move if the way is clear.';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,7 +33,7 @@ class TrafficColorLightsIntroScreen extends StatelessWidget {
         mini: true,
         heroTag: 'assistant_traffic_color_intro_${module.id}',
         launchContext: AssistantLaunchContext(
-          screenTitle: 'Traffic lights — intro',
+          screenTitle: 'Color lights — intro',
           theoryTestName: module.title,
           includeFullRoadSignCatalog: true,
         ),
@@ -82,75 +85,145 @@ class TrafficColorLightsIntroScreen extends StatelessWidget {
             ),
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      module.description,
-                      style: SwissTheme.monospacedText.copyWith(
-                        fontSize: 12,
-                        color: SwissTheme.textSecondary,
-                        height: 1.45,
+              child: ColoredBox(
+                color: SwissTheme.backgroundLightGrey,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+                  child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: SwissTheme.backgroundWhite,
+                    border: Border.all(color: SwissTheme.borderBlack, width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        offset: const Offset(0, 2),
+                        blurRadius: 0,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    Image.asset(
-                      _imageAsset,
-                      height: 200,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.none,
-                      errorBuilder: (_, __, ___) => Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Text(
-                          'Image not found: $_imageAsset',
-                          textAlign: TextAlign.center,
-                          style: AppFonts.pixelifySans(fontSize: 13, color: SwissTheme.textSecondary),
+                    ],
+                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'REFERENCE',
+                        style: AppFonts.pixelifySans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
+                          color: SwissTheme.textSecondary,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'WHAT EACH COLOR MEANS',
+                      const SizedBox(height: 6),
+                      Text(
+                        'Traffic lights',
+                        style: AppFonts.pixelifySans(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: SwissTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        module.description,
+                        style: AppFonts.pixelifySans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: SwissTheme.textSecondary,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _docLead,
+                        style: AppFonts.pixelifySans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: SwissTheme.textPrimary,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: SwissTheme.backgroundLightGrey,
+                            border: Border.all(color: SwissTheme.borderBlack.withValues(alpha: 0.35)),
+                          ),
+                          child: Column(
+                            children: [
+                              Image.asset(
+                                _imageAsset,
+                                height: 220,
+                                fit: BoxFit.contain,
+                                filterQuality: FilterQuality.none,
+                                gaplessPlayback: true,
+                                errorBuilder: (_, __, ___) => Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Text(
+                                    'Image not found: $_imageAsset',
+                                    textAlign: TextAlign.center,
+                                    style: AppFonts.pixelifySans(fontSize: 12, color: SwissTheme.textSecondary),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Fig. 1 — Standard vertical signal (red, amber, green)',
+                                textAlign: TextAlign.center,
+                                style: AppFonts.pixelifySans(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: SwissTheme.textSecondary,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Text(
+                        'Colour meanings',
                         style: AppFonts.pixelifySans(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
                           color: SwissTheme.textPrimary,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    _Bullet(
-                      title: 'Red (top)',
-                      body:
-                          'Stop before the stop line or crosswalk and wait. Stay stopped until the signal changes (unless an authorised person directs you otherwise).',
-                    ),
-                    const SizedBox(height: 14),
-                    _Bullet(
-                      title: 'Amber / yellow (middle)',
-                      body:
-                          'The light is about to turn red. Slow down and be ready to stop. If you have already crossed the stop line or stopping sharply would be unsafe, clear the junction with care.',
-                    ),
-                    const SizedBox(height: 14),
-                    _Bullet(
-                      title: 'Green (bottom)',
-                      body:
-                          'You may go when it is safe: check the way ahead, watch for pedestrians and other traffic, and follow any arrows or signs that still apply.',
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'When you have read this, tap Done to unlock the MCQ for this track.',
-                      style: SwissTheme.monospacedText.copyWith(
-                        fontSize: 12,
-                        color: SwissTheme.textSecondary,
-                        height: 1.45,
+                      const SizedBox(height: 12),
+                      _Bullet(
+                        title: 'Red (top)',
+                        body:
+                            'Stop before the stop line or crossing and wait until the phase changes, unless someone authorised directs you otherwise.',
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      _Bullet(
+                        title: 'Amber (middle)',
+                        body:
+                            'Prepare to stop — red is next. If you are already past the stop line or stopping would be unsafe, clear the junction carefully.',
+                      ),
+                      const SizedBox(height: 12),
+                      _Bullet(
+                        title: 'Green (bottom)',
+                        body:
+                            'You may proceed only when the way ahead is safe; still watch for pedestrians, other vehicles, and any arrows or signs.',
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'When you have read this sheet, tap Done below to unlock the MCQ for this track.',
+                        style: AppFonts.pixelifySans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: SwissTheme.textSecondary,
+                          height: 1.45,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 ),
               ),
             ),
@@ -196,7 +269,7 @@ class _Bullet extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          title.toUpperCase(),
+          title,
           style: AppFonts.pixelifySans(
             fontSize: 13,
             fontWeight: FontWeight.w800,

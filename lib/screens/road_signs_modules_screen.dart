@@ -377,11 +377,12 @@ class _ModuleTile extends StatelessWidget {
         child: Stack(
           children: [
             if (!unlocked)
-              Opacity(
-                opacity: 0.45,
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: HatchingPainter(),
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.45,
+                  child: CustomPaint(
+                    painter: HatchingPainter(),
+                  ),
                 ),
               ),
             Padding(

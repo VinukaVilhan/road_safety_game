@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="80" height="100" tilewidth="16" tileheight="16" infinite="0" nextlayerid="12" nextobjectid="22">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="80" height="100" tilewidth="16" tileheight="16" infinite="0" nextlayerid="17" nextobjectid="29">
  <tileset firstgid="1" name="Road" tilewidth="16" tileheight="16" tilecount="144" columns="12">
   <image source="../images/new-map.png" width="192" height="192"/>
  </tileset>
@@ -239,13 +239,14 @@
  <objectgroup color="#ffff00" id="7" name="Siren_Layer" class="SirenTrigger" tintcolor="#ffff7f">
   <object id="4" x="598" y="603" width="67" height="138"/>
  </objectgroup>
- <objectgroup id="8" name="Safe_Zone">
-  <object id="5" x="1069" y="5" width="32" height="576"/>
+ <objectgroup id="8" name="Safe_Zone_Left" class="Safe_Zone_Left">
   <object id="6" x="950" y="-7" width="32" height="592"/>
   <object id="7" x="959" y="604" width="32" height="277" rotation="90"/>
-  <object id="8" x="983" y="710" width="32" height="292" rotation="90"/>
-  <object id="9" x="1061.64" y="635.04" width="32" height="104" rotation="51.3734"/>
-  <object id="10" x="1069.54" y="587.628" width="32" height="46.2629" rotation="14.1313"/>
+ </objectgroup>
+ <objectgroup id="12" name="Safe_Zone_Right" class="Safe_Zone_Right">
+  <object id="25" x="1069.33" y="4" width="28" height="586.667"/>
+  <object id="26" x="698.667" y="710.667" width="265.333" height="32"/>
+  <object id="27" x="970.684" y="708.9" width="147.77" height="29.3333" rotation="311.497"/>
  </objectgroup>
  <objectgroup color="#000000" id="9" name="Obstacles_Layer">
   <object id="11" x="18" y="16" width="916" height="563"/>
@@ -260,7 +261,8 @@
    <polygon points="0,0 44,-28.6667 422.667,-28.6667 492.667,-69.3333 496.667,-682.667 494,-70 421.333,-28 43.3333,-28"/>
   </object>
  </objectgroup>
- <objectgroup id="11" name="Rules_Layer">
-  <object id="21" type="Zone_Finish" x="960" y="8" width="120" height="72"/>
+ <objectgroup id="11" name="Rules_Layer"/>
+ <objectgroup color="#00aa7f" id="13" name="Success_Layer">
+  <object id="23" x="970.667" y="16" width="122.667" height="72"/>
  </objectgroup>
 </map>

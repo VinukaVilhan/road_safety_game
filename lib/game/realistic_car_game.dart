@@ -153,6 +153,36 @@ Path? _midTurnHitPathFromObject(TiledObject obj) {
   return null;
 }
 
+/// Axis-aligned bounds for a Tiled rectangle object (handles [TiledObject.rotation]).
+Rect? _worldAabbForTiledRectangleObject(TiledObject obj) {
+  if (!obj.visible || obj.width <= 0 || obj.height <= 0) return null;
+  if (obj.isPoint || obj.isPolygon || obj.isPolyline || obj.isEllipse) {
+    return null;
+  }
+  final w = obj.width;
+  final h = obj.height;
+  final corners = [
+    Offset(0, 0),
+    Offset(w, 0),
+    Offset(w, h),
+    Offset(0, h),
+  ];
+  var minX = double.infinity;
+  var minY = double.infinity;
+  var maxX = -double.infinity;
+  var maxY = -double.infinity;
+  for (final c in corners) {
+    final r = _tiledRotateLocal(c.dx, c.dy, obj.rotation);
+    final wx = obj.x + r.dx;
+    final wy = obj.y + r.dy;
+    minX = math.min(minX, wx);
+    minY = math.min(minY, wy);
+    maxX = math.max(maxX, wx);
+    maxY = math.max(maxY, wy);
+  }
+  return Rect.fromLTRB(minX, minY, maxX, maxY);
+}
+
 bool _isMidTurnValidationObject(TiledObject obj, ObjectGroup layer) {
   final ot = obj.type.trim().toLowerCase();
   if (ot == 'zone_midturn') return true;
@@ -296,6 +326,48 @@ Vector2? _pickPlayerSpawnFromObjectGroups(Iterable<ObjectGroup> groups) {
   return null;
 }
 
+/// [ambulance-reaction.tmx]: `Safe_Zone_Left` / `Safe_Zone_Right` + optional [Success_Layer].
+void _collectEmergencyScenarioRects(
+  Iterable<ObjectGroup> groups, {
+  required List<Rect> outLeft,
+  required List<Rect> outRight,
+  required List<Rect> outSuccess,
+}) {
+  outLeft.clear();
+  outRight.clear();
+  outSuccess.clear();
+  for (final layer in groups) {
+    final tag = _tiledLayerTag(layer);
+    final cls = (layer.class_ ?? '').replaceAll(' ', '_').toLowerCase();
+    String? kind;
+    if (tag == 'safe_zone_left' || cls == 'safe_zone_left') {
+      kind = 'left';
+    } else if (tag == 'safe_zone_right' || cls == 'safe_zone_right') {
+      kind = 'right';
+    } else if (tag == 'success_layer' || cls == 'success_layer') {
+      kind = 'success';
+    } else if (tag.contains('success_layer') || cls.contains('success_layer')) {
+      kind = 'success';
+    } else if (tag.contains('safe_zone') && tag.contains('left')) {
+      kind = 'left';
+    } else if (tag.contains('safe_zone') && tag.contains('right')) {
+      kind = 'right';
+    } else {
+      continue;
+    }
+    final List<Rect> target = switch (kind) {
+      'left' => outLeft,
+      'right' => outRight,
+      _ => outSuccess,
+    };
+    for (final obj in layer.objects) {
+      final aabb = _worldAabbForTiledRectangleObject(obj);
+      if (aabb == null) continue;
+      target.add(aabb);
+    }
+  }
+}
+
 /// Axis-aligned rectangles from object layers named/classed like `Siren_Layer` / `Siren_Triggers`.
 void _collectSirenTriggerRects(
   Iterable<ObjectGroup> groups,
@@ -330,7 +402,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   static const String _ambulanceLoopAsset = 'Ambulance_Sound.m4a';
 
   /// Applied after TMX `sirenVolume` / spawn config so the siren sits under engine/UI in the mix.
-  static const double _ambulanceSirenMasterGain = 0.42;
+  static const double _ambulanceSirenMasterGain = 0.26;
 
   /// One-shot police whistle when a driving rule is broken (see [_playRuleBreakWhistle]).
   static const String _ruleBreakWhistleAsset = 'Whistle_Sound.m4a';
@@ -348,6 +420,12 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
 
   /// World waypoints from Tiled `Ambulance_Route` / class `AmbulanceRoute` (polygon or polyline).
   final List<Vector2> _ambulanceRouteWaypoints = [];
+
+  /// [ambulance-reaction.tmx]: pull over zones (`Safe_Zone_Left` / `Safe_Zone_Right`).
+  final List<Rect> _safeZoneLeftRects = [];
+  final List<Rect> _safeZoneRightRects = [];
+  /// Win trigger after the ambulance has cleared its route ([Success_Layer]).
+  final List<Rect> _successLayerRects = [];
 
   /// Preferred camera zoom level (> 1 = zoom in, < 1 = zoom out).
   /// Final zoom is clamped so camera never shows outside-map void.
@@ -799,6 +877,21 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
         'ambulance will appear when the player enters one.',
       );
     }
+    _collectEmergencyScenarioRects(
+      objectGroupLayers,
+      outLeft: _safeZoneLeftRects,
+      outRight: _safeZoneRightRects,
+      outSuccess: _successLayerRects,
+    );
+    if (_safeZoneLeftRects.isNotEmpty ||
+        _safeZoneRightRects.isNotEmpty ||
+        _successLayerRects.isNotEmpty) {
+      print(
+        '[DEBUG] _setupRoad() - Emergency pull-over / success rects: '
+        'left=${_safeZoneLeftRects.length} right=${_safeZoneRightRects.length} '
+        'success=${_successLayerRects.length}',
+      );
+    }
     await _setupAmbulanceDecorationFromTmx(objectGroupLayers);
     
     _roadInitialized = true;
@@ -878,11 +971,17 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       angle: cfg.angle,
       priority: 0,
     );
+    if (_ambulanceRouteWaypoints.isNotEmpty) {
+      final toFirstWP = _ambulanceRouteWaypoints.first - cfg.position;
+      if (toFirstWP.length > 1) {
+        deco.angle = math.atan2(toFirstWP.y, toFirstWP.x) + math.pi / 2;
+      }
+    }
     _ambulanceDecoration = deco;
     world.add(deco);
     print(
       '[DEBUG] Ambulance AI at ${cfg.position} '
-      'angle=${cfg.angle * 180 / math.pi}° waypoints=${_ambulanceRouteWaypoints.length}',
+      'angle=${deco.angle * 180 / math.pi}° waypoints=${_ambulanceRouteWaypoints.length}',
     );
     await _startAmbulanceSiren(cfg.sirenVolume);
   }
@@ -1034,6 +1133,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _updateMidTurnSignalValidation();
     _updateDrivingRuleZones();
     _updateJunctionBoxStopFail(dt);
+    _updateAmbulanceLevelSuccess();
   }
 
   /// [road-crossing.tmx]: countdown runs only inside a Zig_Zag (grey) wait zone
@@ -1188,6 +1288,74 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       }
     }
     return true;
+  }
+
+  /// True when the car's axis-aligned bounds overlap any of [rects] (ignores rotation).
+  bool _isCarAabbInsideAnyRect(Iterable<Rect> rects) {
+    final c = car;
+    if (c == null) return false;
+    final carRect = Rect.fromCenter(
+      center: Offset(c.position.x, c.position.y),
+      width: c.size.x,
+      height: c.size.y,
+    );
+    for (final r in rects) {
+      if (carRect.overlaps(r)) return true;
+    }
+    return false;
+  }
+
+  /// Ambulance tailgate → pass when the player is slow, signals, and (if zones exist)
+  /// is in **Park** with the car overlapping the pull-over rect for that signal side.
+  bool playerYieldedForAmbulance() {
+    final c = car;
+    if (c == null || turnSignalLeft == null || turnSignalRight == null) {
+      return false;
+    }
+    if (c.velocity.length >= 10) return false;
+    final leftOn = turnSignalLeft!.value;
+    final rightOn = turnSignalRight!.value;
+    final hasSignal = (leftOn && !rightOn) || (rightOn && !leftOn);
+    if (!hasSignal) return false;
+    final hasZones =
+        _safeZoneLeftRects.isNotEmpty || _safeZoneRightRects.isNotEmpty;
+    if (!hasZones) {
+      return true;
+    }
+    if (!c.isInPark) return false;
+    if (leftOn && !rightOn) {
+      return _isCarAabbInsideAnyRect(_safeZoneLeftRects);
+    }
+    if (rightOn && !leftOn) {
+      return _isCarAabbInsideAnyRect(_safeZoneRightRects);
+    }
+    return false;
+  }
+
+  /// When the ambulance overlaps [Success_Layer], pass if the player is still yielded
+  /// (parked, correct signal, car in matching safe zone).
+  void _updateAmbulanceLevelSuccess() {
+    if (_testFinished || car == null) return;
+    if (scenarioId != 'emergency_ambulance') return;
+    if (_successLayerRects.isEmpty) return;
+    final deco = _ambulanceDecoration;
+    if (deco == null) return;
+
+    if (!playerYieldedForAmbulance()) return;
+
+    final ambRect = Rect.fromCenter(
+      center: Offset(deco.position.x, deco.position.y),
+      width: deco.size.x,
+      height: deco.size.y,
+    );
+    for (final r in _successLayerRects) {
+      if (!ambRect.overlaps(r)) continue;
+      _reachedFinishZone = true;
+      _testFinished = true;
+      car!.coast();
+      onTestPassed?.call();
+      return;
+    }
   }
 
   void _enforceSpeedLimitZones() {
@@ -1961,7 +2129,7 @@ class Car extends SpriteComponent {
   }
 }
 
-/// Hybrid AI: tailgate validated player breadcrumbs, fall back to Tiled route when unsafe.
+/// Waypoint catch-up, heading-aligned tailgate behind the player, then Tiled route for pass.
 class Ambulance extends SpriteComponent {
   Ambulance({
     required Sprite super.sprite,
@@ -1980,12 +2148,24 @@ class Ambulance extends SpriteComponent {
   AmbulanceState state = AmbulanceState.catchingUp;
   int _waypointIndex = 0;
 
+  /// True once the ambulance has reached the final [routeWaypoints] node (route cleared).
+  bool routeCompleted = false;
+
   /// Previous world position for movement-based heading smoothing.
   late Vector2 _prevPosition;
 
-  static const double _safeDistance = 150.0;
+  static const double _safeDistance = 200.0;
   static const double _catchUpSpeed = 300.0;
   static const double _passSpeed = 320.0;
+
+  /// World units behind the car's rear edge along its heading (tailgate target).
+  static const double _tailgateStandoffWorld = 95.0;
+
+  /// When passing, nudge laterally if the ambulance center is within this distance of the player.
+  static const double _avoidanceRadius = 80.0;
+
+  /// Lateral avoidance acceleration (world units / sec²) while inside [_avoidanceRadius].
+  static const double _avoidanceStrength = 420.0;
 
   /// Shortest-path angle interpolation in radians.
   static double _lerpAngle(double from, double to, double t) {
@@ -2017,23 +2197,29 @@ class Ambulance extends SpriteComponent {
         }
         break;
       case AmbulanceState.tailgating:
-        // Front of ambulance tracks player rear bumper (stable world point, no breadcrumb oscillation).
-        final rearWorld = player.absolutePositionOf(player.zones.rearBumper);
-        final toRear = rearWorld - position;
+        // Dead-center behind the car along its heading (avoids lateral drift from bumper math).
+        final forwardDir = Vector2(
+          math.cos(player.angle),
+          math.sin(player.angle),
+        );
+        final behindCar = player.position -
+            forwardDir * (player.size.y / 2 + _tailgateStandoffWorld);
+        final toRear = behindCar - position;
         final dist = toRear.length;
-        if (dist > 60.0) {
+        if (dist > 100.0) {
           final speed = dist > _safeDistance
               ? _catchUpSpeed
               : player.velocity.length.clamp(80.0, _catchUpSpeed);
           final step = speed * dt;
-          position += toRear.normalized() * math.min(step, dist - 55.0);
+          position += toRear.normalized() * math.min(step, dist - 95.0);
         }
         if (_playerYielded()) {
+          _advanceWaypointToCurrent();
           state = AmbulanceState.passing;
         }
         break;
       case AmbulanceState.passing:
-        _followWaypoints(dt, speed: _passSpeed);
+        _followWaypointsAvoidPlayer(dt, speed: _passSpeed);
         break;
     }
 
@@ -2047,25 +2233,91 @@ class Ambulance extends SpriteComponent {
   }
 
   bool _playerYielded() {
-    if (player.velocity.length >= 10) return false;
     final g = player.findGame();
     if (g is! RealisticCarGame) return false;
-    return g.turnSignalLeft?.value == true;
+    return g.playerYieldedForAmbulance();
+  }
+
+  /// When leaving [AmbulanceState.tailgating], resume the Tiled route from the nearest
+  /// waypoint ahead so we do not backtrack to stale indices (e.g. near spawn).
+  void _advanceWaypointToCurrent() {
+    if (routeWaypoints.isEmpty) return;
+    var bestDist = double.infinity;
+    var bestIdx = _waypointIndex;
+    for (var i = _waypointIndex; i < routeWaypoints.length; i++) {
+      final d = position.distanceTo(routeWaypoints[i]);
+      if (d < bestDist) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx < routeWaypoints.length - 1) {
+      bestIdx++;
+    }
+    _waypointIndex = bestIdx;
   }
 
   void _followWaypoints(double dt, {required double speed}) {
-    if (routeWaypoints.isEmpty) return;
-    if (_waypointIndex >= routeWaypoints.length) return;
+    if (routeWaypoints.isEmpty) {
+      routeCompleted = true;
+      return;
+    }
+    if (_waypointIndex >= routeWaypoints.length) {
+      routeCompleted = true;
+      return;
+    }
     final target = routeWaypoints[_waypointIndex];
     final toTarget = target - position;
     if (toTarget.length < 8) {
       if (_waypointIndex < routeWaypoints.length - 1) {
         _waypointIndex++;
+      } else {
+        routeCompleted = true;
       }
       return;
     }
     final step = speed * dt;
     position += toTarget.normalized() * math.min(step, toTarget.length);
+  }
+
+  /// Like [_followWaypoints] but adds a lateral repulsion from the player so the
+  /// ambulance does not overlap the player car while overtaking on the route.
+  void _followWaypointsAvoidPlayer(double dt, {required double speed}) {
+    if (routeWaypoints.isEmpty) {
+      routeCompleted = true;
+      return;
+    }
+    if (_waypointIndex >= routeWaypoints.length) {
+      routeCompleted = true;
+      return;
+    }
+    final target = routeWaypoints[_waypointIndex];
+    final toTarget = target - position;
+    if (toTarget.length < 8) {
+      if (_waypointIndex < routeWaypoints.length - 1) {
+        _waypointIndex++;
+      } else {
+        routeCompleted = true;
+      }
+      return;
+    }
+
+    final travelDir = toTarget.normalized();
+    final toPlayer = player.position - position;
+    final dist = toPlayer.length;
+    var avoidance = Vector2.zero();
+    if (dist < _avoidanceRadius && dist > 0.1) {
+      final perpCw = Vector2(travelDir.y, -travelDir.x);
+      final perpCcw = Vector2(-travelDir.y, travelDir.x);
+      // Player on the CW side of travel → steer CCW (and vice versa) to pass clear.
+      final side = (toPlayer.dot(perpCw) > 0) ? perpCcw : perpCw;
+      final t = 1.0 - dist / _avoidanceRadius;
+      avoidance = side * (_avoidanceStrength * t);
+    }
+
+    final step = speed * dt;
+    final along = travelDir * math.min(step, toTarget.length);
+    position += along + avoidance * dt;
   }
 }
 

@@ -76,6 +76,8 @@ class RoadSignsGroup {
   final String description;
   final List<RoadSignsSubgroup> subgroups;
   final List<RoadSignsModule> modules;
+  /// When true, hub shows the track as locked and blocks navigation (like theory categories).
+  final bool isUnderDevelopment;
 
   const RoadSignsGroup({
     required this.id,
@@ -83,6 +85,7 @@ class RoadSignsGroup {
     required this.description,
     required this.subgroups,
     required this.modules,
+    this.isUnderDevelopment = false,
   });
 
   bool get hasSubgroups => subgroups.isNotEmpty;

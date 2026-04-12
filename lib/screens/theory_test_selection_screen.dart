@@ -8,6 +8,7 @@ import '../widgets/assistant_button.dart';
 import '../data/repositories/progress_repository.dart';
 import '../models/theory_test.dart';
 import '../services/theory_tests_service.dart';
+import 'road_signs_hub_screen.dart';
 import 'roadsign_mcq_screen.dart';
 
 class TheoryTestSelectionScreen extends StatefulWidget {
@@ -182,12 +183,61 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
                 padding: const EdgeInsets.all(16.0),
                 child: tests.isEmpty
                     ? Center(
-                        child: Text(
-                          'No tests available',
-                          style: AppFonts.pixelifySans(
-                            fontSize: 14,
-                            color: SwissTheme.textSecondary,
-                          ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: widget.categoryId == 'road_signs'
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Road signs use the curriculum hub',
+                                      textAlign: TextAlign.center,
+                                      style: AppFonts.pixelifySans(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: SwissTheme.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Open Traffic and signals for the traffic-light intro, MCQ, and mini game.',
+                                      textAlign: TextAlign.center,
+                                      style: AppFonts.pixelifySans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: SwissTheme.textSecondary,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    TextButton(
+                                      onPressed: () {
+                                        UiSoundService().playMenuTap();
+                                        Navigator.push<void>(
+                                          context,
+                                          MaterialPageRoute<void>(
+                                            builder: (_) => const RoadSignsHubScreen(),
+                                          ),
+                                        );
+                                      },
+                                      child: Text(
+                                        'OPEN ROAD SIGNS HUB',
+                                        style: AppFonts.pixelifySans(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: SwissTheme.accentBlue,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  'No tests available',
+                                  style: AppFonts.pixelifySans(
+                                    fontSize: 14,
+                                    color: SwissTheme.textSecondary,
+                                  ),
+                                ),
                         ),
                       )
                     : GridView.builder(

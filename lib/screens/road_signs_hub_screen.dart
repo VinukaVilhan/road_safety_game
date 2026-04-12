@@ -8,6 +8,7 @@ import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../widgets/assistant_button.dart';
+import 'level_selection_screen.dart' show HatchingPainter;
 import 'road_signs_modules_screen.dart';
 import 'road_signs_subgroups_screen.dart';
 
@@ -107,7 +108,7 @@ class _RoadSignsHubScreenState extends State<RoadSignsHubScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
               child: Text(
-                'Pick a category, then open study or MCQ modules inside each track.',
+                'Pick a track, then open each module in order. Traffic lights (intro, quiz, mini game) are under Traffic and signals.',
                 style: SwissTheme.monospacedText.copyWith(fontSize: 12, color: SwissTheme.textSecondary),
               ),
             ),
@@ -149,6 +150,10 @@ class _RoadSignsHubScreenState extends State<RoadSignsHubScreen> {
           leadingIcon: _groupLeadingIcon(g),
           onTap: () {
             UiSoundService().playMenuTap();
+            if (g.isUnderDevelopment) {
+              _showUnderDevelopmentDialog(context, g);
+              return;
+            }
             if (g.hasSubgroups) {
               Navigator.push(
                 context,
@@ -163,6 +168,61 @@ class _RoadSignsHubScreenState extends State<RoadSignsHubScreen> {
           },
         );
       },
+    );
+  }
+
+  void _showUnderDevelopmentDialog(BuildContext context, RoadSignsGroup group) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: SwissTheme.backgroundWhite,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: SwissTheme.borderBlack, width: 1),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'MODULE LOCKED',
+                style: AppFonts.pixelifySans(fontSize: 24, fontWeight: FontWeight.w600, color: SwissTheme.textPrimary),
+              ),
+              const SizedBox(height: 24),
+              const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+              const SizedBox(height: 24),
+              Text(
+                '"${group.title}" is under development.',
+                style: AppFonts.pixelifySans(fontSize: 14, fontWeight: FontWeight.w400, color: SwissTheme.textPrimary),
+              ),
+              const SizedBox(height: 32),
+              const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    UiSoundService().playMenuTap();
+                    Navigator.of(ctx).pop();
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: SwissTheme.accentBlue,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'OK',
+                    style: AppFonts.pixelifySans(fontSize: 14, fontWeight: FontWeight.w600, color: SwissTheme.accentBlue),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -186,53 +246,101 @@ class _GroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dev = group.isUnderDevelopment;
+    final unlocked = !dev;
     final subtitle = group.hasSubgroups
         ? '${group.subgroups.length} subcategories'
         : '${group.modules.length} modules';
     return Material(
-      color: SwissTheme.backgroundWhite,
+      color: unlocked ? SwissTheme.backgroundWhite : SwissTheme.backgroundLightGrey,
       child: InkWell(
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             border: Border.all(color: SwissTheme.borderBlack, width: 1),
           ),
-          child: Row(
+          child: Stack(
             children: [
-              Icon(
-                leadingIcon,
-                size: 36,
-                color: SwissTheme.textPrimary,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
+              if (dev)
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.45,
+                    child: CustomPaint(painter: HatchingPainter()),
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.all(22),
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      group.title.toUpperCase(),
-                      style: AppFonts.pixelifySans(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        color: SwissTheme.textPrimary,
+                    Icon(
+                      leadingIcon,
+                      size: 36,
+                      color: unlocked
+                          ? SwissTheme.textPrimary
+                          : SwissTheme.textSecondary.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            group.title.toUpperCase(),
+                            style: AppFonts.pixelifySans(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900,
+                              color: unlocked
+                                  ? SwissTheme.textPrimary
+                                  : SwissTheme.textSecondary.withValues(alpha: 0.55),
+                            ),
+                          ),
+                          if (dev) ...[
+                            const SizedBox(height: 6),
+                            Text(
+                              'UNDER DEVELOPMENT',
+                              style: AppFonts.pixelifySans(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.6,
+                                color: SwissTheme.accentOrange,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 6),
+                          Text(
+                            group.description,
+                            style: SwissTheme.monospacedText.copyWith(
+                              fontSize: 11,
+                              color: unlocked
+                                  ? SwissTheme.textSecondary
+                                  : SwissTheme.textSecondary.withValues(alpha: 0.45),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            subtitle,
+                            style: SwissTheme.monospacedText.copyWith(
+                              fontSize: 10,
+                              color: unlocked
+                                  ? SwissTheme.textSecondary
+                                  : SwissTheme.textSecondary.withValues(alpha: 0.4),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      group.description,
-                      style: SwissTheme.monospacedText.copyWith(fontSize: 11, color: SwissTheme.textSecondary),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      subtitle,
-                      style: SwissTheme.monospacedText.copyWith(fontSize: 10, color: SwissTheme.textSecondary),
-                    ),
+                    if (dev)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, top: 2),
+                        child: Icon(Icons.lock_outline, size: 24, color: SwissTheme.textPrimary),
+                      )
+                    else
+                      const Icon(Icons.chevron_right, color: SwissTheme.textPrimary),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: SwissTheme.textPrimary),
             ],
           ),
         ),

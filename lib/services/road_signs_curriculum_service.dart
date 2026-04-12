@@ -43,6 +43,7 @@ class RoadSignsCurriculumService {
       description: g['description'] as String? ?? '',
       subgroups: subgroups,
       modules: modules,
+      isUnderDevelopment: g['isUnderDevelopment'] == true,
     );
   }
 

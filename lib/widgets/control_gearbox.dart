@@ -57,21 +57,21 @@ class ControlGearboxWidget extends StatelessWidget {
   }
 
   Widget _buildGearPositionOverlays() {
-    // Match [GearboxWidget] pixel hotspots on the 140×200 frame (Controls reference UI).
+    // Pixel hotspots on the 140×200 frame (tutorial / controls reference UI; in-game [GearboxWidget] uses its own tuning).
     const double globalOffsetX = 0;
     const double globalOffsetY = 0;
     const double rX = 34;
-    const double rY = 72;
+    const double rY = 52;
     const double g1X = 70;
-    const double g1Y = 72;
+    const double g1Y = 52;
     const double g2X = 106;
-    const double g2Y = 72;
+    const double g2Y = 52;
     const double g3X = 34;
-    const double g3Y = 130;
+    const double g3Y = 110;
     const double g4X = 70;
-    const double g4Y = 130;
+    const double g4Y = 110;
     const double pX = 106;
-    const double pY = 130;
+    const double pY = 110;
 
     return Stack(
       children: [

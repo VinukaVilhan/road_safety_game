@@ -14,12 +14,16 @@ class ProgressRepository {
   static final ProgressRepository instance = ProgressRepository._();
 
   static const _passScore = 70;
+  /// Isar rows and unlock logic use this when there is no Firebase user so road-signs / theory progress still works offline.
+  static const _guestProgressUid = '__local_guest__';
   final _uuid = const Uuid();
 
   Isar get _isar => LocalDb.instance.isar;
   SyncOutbox get _outbox => SyncOutbox(_isar);
 
   String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
+  String get _progressUid => _uid ?? _guestProgressUid;
 
   Future<Set<String>> getCompletedLevelIds() async {
     final uid = _uid;
@@ -69,8 +73,7 @@ class ProgressRepository {
   }
 
   Future<Set<String>> getCompletedTestIds() async {
-    final uid = _uid;
-    if (uid == null) return <String>{};
+    final uid = _progressUid;
     final tests =
         await _isar.localTheoryTestProgress.filter().uidEqualTo(uid).and().passedEqualTo(true).findAll();
     return tests.map((e) => e.testId).toSet();
@@ -82,10 +85,11 @@ class ProgressRepository {
     required int correctCount,
     required int score,
   }) async {
-    final uid = _uid;
     final trimmed = testId.trim();
-    if (uid == null || trimmed.isEmpty) return;
+    if (trimmed.isEmpty) return;
 
+    final uid = _progressUid;
+    final syncUid = _uid;
     final now = DateTime.now().toUtc();
     final attemptOpId = _uuid.v4();
     final progressOpId = _uuid.v4();
@@ -123,39 +127,44 @@ class ProgressRepository {
       await _isar.localTheoryAttempts.put(attempt);
     });
 
-    await _outbox.enqueue(
-      opId: progressOpId,
-      uid: uid,
-      entityType: 'theory_test_progress',
-      entityId: trimmed,
-      payload: {
-        'attempts': progress.attempts,
-        'bestScore': progress.bestScore,
-        'passed': progress.passed,
-        'updatedAt': now.toIso8601String(),
-      },
-    );
+    if (syncUid != null) {
+      await _outbox.enqueue(
+        opId: progressOpId,
+        uid: syncUid,
+        entityType: 'theory_test_progress',
+        entityId: trimmed,
+        payload: {
+          'attempts': progress.attempts,
+          'bestScore': progress.bestScore,
+          'passed': progress.passed,
+          'updatedAt': now.toIso8601String(),
+        },
+      );
 
-    await _outbox.enqueue(
-      opId: attemptOpId,
-      uid: uid,
-      entityType: 'theory_attempt',
-      entityId: attemptId,
-      payload: {
-        'testId': trimmed,
-        'score': score,
-        'totalQuestions': totalQuestions,
-        'correctCount': correctCount,
-        'createdAt': now.toIso8601String(),
-        'updatedAt': now.toIso8601String(),
-      },
-    );
+      await _outbox.enqueue(
+        opId: attemptOpId,
+        uid: syncUid,
+        entityType: 'theory_attempt',
+        entityId: attemptId,
+        payload: {
+          'testId': trimmed,
+          'score': score,
+          'totalQuestions': totalQuestions,
+          'correctCount': correctCount,
+          'createdAt': now.toIso8601String(),
+          'updatedAt': now.toIso8601String(),
+        },
+      );
+    }
+
+    if (syncUid != null) {
+      unawaited(SyncService.instance.syncNow());
+    }
   }
 
   /// Module ids for which the user completed the non-MCQ (e.g. study) flow.
   Future<Set<String>> getRoadSignsLearnViewedModuleIds() async {
-    final uid = _uid;
-    if (uid == null) return <String>{};
+    final uid = _progressUid;
     final rows = await _isar.localRoadSignsModuleProgress
         .filter()
         .uidEqualTo(uid)
@@ -166,9 +175,10 @@ class ProgressRepository {
   }
 
   Future<void> markRoadSignsLearnModuleViewed(String moduleId) async {
-    final uid = _uid;
+    final uid = _progressUid;
+    final syncUid = _uid;
     final mid = moduleId.trim();
-    if (uid == null || mid.isEmpty) return;
+    if (mid.isEmpty) return;
     final key = '$uid::$mid';
     final now = DateTime.now().toUtc();
     final opId = _uuid.v4();
@@ -185,19 +195,21 @@ class ProgressRepository {
       await _isar.localRoadSignsModuleProgress.put(row);
     });
 
-    await _outbox.enqueue(
-      opId: opId,
-      uid: uid,
-      entityType: 'road_signs_module_progress',
-      entityId: mid,
-      payload: {
-        'moduleId': mid,
-        'contentViewed': true,
-        'updatedAt': now.toIso8601String(),
-      },
-    );
+    if (syncUid != null) {
+      await _outbox.enqueue(
+        opId: opId,
+        uid: syncUid,
+        entityType: 'road_signs_module_progress',
+        entityId: mid,
+        payload: {
+          'moduleId': mid,
+          'contentViewed': true,
+          'updatedAt': now.toIso8601String(),
+        },
+      );
 
-    unawaited(SyncService.instance.syncNow());
+      unawaited(SyncService.instance.syncNow());
+    }
   }
 
   /// Returns the stored value for [settingKey] for the current user, or null.

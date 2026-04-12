@@ -248,6 +248,10 @@ Vector2? _pickPlayerSpawnFromObjectGroups(Iterable<ObjectGroup> groups) {
     if (t.contains('player') && t.contains('spawn')) {
       final p = pickFromLayer(layer);
       if (p != null) {
+        print(
+          '[DEBUG] _pickPlayerSpawn - chose Player_Spawn-style layer "${layer.name}" '
+          'class="${layer.class_ ?? ""}" at $p',
+        );
         return p;
       }
     }
@@ -256,8 +260,15 @@ Vector2? _pickPlayerSpawnFromObjectGroups(Iterable<ObjectGroup> groups) {
     final t = _tiledLayerTag(layer);
     if (t.contains('ambulance') && t.contains('spawn')) continue;
     final p = pickFromLayer(layer);
-    if (p != null) return p;
+    if (p != null) {
+      print(
+        '[DEBUG] _pickPlayerSpawn - chose generic spawn layer "${layer.name}" '
+        'class="${layer.class_ ?? ""}" at $p',
+      );
+      return p;
+    }
   }
+  print('[DEBUG] _pickPlayerSpawn - no spawn object found in object groups');
   return null;
 }
 
@@ -318,12 +329,17 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   /// Looping `assets/audio/Ambulance_Sound.m4a` while the ambulance is active (spawn or Siren_Layer reveal).
   static const String _ambulanceLoopAsset = 'Ambulance_Sound.m4a';
 
+  /// Applied after TMX `sirenVolume` / spawn config so the siren sits under engine/UI in the mix.
+  static const double _ambulanceSirenMasterGain = 0.42;
+
   /// One-shot police whistle when a driving rule is broken (see [_playRuleBreakWhistle]).
   static const String _ruleBreakWhistleAsset = 'Whistle_Sound.m4a';
   late SpriteComponent roadBackground;
   double roadSpeed = 200.0;
   List<TiledComponent> roadTiles = [];
   bool _roadInitialized = false;
+  /// Single shared future so [onGameResize] and [onLoad] cannot run [_setupRoad] concurrently.
+  Future<void>? _setupRoadFuture;
   double? _mapWidth;
   double? _mapHeight;
   double _baseLayerFriction = 400.0; // default fallback friction
@@ -450,20 +466,22 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     // Try to setup road if size is already available
     if (size.x > 0 && size.y > 0) {
-      await _setupRoad();
+      await _ensureRoadSetup();
     }
     // Otherwise, onGameResize will handle it
     
-    // Add the car after road so it renders on top
+    // Add the car after road so it renders on top (Flame runs [Car.onLoad]; do not call it twice).
     final newCar = Car();
-    await newCar.onLoad();
     newCar.priority = 1; // Higher priority - renders on top of road
-    world.add(newCar);  // Add to world, not game
-    car = newCar; // Assign after adding to ensure it's not null
+    world.add(newCar);
+    await newCar.loaded;
+    car = newCar;
+    if (_spawnPoint != null) {
+      car!.position.setFrom(_spawnPoint!);
+    }
+    camera.viewfinder.position = car!.position.clone();
+    camera.follow(car!, snap: true);
     print('[DEBUG] onLoad() - Car added to WORLD at position: ${car!.position}');
-    
-    // Wait for next frame to ensure car's onMount() is called
-    await Future.delayed(Duration.zero);
   }
   
   @override
@@ -474,13 +492,19 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     
     // Initialize road tiles when size is known
     if (!_roadInitialized && size.x > 0 && size.y > 0) {
-      _setupRoad();
+      unawaited(_ensureRoadSetup());
     }
     // Re-apply bounds after resize/orientation changes to avoid clipped camera limits.
     if (_roadInitialized) {
       _applyCameraZoomForViewport();
       _applyCameraBounds();
     }
+  }
+
+  /// Ensures [_setupRoad] runs at most once; concurrent callers share the same future.
+  Future<void> _ensureRoadSetup() {
+    _setupRoadFuture ??= _setupRoad();
+    return _setupRoadFuture!;
   }
   
   Future<void> _setupRoad() async {
@@ -493,6 +517,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     roadTiles.clear();
     
     final tmxPath = mapAsset ?? 'town_tiles_2.tmx';
+    print(
+      '[DEBUG] _setupRoad() - Loading TMX: $tmxPath '
+      '(mapAsset=${mapAsset ?? "(default)"})',
+    );
     // Load the Tiled map
     final tiledMap = await TiledComponent.load(
       tmxPath,
@@ -502,15 +530,32 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     // Calculate and store map dimensions
     _mapWidth = tiledMap.tileMap.map.width * 16.0; // 16 is tile width
     _mapHeight = tiledMap.tileMap.map.height * 16.0; // 16 is tile height
-    print('[DEBUG] _setupRoad() - Map dimensions: ${_mapWidth} x ${_mapHeight}');
-    print('[DEBUG] _setupRoad() - Map tiles: ${tiledMap.tileMap.map.width} x ${tiledMap.tileMap.map.height}');
+    print('[DEBUG] _setupRoad() - Map dimensions (px): ${_mapWidth} x ${_mapHeight}');
+    print('[DEBUG] _setupRoad() - Map size (tiles): ${tiledMap.tileMap.map.width} x ${tiledMap.tileMap.map.height}');
+
+    final objectGroupLayers =
+        tiledMap.tileMap.map.layers.whereType<ObjectGroup>().toList();
+    print('[DEBUG] _setupRoad() - ObjectGroup layers (${objectGroupLayers.length}):');
+    for (final og in objectGroupLayers) {
+      final tag = _tiledLayerTag(og);
+      final cls = (og.class_ ?? '').trim();
+      final clsTag = cls.replaceAll(' ', '_').toLowerCase();
+      final spawnRelated = tag.contains('spawn') || clsTag.contains('spawn');
+      final marker = spawnRelated ? ' [spawn-related]' : '';
+      print(
+        '[DEBUG]   - name="${og.name}" class="$cls" objects=${og.objects.length}$marker',
+      );
+    }
 
     // Read spawn point (prefer Player_Spawn over Ambulance_Spawn marker layers).
-    _spawnPoint = _pickPlayerSpawnFromObjectGroups(
-      tiledMap.tileMap.map.layers.whereType<ObjectGroup>(),
-    );
+    _spawnPoint = _pickPlayerSpawnFromObjectGroups(objectGroupLayers);
     if (_spawnPoint != null) {
-      print('[DEBUG] _setupRoad() - Spawn point loaded: $_spawnPoint');
+      print('[DEBUG] _setupRoad() - Resolved player spawn (world px): $_spawnPoint');
+    } else {
+      print(
+        '[DEBUG] _setupRoad() - WARNING: no player spawn in TMX; '
+        'Car will use map centre until layers match _pickPlayerSpawn rules',
+      );
     }
 
     // Read friction from the "Base" layer if available (Tiled layer property)
@@ -747,8 +792,6 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     roadTiles.add(mapInstance);
     world.add(mapInstance);  // Add to world, not game
 
-    final objectGroupLayers =
-        tiledMap.tileMap.map.layers.whereType<ObjectGroup>().toList();
     _collectSirenTriggerRects(objectGroupLayers, _sirenTriggerRects);
     if (_sirenTriggerRects.isNotEmpty) {
       print(
@@ -869,9 +912,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   Future<void> _startAmbulanceSiren(double volume) async {
     await _stopAmbulanceSiren();
     try {
+      final v = (volume * _ambulanceSirenMasterGain).clamp(0.0, 1.0);
       _ambulanceSirenPlayer = await FlameAudio.loop(
         _ambulanceLoopAsset,
-        volume: volume.clamp(0.0, 1.0),
+        volume: v,
       );
     } catch (e, st) {
       debugPrint(
@@ -1634,7 +1678,7 @@ class Car extends SpriteComponent {
     4: 0.50, // 4th gear (~100)
   };
 
-  late final CarZones zones;
+  late CarZones zones;
 
   /// Validated breadcrumbs for tethered ambulance AI ([PathNode.isSafe] from wall overlap).
   final List<PathNode> pathHistory = [];
@@ -1936,9 +1980,30 @@ class Ambulance extends SpriteComponent {
   AmbulanceState state = AmbulanceState.catchingUp;
   int _waypointIndex = 0;
 
+  /// Previous world position for movement-based heading smoothing.
+  late Vector2 _prevPosition;
+
   static const double _safeDistance = 150.0;
   static const double _catchUpSpeed = 300.0;
   static const double _passSpeed = 320.0;
+
+  /// Shortest-path angle interpolation in radians.
+  static double _lerpAngle(double from, double to, double t) {
+    var d = to - from;
+    while (d > math.pi) {
+      d -= 2 * math.pi;
+    }
+    while (d < -math.pi) {
+      d += 2 * math.pi;
+    }
+    return from + d * t;
+  }
+
+  @override
+  void onMount() {
+    super.onMount();
+    _prevPosition = position.clone();
+  }
 
   @override
   void update(double dt) {
@@ -1952,14 +2017,16 @@ class Ambulance extends SpriteComponent {
         }
         break;
       case AmbulanceState.tailgating:
-        final node = _findTargetBreadcrumb();
-        if (node != null && node.isSafe) {
-          final toNode = node.position - position;
-          position += toNode * math.min(1.0, dt * 5.0);
-          angle = node.angle;
-        } else {
-          final followSpeed = player.velocity.length.clamp(80.0, 200.0);
-          _followWaypoints(dt, speed: followSpeed);
+        // Front of ambulance tracks player rear bumper (stable world point, no breadcrumb oscillation).
+        final rearWorld = player.absolutePositionOf(player.zones.rearBumper);
+        final toRear = rearWorld - position;
+        final dist = toRear.length;
+        if (dist > 60.0) {
+          final speed = dist > _safeDistance
+              ? _catchUpSpeed
+              : player.velocity.length.clamp(80.0, _catchUpSpeed);
+          final step = speed * dt;
+          position += toRear.normalized() * math.min(step, dist - 55.0);
         }
         if (_playerYielded()) {
           state = AmbulanceState.passing;
@@ -1969,6 +2036,14 @@ class Ambulance extends SpriteComponent {
         _followWaypoints(dt, speed: _passSpeed);
         break;
     }
+
+    final moved = position - _prevPosition;
+    if (moved.length > 0.5) {
+      // Ambulance PNG faces up; atan2 uses 0 = +X like BlackCar physics — offset +90°.
+      final desiredAngle = math.atan2(moved.y, moved.x) + math.pi / 2;
+      angle = _lerpAngle(angle, desiredAngle, math.min(1.0, dt * 6.0));
+    }
+    _prevPosition.setFrom(position);
   }
 
   bool _playerYielded() {
@@ -1976,17 +2051,6 @@ class Ambulance extends SpriteComponent {
     final g = player.findGame();
     if (g is! RealisticCarGame) return false;
     return g.turnSignalLeft?.value == true;
-  }
-
-  PathNode? _findTargetBreadcrumb() {
-    final hist = player.pathHistory;
-    if (hist.isEmpty) return null;
-    for (var i = hist.length - 1; i >= 0; i--) {
-      if (position.distanceTo(hist[i].position) >= _safeDistance) {
-        return hist[i];
-      }
-    }
-    return null;
   }
 
   void _followWaypoints(double dt, {required double speed}) {
@@ -2001,7 +2065,6 @@ class Ambulance extends SpriteComponent {
       return;
     }
     final step = speed * dt;
-    angle = math.atan2(toTarget.y, toTarget.x);
     position += toTarget.normalized() * math.min(step, toTarget.length);
   }
 }

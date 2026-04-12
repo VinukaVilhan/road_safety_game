@@ -255,7 +255,7 @@
   <object id="17" x="954.563" y="771.491" width="272" height="104.259" rotation="328.782"/>
   <object id="18" x="285.333" y="615.87" width="272" height="104.259" rotation="328.782"/>
  </objectgroup>
- <objectgroup id="10" name="Ambulance_Route" class="AmbulanceRoute">
+ <objectgroup color="#ff5500" id="10" name="Ambulance_Route" class="AmbulanceRoute">
   <object id="20" x="525.333" y="700.667">
    <polygon points="0,0 44,-28.6667 422.667,-28.6667 492.667,-69.3333 496.667,-682.667 494,-70 421.333,-28 43.3333,-28"/>
   </object>

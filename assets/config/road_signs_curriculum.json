@@ -34,35 +34,8 @@
       "description": "Traffic light phases, signal-controlled junctions, and how signals relate to road signs.",
       "subgroups": [
         {
-          "id": "traffic_signals_general",
-          "order": 1,
-          "title": "Traffic lights and signals",
-          "description": "Study and quiz on steady lights, arrows, crossings, and following directions.",
-          "modules": [
-            {
-              "id": "traffic_signals_learn",
-              "kind": "learn",
-              "order": 1,
-              "title": "Study: traffic lights and signals",
-              "description": "Steady red: stop behind the stop line and wait. Do not cross unless directed by an authorised person.\n\nSteady amber after green: stop unless it would be unsafe to stop; if you are already crossing the junction, clear it with care.\n\nSteady green: go only if your way ahead is clear and you can do so safely; still give way where required (e.g. to pedestrians already crossing).\n\nRed and amber together: prepare to go, but remain stopped until you see green.\n\nGreen arrow with a red light for straight ahead: you may follow the direction of the arrow when it is safe, as that movement is signalled for you.\n\nFlashing amber at some crossings: usually means give way to pedestrians on the crossing; approach slowly and be ready to stop.\n\nIf a police officer or traffic warden gives a different signal from the lights, always follow the person directing traffic.",
-              "unlockRequirementIds": []
-            },
-            {
-              "id": "traffic_signals_mcq",
-              "kind": "mcq",
-              "order": 2,
-              "title": "MCQ: traffic and signals",
-              "description": "Lights, phases, and behaviour at signal-controlled junctions.",
-              "mcqTestId": "traffic_signals_mcq",
-              "questionCount": 8,
-              "difficulty": "easy",
-              "unlockRequirementIds": ["traffic_signals_learn"]
-            }
-          ]
-        },
-        {
           "id": "color_lights",
-          "order": 2,
+          "order": 1,
           "title": "Color lights",
           "description": "Learn the three colors, test yourself, then practice with a quick mini game.",
           "modules": [
@@ -92,6 +65,33 @@
               "title": "Mini game: match the light",
               "description": "Six rounds — tap Stop, Slow / prepare, or Go for the color shown.",
               "unlockRequirementIds": ["traffic_color_lights_mcq"]
+            }
+          ]
+        },
+        {
+          "id": "traffic_signals_general",
+          "order": 2,
+          "title": "Traffic lights and signals",
+          "description": "Study and quiz on steady lights, arrows, crossings, and following directions.",
+          "modules": [
+            {
+              "id": "traffic_signals_learn",
+              "kind": "learn",
+              "order": 1,
+              "title": "Study: traffic lights and signals",
+              "description": "Steady red: stop behind the stop line and wait. Do not cross unless directed by an authorised person.\n\nSteady amber after green: stop unless it would be unsafe to stop; if you are already crossing the junction, clear it with care.\n\nSteady green: go only if your way ahead is clear and you can do so safely; still give way where required (e.g. to pedestrians already crossing).\n\nRed and amber together: prepare to go, but remain stopped until you see green.\n\nGreen arrow with a red light for straight ahead: you may follow the direction of the arrow when it is safe, as that movement is signalled for you.\n\nFlashing amber at some crossings: usually means give way to pedestrians on the crossing; approach slowly and be ready to stop.\n\nIf a police officer or traffic warden gives a different signal from the lights, always follow the person directing traffic.",
+              "unlockRequirementIds": []
+            },
+            {
+              "id": "traffic_signals_mcq",
+              "kind": "mcq",
+              "order": 2,
+              "title": "MCQ: traffic and signals",
+              "description": "Lights, phases, and behaviour at signal-controlled junctions.",
+              "mcqTestId": "traffic_signals_mcq",
+              "questionCount": 8,
+              "difficulty": "easy",
+              "unlockRequirementIds": ["traffic_signals_learn"]
             }
           ]
         }

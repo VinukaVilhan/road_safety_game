@@ -14,8 +14,9 @@ class RoadSignsCurriculumService {
 
   RoadSignsCurriculum? _cached;
 
+  /// Always reads from the asset bundle so curriculum updates apply (hot reload
+  /// and code deploy used to leave a stale singleton cache).
   Future<RoadSignsCurriculum> loadCurriculum() async {
-    if (_cached != null) return _cached!;
     final raw = await rootBundle.loadString(_assetPath);
     final map = jsonDecode(raw) as Map<String, dynamic>;
     _cached = _parse(map);

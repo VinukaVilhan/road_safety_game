@@ -32,11 +32,57 @@ class RoadSignsModulesScreen extends StatefulWidget {
 class _RoadSignsModulesScreenState extends State<RoadSignsModulesScreen> {
   Set<String> _passedMcqIds = {};
   Set<String> _viewedLearnIds = {};
+  List<RoadSignsModule> _modules = [];
+  bool _loadingModules = true;
+  String? _modulesLoadError;
 
   @override
   void initState() {
     super.initState();
+    _loadModulesFromCurriculum();
     _refreshProgress();
+  }
+
+  /// Always resolve from bundled JSON so this screen never shows an empty list
+  /// due to a stale [RoadSignsSubgroup] passed through navigation.
+  Future<void> _loadModulesFromCurriculum() async {
+    setState(() {
+      _loadingModules = true;
+      _modulesLoadError = null;
+    });
+    try {
+      final c = await RoadSignsCurriculumService.instance.loadCurriculum();
+      final g = c.groupById(widget.group.id);
+      final List<RoadSignsModule> list;
+      if (g == null) {
+        list = [];
+      } else if (widget.subgroup != null) {
+        final sid = widget.subgroup!.id;
+        RoadSignsSubgroup? match;
+        for (final s in g.subgroups) {
+          if (s.id == sid) {
+            match = s;
+            break;
+          }
+        }
+        list = match != null ? List<RoadSignsModule>.from(match.modules) : [];
+      } else {
+        list = List<RoadSignsModule>.from(g.modules);
+      }
+      list.sort((a, b) => a.order.compareTo(b.order));
+      if (!mounted) return;
+      setState(() {
+        _modules = list;
+        _loadingModules = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _modules = [];
+        _loadingModules = false;
+        _modulesLoadError = '$e';
+      });
+    }
   }
 
   Future<void> _refreshProgress() async {
@@ -47,11 +93,6 @@ class _RoadSignsModulesScreenState extends State<RoadSignsModulesScreen> {
       _passedMcqIds = passed;
       _viewedLearnIds = viewed;
     });
-  }
-
-  List<RoadSignsModule> get _modules {
-    final raw = widget.subgroup != null ? widget.subgroup!.modules : widget.group.modules;
-    return List<RoadSignsModule>.from(raw)..sort((a, b) => a.order.compareTo(b.order));
   }
 
   String get _breadcrumb {
@@ -118,31 +159,98 @@ class _RoadSignsModulesScreenState extends State<RoadSignsModulesScreen> {
               ),
             ),
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: _modules.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, i) {
-                  final m = _modules[i];
-                  final unlocked = RoadSignsCurriculumService.isModuleUnlocked(
-                    m,
-                    _passedMcqIds,
-                    _viewedLearnIds,
-                  );
-                  return _ModuleTile(
-                    module: m,
-                    unlocked: unlocked,
-                    passedMcq: _passedMcqIds.contains(m.id),
-                    learnViewed: _viewedLearnIds.contains(m.id),
-                    onTap: () => _onModuleTap(m, unlocked),
-                  );
-                },
-              ),
-            ),
+            Expanded(child: _buildModuleBody()),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildModuleBody() {
+    if (_loadingModules) {
+      return const Center(child: CircularProgressIndicator(color: SwissTheme.textPrimary));
+    }
+    if (_modulesLoadError != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Could not load modules.',
+                textAlign: TextAlign.center,
+                style: AppFonts.pixelifySans(fontSize: 16, fontWeight: FontWeight.w700, color: SwissTheme.textPrimary),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                _modulesLoadError!,
+                textAlign: TextAlign.center,
+                style: SwissTheme.monospacedText.copyWith(fontSize: 11, color: SwissTheme.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: () {
+                  UiSoundService().playMenuTap();
+                  _loadModulesFromCurriculum();
+                },
+                child: Text('RETRY', style: TextStyle(color: SwissTheme.accentBlue)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_modules.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'No modules found for this track.',
+                textAlign: TextAlign.center,
+                style: AppFonts.pixelifySans(fontSize: 16, fontWeight: FontWeight.w700, color: SwissTheme.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Group: ${widget.group.id}\nSubgroup: ${widget.subgroup?.id ?? "(top level)"}',
+                textAlign: TextAlign.center,
+                style: SwissTheme.monospacedText.copyWith(fontSize: 11, color: SwissTheme.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: () {
+                  UiSoundService().playMenuTap();
+                  _loadModulesFromCurriculum();
+                },
+                child: Text('RELOAD FROM CURRICULUM', style: TextStyle(color: SwissTheme.accentBlue)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: _modules.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, i) {
+        final m = _modules[i];
+        final unlocked = RoadSignsCurriculumService.isModuleUnlocked(
+          m,
+          _passedMcqIds,
+          _viewedLearnIds,
+        );
+        return _ModuleTile(
+          module: m,
+          unlocked: unlocked,
+          passedMcq: _passedMcqIds.contains(m.id),
+          learnViewed: _viewedLearnIds.contains(m.id),
+          onTap: () => _onModuleTap(m, unlocked),
+        );
+      },
     );
   }
 

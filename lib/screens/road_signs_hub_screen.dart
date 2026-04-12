@@ -48,6 +48,7 @@ class _RoadSignsHubScreenState extends State<RoadSignsHubScreen> {
 
   Future<void> _load() async {
     try {
+      RoadSignsCurriculumService.instance.clearCache();
       final c = await RoadSignsCurriculumService.instance.loadCurriculum();
       if (!mounted) return;
       setState(() {

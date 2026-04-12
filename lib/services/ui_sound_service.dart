@@ -34,6 +34,72 @@ class UiSoundService {
   bool soundEnabled = true;
   bool vibrationEnabled = true;
 
+  /// Decodes and buffers UI clips so the first menu tap is not blocked by [setAsset].
+  /// Safe to call multiple times; overlaps with other startup work if started early.
+  Future<void> preload() async {
+    await Future.wait<void>([
+      _warmTap(),
+      _warmToggle(),
+      _warmEngineStart(),
+      _warmLevel(
+        player: _levelPassPlayer,
+        assetPath: 'assets/audio/level_pass.wav',
+        volume: 0.5,
+        readyFlag: (v) => _levelPassReady = v,
+        isReady: () => _levelPassReady,
+      ),
+      _warmLevel(
+        player: _levelFailPlayer,
+        assetPath: 'assets/audio/level_fail.wav',
+        volume: 0.48,
+        readyFlag: (v) => _levelFailReady = v,
+        isReady: () => _levelFailReady,
+      ),
+    ], eagerError: false);
+  }
+
+  Future<void> _warmTap() async {
+    try {
+      if (_tapReady) return;
+      await _tapPlayer.setAsset(_tapAsset);
+      await _tapPlayer.setVolume(0.5);
+      _tapReady = true;
+    } catch (_) {}
+  }
+
+  Future<void> _warmToggle() async {
+    try {
+      if (_toggleReady) return;
+      await _togglePlayer.setAsset(_toggleAsset);
+      await _togglePlayer.setVolume(0.55);
+      _toggleReady = true;
+    } catch (_) {}
+  }
+
+  Future<void> _warmEngineStart() async {
+    try {
+      if (_engineStartReady) return;
+      await _engineStartPlayer.setAsset(_engineStartAsset);
+      await _engineStartPlayer.setVolume(0.65);
+      _engineStartReady = true;
+    } catch (_) {}
+  }
+
+  Future<void> _warmLevel({
+    required AudioPlayer player,
+    required String assetPath,
+    required double volume,
+    required void Function(bool) readyFlag,
+    required bool Function() isReady,
+  }) async {
+    try {
+      if (isReady()) return;
+      await player.setAsset(assetPath);
+      await player.setVolume(volume);
+      readyFlag(true);
+    } catch (_) {}
+  }
+
   void playMenuTap() {
     if (vibrationEnabled) {
       HapticFeedback.lightImpact();

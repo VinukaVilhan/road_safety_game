@@ -8,9 +8,11 @@ import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../widgets/assistant_button.dart';
+import 'level_selection_screen.dart' show HatchingPainter;
 import 'road_signs_learn_screen.dart';
 import 'roadsign_mcq_screen.dart';
-import 'theory_test_selection_screen.dart';
+import 'traffic_color_lights_intro_screen.dart';
+import 'traffic_color_lights_minigame_screen.dart';
 
 /// Lists curriculum modules (study, MCQ, …) for a warning group or a control subgroup.
 class RoadSignsModulesScreen extends StatefulWidget {
@@ -160,6 +162,35 @@ class _RoadSignsModulesScreenState extends State<RoadSignsModulesScreen> {
       if (changed == true) await _refreshProgress();
       return;
     }
+    if (m.kind == RoadSignsModuleKind.intro) {
+      final changed = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => m.id == 'traffic_color_lights_intro'
+              ? TrafficColorLightsIntroScreen(module: m, breadcrumb: _breadcrumb)
+              : RoadSignsLearnScreen(module: m, breadcrumb: _breadcrumb),
+        ),
+      );
+      if (changed == true) await _refreshProgress();
+      return;
+    }
+    if (m.kind == RoadSignsModuleKind.minigame) {
+      if (m.id != 'traffic_color_lights_minigame') {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Mini game not available for “${m.title}”.', style: AppFonts.pixelifySans(fontSize: 13))),
+        );
+        return;
+      }
+      final changed = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => TrafficColorLightsMinigameScreen(module: m, breadcrumb: _breadcrumb),
+        ),
+      );
+      if (changed == true) await _refreshProgress();
+      return;
+    }
     if (m.kind == RoadSignsModuleKind.mcq) {
       final test = m.toTheoryTest(categoryId: 'road_signs');
       await Navigator.push(
@@ -216,6 +247,18 @@ class _ModuleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isMcq = module.kind == RoadSignsModuleKind.mcq;
     final done = isMcq ? passedMcq : learnViewed;
+    final icon = switch (module.kind) {
+      RoadSignsModuleKind.mcq => Icons.quiz_outlined,
+      RoadSignsModuleKind.learn => Icons.menu_book_outlined,
+      RoadSignsModuleKind.intro => Icons.traffic_outlined,
+      RoadSignsModuleKind.minigame => Icons.sports_esports_outlined,
+    };
+    final kindLabel = switch (module.kind) {
+      RoadSignsModuleKind.mcq => '${module.questionCount} questions',
+      RoadSignsModuleKind.learn => 'Study',
+      RoadSignsModuleKind.intro => 'Intro',
+      RoadSignsModuleKind.minigame => 'Mini game',
+    };
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -239,7 +282,7 @@ class _ModuleTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Icon(
-                    isMcq ? Icons.quiz_outlined : Icons.menu_book_outlined,
+                    icon,
                     color: SwissTheme.textPrimary,
                     size: 28,
                   ),
@@ -258,7 +301,7 @@ class _ModuleTile extends StatelessWidget {
                                   fontWeight: FontWeight.w800,
                                   color: unlocked
                                       ? SwissTheme.textPrimary
-                                      : SwissTheme.textSecondary.withOpacity(0.6),
+                                      : SwissTheme.textSecondary.withValues(alpha: 0.6),
                                 ),
                               ),
                             ),
@@ -275,15 +318,15 @@ class _ModuleTile extends StatelessWidget {
                             fontSize: 10,
                             color: unlocked
                                 ? SwissTheme.textSecondary
-                                : SwissTheme.textSecondary.withOpacity(0.5),
+                                : SwissTheme.textSecondary.withValues(alpha: 0.5),
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          isMcq ? '${module.questionCount} questions' : 'Study',
+                          kindLabel,
                           style: SwissTheme.monospacedText.copyWith(
                             fontSize: 9,
-                            color: SwissTheme.textSecondary.withOpacity(0.75),
+                            color: SwissTheme.textSecondary.withValues(alpha: 0.75),
                           ),
                         ),
                       ],

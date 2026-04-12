@@ -97,6 +97,18 @@ class DrivingAttemptSummary {
   });
 }
 
+/// Player path sample for ambulance "tethered breadcrumb" tailgating.
+class PathNode {
+  final Vector2 position;
+  final double angle;
+  /// False when the sample was taken while overlapping a wall / off valid road.
+  final bool isSafe;
+
+  PathNode(this.position, this.angle, this.isSafe);
+}
+
+enum AmbulanceState { catchingUp, tailgating, passing }
+
 /// Tiled: rotation in degrees clockwise around ([ox], [oy]) (pixel space, Y down).
 Offset _tiledRotateLocal(double lx, double ly, double rotationDeg) {
   if (rotationDeg == 0) return Offset(lx, ly);
@@ -160,7 +172,21 @@ bool _isJunctionBoxTileLayer(TileLayer layer) {
   return nm == 'junction_box' || nm.contains('junction_box');
 }
 
-/// UK-style ambulance marker for [ambulance-reaction.tmx] when `Ambulance.png` is absent.
+/// Tries bundled ambulance art (same folder convention as [BlackCar.png]), then a fallback sprite.
+Future<Sprite> _loadAmbulanceSpriteForLevel() async {
+  const candidates = <String>[
+    'Ambulance - v1.png',
+    'Ambulance.png',
+  ];
+  for (final name in candidates) {
+    try {
+      return await Sprite.load(name);
+    } catch (_) {}
+  }
+  return _proceduralAmbulanceSprite();
+}
+
+/// UK-style ambulance marker when no PNG asset loads.
 Future<Sprite> _proceduralAmbulanceSprite() async {
   const w = 48;
   const h = 80;
@@ -281,16 +307,19 @@ void _collectSirenTriggerRects(
 
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   Car? car; // Make car accessible - nullable to handle initialization order
-  /// Stationary ambulance graphic from `Ambulance_Spawn` on [ambulance-reaction.tmx].
-  SpriteComponent? _ambulanceDecoration;
+  /// Ambulance AI from `Ambulance_Spawn` + [Ambulance_Route] on [ambulance-reaction.tmx].
+  Ambulance? _ambulanceDecoration;
   /// When the map has [Siren_Layer] rects, the ambulance is hidden until the car overlaps one.
   final List<Rect> _sirenTriggerRects = [];
   ({Vector2 position, double angle, double sirenVolume})? _ambulanceSpawnConfig;
   bool _ambulanceSirenRevealDone = false;
   AudioPlayer? _ambulanceSirenPlayer;
 
-  /// Add `assets/audio/Ambulance_Siren.wav` (short looping clip) for siren when entering [Siren_Layer].
-  static const String _ambulanceSirenAsset = 'Ambulance_Siren.wav';
+  /// Looping `assets/audio/Ambulance_Sound.m4a` while the ambulance is active (spawn or Siren_Layer reveal).
+  static const String _ambulanceLoopAsset = 'Ambulance_Sound.m4a';
+
+  /// One-shot police whistle when a driving rule is broken (see [_playRuleBreakWhistle]).
+  static const String _ruleBreakWhistleAsset = 'Whistle_Sound.m4a';
   late SpriteComponent roadBackground;
   double roadSpeed = 200.0;
   List<TiledComponent> roadTiles = [];
@@ -300,6 +329,9 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   double _baseLayerFriction = 400.0; // default fallback friction
   final List<Rect> _wallRects = [];
   Vector2? _spawnPoint;
+
+  /// World waypoints from Tiled `Ambulance_Route` / class `AmbulanceRoute` (polygon or polyline).
+  final List<Vector2> _ambulanceRouteWaypoints = [];
 
   /// Preferred camera zoom level (> 1 = zoom in, < 1 = zoom out).
   /// Final zoom is clamped so camera never shows outside-map void.
@@ -396,9 +428,14 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       debugPrint('Vehicle SFX preload failed: $e\n$st');
     }
     try {
-      await FlameAudio.audioCache.load(_ambulanceSirenAsset);
+      await FlameAudio.audioCache.load(_ambulanceLoopAsset);
     } catch (_) {
-      // Optional: add assets/audio/Ambulance_Siren.wav for ambulance-reaction level.
+      // Optional: add assets/audio/Ambulance_Sound.m4a for ambulance-reaction level.
+    }
+    try {
+      await FlameAudio.audioCache.load(_ruleBreakWhistleAsset);
+    } catch (_) {
+      // Optional: add assets/audio/Whistle_Sound.m4a for rule-failure feedback.
     }
     
     print('[DEBUG] onLoad() - Game size: ${size.x} x ${size.y}');
@@ -664,7 +701,39 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       }
     }
     print('[DEBUG] _setupRoad() - MidTurn validation zones: ${_midTurnZones.length}');
-    
+
+    // Ambulance tether route: layer name `Ambulance_Route` and/or class `AmbulanceRoute`.
+    _ambulanceRouteWaypoints.clear();
+    for (final layer in tiledMap.tileMap.map.layers.whereType<ObjectGroup>()) {
+      final nameNorm = layer.name.replaceAll(' ', '_').toLowerCase();
+      final classNorm = (layer.class_ ?? '').replaceAll(' ', '_').toLowerCase();
+      if (nameNorm != 'ambulance_route' && classNorm != 'ambulanceroute') {
+        continue;
+      }
+      for (final obj in layer.objects) {
+        if (!obj.visible) continue;
+        final origin = Vector2(obj.x, obj.y);
+        if (obj.isPolygon && obj.polygon.isNotEmpty) {
+          final pts = obj.polygon;
+          // Closed polygon in TMX: first 5 vertices trace the forward drive path.
+          final n = pts.length >= 5 ? 5 : pts.length;
+          for (var i = 0; i < n; i++) {
+            final p = pts[i];
+            _ambulanceRouteWaypoints.add(origin + Vector2(p.x, p.y));
+          }
+        } else if (obj.isPolyline && obj.polyline.isNotEmpty) {
+          for (final p in obj.polyline) {
+            _ambulanceRouteWaypoints.add(origin + Vector2(p.x, p.y));
+          }
+        }
+      }
+    }
+    if (_ambulanceRouteWaypoints.isNotEmpty) {
+      print(
+        '[DEBUG] _setupRoad() - Ambulance route waypoints: ${_ambulanceRouteWaypoints.length}',
+      );
+    }
+
     // Create a single static map instance at (0, 0) covering the entire world
     final mapInstance = await TiledComponent.load(
       tmxPath,
@@ -692,7 +761,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _roadInitialized = true;
     
     // Set camera bounds so the view never shows past the map edges (no black void).
-    // considerViewport: true ensures the visible area (viewport + zoom) stays inside the map.
+    // Without considerViewport, the camera centre can reach spawns near map edges
+    // (e.g. portrait layout before landscape lock would otherwise clamp Y too high).
     _applyCameraZoomForViewport();
     _applyCameraBounds();
     
@@ -700,18 +770,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     if (car != null && car!.isMounted) {
       if (_spawnPoint != null) {
         car!.position = _spawnPoint!.clone();
+        camera.viewfinder.position = _spawnPoint!.clone();
       }
-      camera.follow(car!);
-      world.remove(car!);
-      car!.priority = 1;
-      world.add(car!);
+      camera.follow(car!, snap: true);
     }
   }
 
   void _applyCameraBounds() {
     if (_mapWidth == null || _mapHeight == null) return;
     final mapBounds = Rect.fromLTWH(0, 0, _mapWidth!, _mapHeight!);
-    camera.setBounds(Rectangle.fromRect(mapBounds), considerViewport: true);
+    camera.setBounds(Rectangle.fromRect(mapBounds));
   }
 
   void _applyCameraZoomForViewport() {
@@ -740,24 +808,27 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       return;
     }
 
-    await _placeAmbulanceDecoration(_ambulanceSpawnConfig!);
+    // No siren triggers: place once [car] exists (see [_maybePlaceDeferredAmbulanceDecoration]).
+    print(
+      '[DEBUG] _setupRoad() - Ambulance will spawn when player car is ready '
+      '(no Siren_Layer).',
+    );
   }
 
   Future<void> _placeAmbulanceDecoration(
     ({Vector2 position, double angle, double sirenVolume}) cfg,
   ) async {
     if (_ambulanceDecoration != null) return;
+    final player = car;
+    if (player == null) return;
 
-    Sprite sprite;
-    try {
-      sprite = await Sprite.load('Ambulance.png');
-    } catch (_) {
-      sprite = await _proceduralAmbulanceSprite();
-    }
+    final sprite = await _loadAmbulanceSpriteForLevel();
 
     _ambulanceDecoration?.removeFromParent();
-    final deco = SpriteComponent(
+    final deco = Ambulance(
       sprite: sprite,
+      player: player,
+      routeWaypoints: List<Vector2>.from(_ambulanceRouteWaypoints),
       position: cfg.position,
       size: Vector2(52, 78),
       anchor: Anchor.center,
@@ -767,9 +838,20 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _ambulanceDecoration = deco;
     world.add(deco);
     print(
-      '[DEBUG] Ambulance decoration at ${cfg.position} '
-      'angle=${cfg.angle * 180 / math.pi}°',
+      '[DEBUG] Ambulance AI at ${cfg.position} '
+      'angle=${cfg.angle * 180 / math.pi}° waypoints=${_ambulanceRouteWaypoints.length}',
     );
+    await _startAmbulanceSiren(cfg.sirenVolume);
+  }
+
+  /// [_setupRoad] runs before [car] exists on first load; place ambulance when both are ready.
+  void _maybePlaceDeferredAmbulanceDecoration() {
+    if (_testFinished) return;
+    if (_ambulanceDecoration != null || _ambulanceSpawnConfig == null || car == null) {
+      return;
+    }
+    if (_sirenTriggerRects.isNotEmpty) return;
+    unawaited(_placeAmbulanceDecoration(_ambulanceSpawnConfig!));
   }
 
   Future<void> _stopAmbulanceSiren() async {
@@ -788,12 +870,25 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     await _stopAmbulanceSiren();
     try {
       _ambulanceSirenPlayer = await FlameAudio.loop(
-        _ambulanceSirenAsset,
+        _ambulanceLoopAsset,
         volume: volume.clamp(0.0, 1.0),
       );
     } catch (e, st) {
       debugPrint(
-        'Ambulance siren failed (add assets/audio/$_ambulanceSirenAsset): $e\n$st',
+        'Ambulance loop failed (add assets/audio/$_ambulanceLoopAsset): $e\n$st',
+      );
+    }
+  }
+
+  Future<void> _playRuleBreakWhistle() async {
+    try {
+      await FlameAudio.play(
+        _ruleBreakWhistleAsset,
+        volume: 0.88,
+      );
+    } catch (e, st) {
+      debugPrint(
+        'Rule-break whistle failed (add assets/audio/$_ruleBreakWhistleAsset): $e\n$st',
       );
     }
   }
@@ -821,7 +916,6 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     ({Vector2 position, double angle, double sirenVolume}) cfg,
   ) async {
     await _placeAmbulanceDecoration(cfg);
-    await _startAmbulanceSiren(cfg.sirenVolume);
   }
 
   /// Reset scenario after failure so the player can retry without replacing [GameScreen]
@@ -871,7 +965,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       c.position = Vector2(cx, cy);
     }
     c.markOdometerTeleport();
-    camera.follow(c);
+    c.pathHistory.clear();
+    camera.follow(c, snap: true);
   }
 
   @override
@@ -887,6 +982,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   void update(double dt) {
     super.update(dt);
     _vehicleSfx.tick(dt, car);
+    _maybePlaceDeferredAmbulanceDecoration();
     _updateAmbulanceSirenTrigger();
     _updateRoadCrossingApproachHint();
     _updateRoadCrossingParkCountdown(dt);
@@ -1275,6 +1371,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
         car?.coast();
         final message = _midTurnFailMessage(zone, leftOn, rightOn);
         _latestFailureMessage = message;
+        unawaited(_playRuleBreakWhistle());
         onTestFailed?.call(message);
         return;
       }
@@ -1313,6 +1410,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _testFinished = true;
     car?.coast();
     _latestFailureMessage = message;
+    unawaited(_playRuleBreakWhistle());
     onTestFailed?.call(message);
   }
 
@@ -1416,6 +1514,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       final message =
           zone.failMessage?.isNotEmpty == true ? zone.failMessage! : defaultMessage;
       _latestFailureMessage = message;
+      unawaited(_playRuleBreakWhistle());
       onTestFailed?.call(message);
     }
   }
@@ -1426,6 +1525,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     car?.coast();
     const message = 'High-speed crash! You hit an obstacle too fast.';
     _latestFailureMessage = message;
+    unawaited(_playRuleBreakWhistle());
     onTestFailed?.call(message);
   }
   
@@ -1536,6 +1636,12 @@ class Car extends SpriteComponent {
 
   late final CarZones zones;
 
+  /// Validated breadcrumbs for tethered ambulance AI ([PathNode.isSafe] from wall overlap).
+  final List<PathNode> pathHistory = [];
+  double _breadcrumbTimer = 0;
+  bool isCurrentlyOffRoad = false;
+  double _offRoadResetTimer = 0;
+
   @override
   Future<void> onLoad() async {
     super.onLoad();
@@ -1554,15 +1660,15 @@ class Car extends SpriteComponent {
   void onMount() {
     super.onMount();
     
-    // Position car at CENTER of map for better initial visibility
-    // Map is 1600x1600, so center is 800x800
-    // FIXED: Get game through findGame() since parent is now World
+    // Tiled `Player_Spawn` / spawn layers (see [_pickPlayerSpawnFromObjectGroups]);
+    // fallback: map centre when the road has not finished loading yet.
     final game = findGame()! as RealisticCarGame;
     final centerX = (game._mapWidth ?? 1600) / 2;
     final centerY = (game._mapHeight ?? 1600) / 2;
     position = game._spawnPoint?.clone() ?? Vector2(centerX, centerY);
-    // Start following this car (bounds are set in _setupRoad when map is loaded)
-    game.camera.follow(this);
+    // Immediate snap; follow(snap: true) applies on the next behaviour mount tick.
+    game.camera.viewfinder.position = position.clone();
+    game.camera.follow(this, snap: true);
   }
   
   @override
@@ -1577,7 +1683,15 @@ class Car extends SpriteComponent {
 
     // Update friction from map (e.g. Base layer property) if available
     friction = realisticGame._baseLayerFriction;
-    
+
+    if (_offRoadResetTimer > 0) {
+      _offRoadResetTimer -= dt;
+      if (_offRoadResetTimer <= 0) {
+        _offRoadResetTimer = 0;
+        isCurrentlyOffRoad = false;
+      }
+    }
+
     // Don't allow movement if in park
     if (isInPark) {
       velocity = Vector2.zero();
@@ -1676,6 +1790,8 @@ class Car extends SpriteComponent {
           position.setFrom(oldPosition);
           velocity = Vector2.zero();
           acceleration = Vector2.zero();
+          isCurrentlyOffRoad = true;
+          _offRoadResetTimer = 0.5;
           if (impactSpeed >= RealisticCarGame.wallHighSpeedCrashThreshold) {
             realisticGame._failFromHighSpeedWallCrash();
           } else {
@@ -1685,7 +1801,18 @@ class Car extends SpriteComponent {
         }
       }
     }
-    
+
+    _breadcrumbTimer += dt;
+    if (_breadcrumbTimer >= 0.05) {
+      _breadcrumbTimer = 0;
+      final rearWorld = absolutePositionOf(zones.rearBumper);
+      pathHistory.add(PathNode(rearWorld.clone(), angle, !isCurrentlyOffRoad));
+      const maxHistory = 100;
+      while (pathHistory.length > maxHistory) {
+        pathHistory.removeAt(0);
+      }
+    }
+
     // Gradually return steering to center only when NOT actively steering
     if (!isSteering && steerAngle != 0) {
       final returnAmount = steerReturnSpeed * dt;
@@ -1787,6 +1914,95 @@ class Car extends SpriteComponent {
   
   double getCurrentSpeed() {
     return velocity.length;
+  }
+}
+
+/// Hybrid AI: tailgate validated player breadcrumbs, fall back to Tiled route when unsafe.
+class Ambulance extends SpriteComponent {
+  Ambulance({
+    required Sprite super.sprite,
+    required this.player,
+    required List<Vector2> routeWaypoints,
+    super.position,
+    super.size,
+    super.angle,
+    super.anchor,
+    super.priority,
+  }) : routeWaypoints = List<Vector2>.from(routeWaypoints);
+
+  final Car player;
+  final List<Vector2> routeWaypoints;
+
+  AmbulanceState state = AmbulanceState.catchingUp;
+  int _waypointIndex = 0;
+
+  static const double _safeDistance = 150.0;
+  static const double _catchUpSpeed = 300.0;
+  static const double _passSpeed = 320.0;
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    final distToPlayer = player.position.distanceTo(position);
+    switch (state) {
+      case AmbulanceState.catchingUp:
+        _followWaypoints(dt, speed: _catchUpSpeed);
+        if (distToPlayer <= _safeDistance) {
+          state = AmbulanceState.tailgating;
+        }
+        break;
+      case AmbulanceState.tailgating:
+        final node = _findTargetBreadcrumb();
+        if (node != null && node.isSafe) {
+          final toNode = node.position - position;
+          position += toNode * math.min(1.0, dt * 5.0);
+          angle = node.angle;
+        } else {
+          final followSpeed = player.velocity.length.clamp(80.0, 200.0);
+          _followWaypoints(dt, speed: followSpeed);
+        }
+        if (_playerYielded()) {
+          state = AmbulanceState.passing;
+        }
+        break;
+      case AmbulanceState.passing:
+        _followWaypoints(dt, speed: _passSpeed);
+        break;
+    }
+  }
+
+  bool _playerYielded() {
+    if (player.velocity.length >= 10) return false;
+    final g = player.findGame();
+    if (g is! RealisticCarGame) return false;
+    return g.turnSignalLeft?.value == true;
+  }
+
+  PathNode? _findTargetBreadcrumb() {
+    final hist = player.pathHistory;
+    if (hist.isEmpty) return null;
+    for (var i = hist.length - 1; i >= 0; i--) {
+      if (position.distanceTo(hist[i].position) >= _safeDistance) {
+        return hist[i];
+      }
+    }
+    return null;
+  }
+
+  void _followWaypoints(double dt, {required double speed}) {
+    if (routeWaypoints.isEmpty) return;
+    if (_waypointIndex >= routeWaypoints.length) return;
+    final target = routeWaypoints[_waypointIndex];
+    final toTarget = target - position;
+    if (toTarget.length < 8) {
+      if (_waypointIndex < routeWaypoints.length - 1) {
+        _waypointIndex++;
+      }
+      return;
+    }
+    final step = speed * dt;
+    angle = math.atan2(toTarget.y, toTarget.x);
+    position += toTarget.normalized() * math.min(step, toTarget.length);
   }
 }
 

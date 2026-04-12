@@ -145,6 +145,7 @@ class _RoadSignsHubScreenState extends State<RoadSignsHubScreen> {
         final g = c.groups[i];
         return _GroupCard(
           group: g,
+          leadingIcon: _groupLeadingIcon(g),
           onTap: () {
             UiSoundService().playMenuTap();
             if (g.hasSubgroups) {
@@ -165,11 +166,22 @@ class _RoadSignsHubScreenState extends State<RoadSignsHubScreen> {
   }
 }
 
+IconData _groupLeadingIcon(RoadSignsGroup g) {
+  if (g.hasSubgroups) return Icons.account_tree_outlined;
+  switch (g.id) {
+    case 'traffic_and_signals':
+      return Icons.traffic_outlined;
+    default:
+      return Icons.warning_amber_outlined;
+  }
+}
+
 class _GroupCard extends StatelessWidget {
   final RoadSignsGroup group;
+  final IconData leadingIcon;
   final VoidCallback onTap;
 
-  const _GroupCard({required this.group, required this.onTap});
+  const _GroupCard({required this.group, required this.leadingIcon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +201,7 @@ class _GroupCard extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                group.hasSubgroups ? Icons.account_tree_outlined : Icons.warning_amber_outlined,
+                leadingIcon,
                 size: 36,
                 color: SwissTheme.textPrimary,
               ),

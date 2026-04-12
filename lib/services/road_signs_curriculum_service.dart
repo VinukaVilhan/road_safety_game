@@ -59,7 +59,12 @@ class RoadSignsCurriculumService {
 
   static RoadSignsModule _parseModule(Map<String, dynamic> m) {
     final kindStr = (m['kind'] as String? ?? 'mcq').toLowerCase();
-    final kind = kindStr == 'learn' ? RoadSignsModuleKind.learn : RoadSignsModuleKind.mcq;
+    final kind = switch (kindStr) {
+      'learn' => RoadSignsModuleKind.learn,
+      'intro' => RoadSignsModuleKind.intro,
+      'minigame' => RoadSignsModuleKind.minigame,
+      _ => RoadSignsModuleKind.mcq,
+    };
     final unlockRaw = m['unlockRequirementIds'] as List<dynamic>? ?? [];
     return RoadSignsModule(
       id: m['id'] as String? ?? 'module',

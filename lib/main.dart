@@ -9,11 +9,13 @@ import 'screens/auth_wrapper.dart';
 import 'theme/swiss_theme.dart';
 import 'services/image_preloader.dart';
 import 'services/music_service.dart';
+import 'services/ui_sound_service.dart';
 
 /// Industry-standard app initialization using MaterialApp.builder pattern
 /// This ensures UI shows immediately while resources load in background
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final uiSoundsPreload = UiSoundService().preload();
   await AssistantConfig.ensureLoaded();
   await CloudinaryConfig.ensureLoaded();
   await Firebase.initializeApp(
@@ -22,6 +24,7 @@ void main() async {
   await LocalDb.instance.initialize();
   await SyncService.instance.initialize();
   await MusicService.loadSavedMusicFolderPath();
+  await uiSoundsPreload;
   runApp(MyApp());
 }
 

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="80" height="100" tilewidth="16" tileheight="16" infinite="0" nextlayerid="10" nextobjectid="19">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="80" height="100" tilewidth="16" tileheight="16" infinite="0" nextlayerid="12" nextobjectid="22">
  <tileset firstgid="1" name="Road" tilewidth="16" tileheight="16" tilecount="144" columns="12">
   <image source="../images/new-map.png" width="192" height="192"/>
  </tileset>
@@ -227,10 +227,6 @@
 </data>
  </layer>
  <objectgroup color="#aa0000" id="4" name="Ambulance_Spawn">
-  <properties>
-   <property name="sirenVolume" type="float" value="0.8"/>
-   <property name="spawnId" value="Ambulance"/>
-  </properties>
   <object id="3" x="525" y="703">
    <point/>
   </object>
@@ -240,10 +236,10 @@
    <point/>
   </object>
  </objectgroup>
- <objectgroup color="#ffff00" id="7" name="Siren_Layer" class="Siren_Triggers" tintcolor="#ffff7f">
+ <objectgroup color="#ffff00" id="7" name="Siren_Layer" class="SirenTrigger" tintcolor="#ffff7f">
   <object id="4" x="598" y="603" width="67" height="138"/>
  </objectgroup>
- <objectgroup id="8" name="Safe_Zone" class="Safe_Stop">
+ <objectgroup id="8" name="Safe_Zone">
   <object id="5" x="1069" y="5" width="32" height="576"/>
   <object id="6" x="950" y="-7" width="32" height="592"/>
   <object id="7" x="959" y="604" width="32" height="277" rotation="90"/>
@@ -251,12 +247,20 @@
   <object id="9" x="1061.64" y="635.04" width="32" height="104" rotation="51.3734"/>
   <object id="10" x="1069.54" y="587.628" width="32" height="46.2629" rotation="14.1313"/>
  </objectgroup>
- <objectgroup color="#000000" id="9" name="Obstacles_Layer" class="Collision_Box">
+ <objectgroup color="#000000" id="9" name="Obstacles_Layer">
   <object id="11" x="18" y="16" width="916" height="563"/>
   <object id="12" x="18" y="620" width="378" height="968"/>
   <object id="13" x="600" y="774" width="666" height="818"/>
   <object id="14" x="1115" y="12" width="155" height="750"/>
   <object id="17" x="954.563" y="771.491" width="272" height="104.259" rotation="328.782"/>
   <object id="18" x="285.333" y="615.87" width="272" height="104.259" rotation="328.782"/>
+ </objectgroup>
+ <objectgroup id="10" name="Ambulance_Route" class="AmbulanceRoute">
+  <object id="20" x="525.333" y="700.667">
+   <polygon points="0,0 44,-28.6667 422.667,-28.6667 492.667,-69.3333 496.667,-682.667 494,-70 421.333,-28 43.3333,-28"/>
+  </object>
+ </objectgroup>
+ <objectgroup id="11" name="Rules_Layer">
+  <object id="21" type="Zone_Finish" x="960" y="8" width="120" height="72"/>
  </objectgroup>
 </map>

@@ -207,6 +207,115 @@ class RoadSignsQuestionsService {
         options: ['One way', 'Two-way traffic ahead', 'Divided highway', 'No passing'],
         correctIndex: 1,
       ),
+      // --- Traffic lights and signals (text-only) ---
+      McqQuestion(
+        id: 'ts_red_steady',
+        questionText: 'At a steady red traffic light, what must you do?',
+        options: [
+          'Stop behind the stop line and wait',
+          'Slow down and go if nothing is coming',
+          'Sound the horn and proceed',
+          'Treat it as a give way only',
+        ],
+        correctIndex: 0,
+      ),
+      McqQuestion(
+        id: 'ts_amber_after_green',
+        questionText:
+            'A steady amber light appears after green. Unless it would be unsafe to stop, you should:',
+        options: [
+          'Accelerate through before it turns red',
+          'Stop at the stop line',
+          'Ignore it if you are turning',
+          'Always enter the junction',
+        ],
+        correctIndex: 1,
+      ),
+      McqQuestion(
+        id: 'ts_green',
+        questionText: 'A steady green light means you may go:',
+        options: [
+          'Immediately at maximum speed',
+          'Only if the way ahead is clear and you can do so safely',
+          'Without checking for pedestrians',
+          'Only on motorways',
+        ],
+        correctIndex: 1,
+      ),
+      McqQuestion(
+        id: 'ts_red_amber_together',
+        questionText: 'Red and amber lights show together (just before green). You should:',
+        options: [
+          'Start moving straight away',
+          'Prepare to go but remain stopped until green shows',
+          'Treat it as a fault and ignore the lights',
+          'Sound the horn and enter the junction',
+        ],
+        correctIndex: 1,
+      ),
+      McqQuestion(
+        id: 'ts_green_arrow_red_straight',
+        questionText:
+            'You have a green arrow for your lane, but the main lights are red for straight ahead. Generally you may:',
+        options: [
+          'Go straight ahead anyway',
+          'Follow the direction of the green arrow when it is safe',
+          'Wait for a green light for all directions',
+          'Turn only if you use hazard lights',
+        ],
+        correctIndex: 1,
+      ),
+      McqQuestion(
+        id: 'ts_officer_vs_lights',
+        questionText: 'A police officer directing traffic signals something different from the traffic lights. You should:',
+        options: [
+          'Follow the traffic lights',
+          'Follow the officer’s directions',
+          'Stop in the middle of the junction',
+          'Follow what other drivers do',
+        ],
+        correctIndex: 1,
+      ),
+      McqQuestion(
+        id: 'ts_flashing_amber_crossing',
+        questionText:
+            'Flashing amber lights at a light-controlled pedestrian crossing usually mean you should:',
+        options: [
+          'Speed up to clear the crossing',
+          'Give way to pedestrians on the crossing; approach with care',
+          'Never stop under any circumstances',
+          'Use full beam to warn pedestrians',
+        ],
+        correctIndex: 1,
+      ),
+      McqQuestion(
+        id: 'ts_stop_line',
+        questionText: 'Where should you normally stop for a red traffic signal?',
+        options: [
+          'Just past the stop line if you can see better',
+          'Behind the stop line (or before the crossing / signal if there is no line)',
+          'In the middle of the junction',
+          'Only if other vehicles have stopped',
+        ],
+        correctIndex: 1,
+      ),
+      McqQuestion(
+        id: 'cl_vertical_order',
+        questionText: 'On a standard vertical traffic signal, which color is usually at the top?',
+        options: ['Red', 'Green', 'Amber', 'Blue'],
+        correctIndex: 0,
+      ),
+      McqQuestion(
+        id: 'cl_amber_role',
+        questionText: 'The steady amber (yellow) light after green mainly tells you to:',
+        options: [
+          'Speed up before it turns red',
+          'Slow down and prepare to stop if you can do so safely',
+          'Always reverse',
+          'Ignore it if you are turning',
+        ],
+        correctIndex: 1,
+      ),
     ];
   }
 
@@ -233,6 +342,24 @@ class RoadSignsQuestionsService {
     },
     'control_priority_mcq': {
       'rs_stop', 'rs_give_way', 'rs_main_road', 'rs_roundabout',
+    },
+    'traffic_signals_mcq': {
+      'ts_red_steady',
+      'ts_amber_after_green',
+      'ts_green',
+      'ts_red_amber_together',
+      'ts_green_arrow_red_straight',
+      'ts_officer_vs_lights',
+      'ts_flashing_amber_crossing',
+      'ts_stop_line',
+    },
+    'traffic_color_lights_mcq': {
+      'ts_red_steady',
+      'ts_amber_after_green',
+      'ts_green',
+      'ts_stop_line',
+      'cl_vertical_order',
+      'cl_amber_role',
     },
   };
 }

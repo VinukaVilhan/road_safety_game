@@ -5,8 +5,9 @@ import '../services/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../widgets/assistant_button.dart';
+import 'level_selection_screen.dart' show HatchingPainter;
 import 'road_signs_hub_screen.dart';
-import 'theory_test_selection_screen.dart';
+import 'theory_test_selection_screen.dart' hide HatchingPainter;
 
 class TheoryTestCategory {
   final String id;
@@ -36,7 +37,9 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
   late final TextStyle _headerStyle;
   late final TextStyle _categoryTitleStyle;
   late final TextStyle _categoryDescriptionStyle;
-  late final TextStyle _snackbarStyle;
+  late final TextStyle _dialogTitleStyle;
+  late final TextStyle _dialogBodyStyle;
+  late final TextStyle _dialogButtonStyle;
 
   @override
   void initState() {
@@ -55,13 +58,23 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
       letterSpacing: 0.5,
     );
     _categoryDescriptionStyle = AppFonts.pixelifySans(
-      fontSize: 12,
+      fontSize: 11,
       fontWeight: FontWeight.w400,
     );
-    _snackbarStyle = AppFonts.pixelifySans(
+    _dialogTitleStyle = AppFonts.pixelifySans(
+      fontSize: 24,
+      fontWeight: FontWeight.w600,
+      color: SwissTheme.textPrimary,
+    );
+    _dialogBodyStyle = AppFonts.pixelifySans(
       fontSize: 14,
       fontWeight: FontWeight.w400,
-      color: SwissTheme.backgroundWhite,
+      color: SwissTheme.textPrimary,
+    );
+    _dialogButtonStyle = AppFonts.pixelifySans(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: SwissTheme.accentBlue,
     );
     
     // Defer orientation change to avoid blocking UI initialization
@@ -206,95 +219,165 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
   }
 
   Widget _buildCategoryCard(TheoryTestCategory category) {
+    final isUnlocked = !category.isUnderDevelopment;
     return GestureDetector(
       onTap: () {
         UiSoundService().playMenuTap();
         if (category.isUnderDevelopment) {
-          _showUnderDevelopmentMessage();
+          _showUnderDevelopmentCategoryDialog(category);
           return;
         }
         _startCategoryTest(category);
       },
       child: Container(
         decoration: BoxDecoration(
-          color: SwissTheme.backgroundWhite,
+          color: isUnlocked ? SwissTheme.backgroundWhite : SwissTheme.backgroundLightGrey,
           border: Border.all(
             color: SwissTheme.borderBlack,
             width: 1,
           ),
-          borderRadius: BorderRadius.zero, // Sharp corners
+          borderRadius: BorderRadius.zero,
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Top section: Icon
-              Icon(
-                category.icon,
-                size: 40,
-                color: category.isUnderDevelopment
-                    ? SwissTheme.textSecondary
-                    : SwissTheme.textPrimary,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (!isUnlocked)
+              Opacity(
+                opacity: 0.5,
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: HatchingPainter(),
+                ),
               ),
-              
-              const Spacer(),
-              
-              // Bottom section: Title and description
-              Column(
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    category.title,
-                    style: _categoryTitleStyle.copyWith(
-                      color: category.isUnderDevelopment
-                          ? SwissTheme.textSecondary
-                          : SwissTheme.textPrimary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    category.description,
-                    style: _categoryDescriptionStyle.copyWith(
-                      color: SwissTheme.textSecondary,
-                    ),
-                    softWrap: true,
-                    maxLines: null, // Allow unlimited lines
-                    overflow: TextOverflow.clip,
-                  ),
-                  if (category.isUnderDevelopment) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'UNDER DEVELOPMENT',
-                      style: _categoryTitleStyle.copyWith(
-                        fontSize: 11,
-                        letterSpacing: 1.0,
-                        color: SwissTheme.textSecondary,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        category.icon,
+                        size: 36,
+                        color: isUnlocked
+                            ? SwissTheme.textPrimary
+                            : SwissTheme.textSecondary.withOpacity(0.5),
                       ),
-                    ),
-                  ],
+                      if (!isUnlocked)
+                        const Icon(
+                          Icons.lock_outline,
+                          color: SwissTheme.textPrimary,
+                          size: 28,
+                        ),
+                    ],
+                  ),
+                  const Spacer(),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        category.title,
+                        style: _categoryTitleStyle.copyWith(
+                          color: isUnlocked
+                              ? SwissTheme.textPrimary
+                              : SwissTheme.textSecondary.withOpacity(0.5),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.clip,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        category.description,
+                        style: _categoryDescriptionStyle.copyWith(
+                          color: isUnlocked
+                              ? SwissTheme.textSecondary
+                              : SwissTheme.textSecondary.withOpacity(0.4),
+                        ),
+                        softWrap: true,
+                        maxLines: null,
+                        overflow: TextOverflow.clip,
+                      ),
+                      if (category.isUnderDevelopment) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'UNDER DEVELOPMENT',
+                          style: AppFonts.pixelifySans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                            color: SwissTheme.accentOrange,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  void _showUnderDevelopmentMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'This category is under development.',
-          style: _snackbarStyle,
-        ),
-        backgroundColor: SwissTheme.textPrimary,
-        behavior: SnackBarBehavior.floating,
-      ),
+  void _showUnderDevelopmentCategoryDialog(TheoryTestCategory category) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: SwissTheme.backgroundWhite,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+            side: BorderSide(color: SwissTheme.borderBlack, width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'MODULE LOCKED',
+                  style: _dialogTitleStyle,
+                ),
+                const SizedBox(height: 24),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 24),
+                Text(
+                  '"${category.title}" is under development.',
+                  style: _dialogBodyStyle,
+                ),
+                const SizedBox(height: 32),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.of(context).pop();
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: SwissTheme.accentBlue,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'OK',
+                      style: _dialogButtonStyle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

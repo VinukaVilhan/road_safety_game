@@ -4,6 +4,8 @@ import 'theory_test.dart';
 enum RoadSignsModuleKind {
   mcq,
   learn,
+  intro,
+  minigame,
 }
 
 class RoadSignsModule {

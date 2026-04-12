@@ -41,6 +41,9 @@ class DrivingLevelsService {
   static const String roadMarkingsModuleLaneLines = 'lane_lines';
   static const String roadMarkingsModuleOther = 'other_markings';
 
+  /// Ambulance / police / fire scenarios under the "Emergency Vehicles" hub.
+  static const String emergencyModuleVehicles = 'emergency_vehicles';
+
   /// Levels in one junctions submodule (T-junctions, cross, or roundabout).
   static List<GameLevel> getJunctionsLevelsForModule(String moduleId) {
     final list =
@@ -57,13 +60,32 @@ class DrivingLevelsService {
     return list;
   }
 
+  /// Levels under the Emergency Vehicles submodule (e.g. Ambulance).
+  static List<GameLevel> getEmergencySituationsLevelsForModule(
+      String moduleId) {
+    final list = _emergencySituationsLevels
+        .where((l) => l.moduleId == moduleId)
+        .toList();
+    list.sort((a, b) => a.topicLevel.compareTo(b.topicLevel));
+    return list;
+  }
+
   /// Check if a level is unlocked based on completed level IDs
   static bool isLevelUnlocked(GameLevel level, Set<String> completedLevelIds) {
     if (level.unlockRequirementIds.isEmpty) {
       return level.isUnlocked; // If no requirements, use default unlock status
     }
-    // Check if all requirements are completed
-    return level.unlockRequirementIds.every((reqId) => completedLevelIds.contains(reqId));
+    bool requirementMet(String reqId) {
+      if (completedLevelIds.contains(reqId)) return true;
+      // Ambulance used to be level `emergency_vehicles`; honor that for unlocks.
+      if (reqId == 'emergency_ambulance' &&
+          completedLevelIds.contains('emergency_vehicles')) {
+        return true;
+      }
+      return false;
+    }
+
+    return level.unlockRequirementIds.every(requirementMet);
   }
 
   // ========== JUNCTIONS LEVELS ==========
@@ -312,10 +334,10 @@ class DrivingLevelsService {
     GameLevel(
       id: "emergency_braking",
       number: 1,
-      name: "Emergency Braking",
+      name: "Emergency Braking (under development)",
       description: "Sudden stops and maintaining safe distances",
       difficulty: LevelDifficulty.Easy,
-      isUnlocked: true,
+      isUnlocked: false,
       topic: DrivingTopic.EmergencySituations,
       topicLevel: 1,
       unlockRequirementIds: [],
@@ -323,7 +345,7 @@ class DrivingLevelsService {
     GameLevel(
       id: "emergency_breakdown",
       number: 2,
-      name: "Vehicle Breakdown",
+      name: "Vehicle Breakdown (under development)",
       description: "Hazard lights, safe parking during breakdown",
       difficulty: LevelDifficulty.Medium,
       isUnlocked: false,
@@ -337,23 +359,35 @@ class DrivingLevelsService {
       name: "Emergency Vehicles",
       description: "Yielding to ambulances, police, and fire trucks",
       difficulty: LevelDifficulty.Medium,
-      isUnlocked: false,
+      isUnlocked: true,
       topic: DrivingTopic.EmergencySituations,
       topicLevel: 3,
-      unlockRequirementIds: ["emergency_breakdown"],
+      unlockRequirementIds: [],
+    ),
+    GameLevel(
+      id: "emergency_ambulance",
+      number: 4,
+      name: "Ambulance",
+      description: "React safely when an ambulance approaches with sirens",
+      difficulty: LevelDifficulty.Medium,
+      isUnlocked: true,
+      topic: DrivingTopic.EmergencySituations,
+      moduleId: emergencyModuleVehicles,
+      topicLevel: 1,
+      unlockRequirementIds: [],
       mapAsset: 'ambulance-reaction.tmx',
       scenarioId: 'emergency_ambulance',
     ),
     GameLevel(
       id: "emergency_weather",
-      number: 4,
-      name: "Adverse Weather",
+      number: 5,
+      name: "Adverse Weather (under development)",
       description: "Rain, reduced visibility, slippery conditions",
       difficulty: LevelDifficulty.Hard,
       isUnlocked: false,
       topic: DrivingTopic.EmergencySituations,
       topicLevel: 4,
-      unlockRequirementIds: ["emergency_vehicles"],
+      unlockRequirementIds: ["emergency_ambulance"],
     ),
   ];
 

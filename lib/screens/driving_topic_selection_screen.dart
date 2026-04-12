@@ -22,6 +22,13 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
   late final TextStyle _headerStyle;
   late final TextStyle _topicTitleStyle;
   late final TextStyle _topicDescriptionStyle;
+  late final TextStyle _dialogTitleStyle;
+  late final TextStyle _dialogBodyStyle;
+  late final TextStyle _dialogButtonStyle;
+
+  static bool _isUnderDevelopmentTopic(DrivingTopic topic) {
+    return topic == DrivingTopic.Parking;
+  }
 
   @override
   void initState() {
@@ -42,6 +49,21 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
     _topicDescriptionStyle = AppFonts.pixelifySans(
       fontSize: 11,
       fontWeight: FontWeight.w400,
+    );
+    _dialogTitleStyle = AppFonts.pixelifySans(
+      fontSize: 24,
+      fontWeight: FontWeight.w600,
+      color: SwissTheme.textPrimary,
+    );
+    _dialogBodyStyle = AppFonts.pixelifySans(
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      color: SwissTheme.textPrimary,
+    );
+    _dialogButtonStyle = AppFonts.pixelifySans(
+      fontSize: 14,
+      fontWeight: FontWeight.w600,
+      color: SwissTheme.accentBlue,
     );
     
     // Defer orientation change to avoid blocking UI initialization
@@ -137,8 +159,12 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
                   itemCount: topics.length,
                   itemBuilder: (context, index) {
                     final topic = topics[index];
+                    final underDevelopment = _isUnderDevelopmentTopic(topic);
                     return RepaintBoundary(
-                      child: _buildTopicCard(topic),
+                      child: _buildTopicCard(
+                        topic,
+                        underDevelopment: underDevelopment,
+                      ),
                     );
                   },
                 ),
@@ -150,67 +176,171 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
     );
   }
 
-  Widget _buildTopicCard(DrivingTopic topic) {
+  Widget _buildTopicCard(
+    DrivingTopic topic, {
+    required bool underDevelopment,
+  }) {
+    final isUnlocked = !underDevelopment;
     return GestureDetector(
       onTap: () => _selectTopic(topic),
       child: Container(
         decoration: BoxDecoration(
-          color: SwissTheme.backgroundWhite,
+          color: isUnlocked ? SwissTheme.backgroundWhite : SwissTheme.backgroundLightGrey,
           border: Border.all(
             color: SwissTheme.borderBlack,
             width: 1,
           ),
           borderRadius: BorderRadius.zero,
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Top section: Icon
-              Icon(
-                topic.icon,
-                size: 36,
-                color: SwissTheme.textPrimary,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (!isUnlocked)
+              Opacity(
+                opacity: 0.5,
+                child: CustomPaint(
+                  size: Size.infinite,
+                  painter: HatchingPainter(),
+                ),
               ),
-              
-              const Spacer(),
-              
-              // Bottom section: Title and description
-              Column(
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    topic.displayName,
-                    style: _topicTitleStyle.copyWith(
-                      color: SwissTheme.textPrimary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.clip,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        topic.icon,
+                        size: 36,
+                        color: isUnlocked
+                            ? SwissTheme.textPrimary
+                            : SwissTheme.textSecondary.withOpacity(0.5),
+                      ),
+                      if (!isUnlocked)
+                        Icon(
+                          Icons.lock_outline,
+                          color: SwissTheme.textPrimary,
+                          size: 28,
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    topic.description,
-                    style: _topicDescriptionStyle.copyWith(
-                      color: SwissTheme.textSecondary,
-                    ),
-                    softWrap: true,
-                    maxLines: null, // Allow unlimited lines
-                    overflow: TextOverflow.clip,
+                  const Spacer(),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        topic.displayName,
+                        style: _topicTitleStyle.copyWith(
+                          color: isUnlocked
+                              ? SwissTheme.textPrimary
+                              : SwissTheme.textSecondary.withOpacity(0.5),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.clip,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        topic.description,
+                        style: _topicDescriptionStyle.copyWith(
+                          color: isUnlocked
+                              ? SwissTheme.textSecondary
+                              : SwissTheme.textSecondary.withOpacity(0.4),
+                        ),
+                        softWrap: true,
+                        maxLines: null,
+                        overflow: TextOverflow.clip,
+                      ),
+                      if (underDevelopment) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'UNDER DEVELOPMENT',
+                          style: AppFonts.pixelifySans(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                            color: SwissTheme.accentOrange,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
+  void _showUnderDevelopmentTopicDialog(DrivingTopic topic) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: SwissTheme.backgroundWhite,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.zero,
+            side: BorderSide(color: SwissTheme.borderBlack, width: 1),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'MODULE LOCKED',
+                  style: _dialogTitleStyle,
+                ),
+                const SizedBox(height: 24),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 24),
+                Text(
+                  '"${topic.displayName}" is under development.',
+                  style: _dialogBodyStyle,
+                ),
+                const SizedBox(height: 32),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      UiSoundService().playMenuTap();
+                      Navigator.of(context).pop();
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: SwissTheme.accentBlue,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      'OK',
+                      style: _dialogButtonStyle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _selectTopic(DrivingTopic topic) {
     UiSoundService().playMenuTap();
+    if (_isUnderDevelopmentTopic(topic)) {
+      _showUnderDevelopmentTopicDialog(topic);
+      return;
+    }
     if (topic == DrivingTopic.Junctions) {
       Navigator.push(
         context,

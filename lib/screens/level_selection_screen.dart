@@ -11,6 +11,7 @@ import '../services/ui_sound_service.dart';
 import '../services/last_driving_report_service.dart';
 import '../widgets/last_driving_report_dialog.dart';
 import 'game_screen.dart';
+import 'emergency_vehicles_category_screen.dart';
 import '../models/assistant_launch_context.dart';
 import '../widgets/assistant_button.dart';
 
@@ -25,6 +26,10 @@ class LevelSelectionScreen extends StatefulWidget {
   /// (lane lines or other markings).
   final String? roadMarkingsModuleId;
 
+  /// When set with [topic] == [DrivingTopic.EmergencySituations], only levels in this module are listed
+  /// (e.g. ambulance under Emergency Vehicles).
+  final String? emergencySituationsModuleId;
+
   /// Screen title (e.g. "T-JUNCTIONS") when showing a junctions submodule.
   final String? headerTitleOverride;
 
@@ -33,6 +38,7 @@ class LevelSelectionScreen extends StatefulWidget {
     this.topic,
     this.junctionsModuleId,
     this.roadMarkingsModuleId,
+    this.emergencySituationsModuleId,
     this.headerTitleOverride,
   });
 
@@ -45,6 +51,12 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     'markings_stop_yield', // Level 03
     'markings_bus_lanes', // Level 05 — bus lanes & special zones
     'markings_complex', // Level 06
+  };
+
+  static const Set<String> _underDevelopmentEmergencySituationsLevelIds = {
+    'emergency_braking',
+    'emergency_breakdown',
+    'emergency_weather',
   };
 
   // Cache font styles to avoid recreating them on every build
@@ -141,12 +153,34 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
         widget.roadMarkingsModuleId!.trim(),
       );
     }
-    return DrivingLevelsService.getLevelsForTopic(widget.topic!);
+    if (widget.topic == DrivingTopic.EmergencySituations &&
+        widget.emergencySituationsModuleId != null &&
+        widget.emergencySituationsModuleId!.trim().isNotEmpty) {
+      return DrivingLevelsService.getEmergencySituationsLevelsForModule(
+        widget.emergencySituationsModuleId!.trim(),
+      );
+    }
+    var list = DrivingLevelsService.getLevelsForTopic(widget.topic!);
+    if (widget.topic == DrivingTopic.EmergencySituations) {
+      list = list
+          .where(
+            (l) => l.moduleId != DrivingLevelsService.emergencyModuleVehicles,
+          )
+          .toList();
+    }
+    return list;
   }
 
   bool _isUnderDevelopmentLevel(GameLevel level) {
-    return level.topic == DrivingTopic.RoadMarkings &&
-        _underDevelopmentRoadMarkingsLevelIds.contains(level.id);
+    if (level.topic == DrivingTopic.RoadMarkings &&
+        _underDevelopmentRoadMarkingsLevelIds.contains(level.id)) {
+      return true;
+    }
+    if (level.topic == DrivingTopic.EmergencySituations &&
+        _underDevelopmentEmergencySituationsLevelIds.contains(level.id)) {
+      return true;
+    }
+    return false;
   }
 
   /// Big number on level cards: 01, 02 within a junctions submodule; otherwise [GameLevel.topicLevel].
@@ -159,6 +193,12 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     if (widget.topic == DrivingTopic.RoadMarkings &&
         widget.roadMarkingsModuleId != null &&
         widget.roadMarkingsModuleId!.trim().isNotEmpty) {
+      final i = levels.indexOf(level);
+      return i >= 0 ? i + 1 : level.topicLevel;
+    }
+    if (widget.topic == DrivingTopic.EmergencySituations &&
+        widget.emergencySituationsModuleId != null &&
+        widget.emergencySituationsModuleId!.trim().isNotEmpty) {
       final i = levels.indexOf(level);
       return i >= 0 ? i + 1 : level.topicLevel;
     }
@@ -491,6 +531,21 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
   }
 
   Future<void> _startGame(GameLevel level) async {
+    final map = level.mapAsset?.trim();
+    if (widget.topic == DrivingTopic.EmergencySituations &&
+        level.id == 'emergency_vehicles' &&
+        (map == null || map.isEmpty)) {
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute<void>(
+          builder: (context) => const EmergencyVehiclesCategoryScreen(),
+        ),
+      );
+      await _loadCompletedLevels();
+      await _refreshSavedDrivingReports();
+      return;
+    }
+
     // Use MaterialPageRoute for better performance
     final result = await Navigator.push<Object?>(
       context,

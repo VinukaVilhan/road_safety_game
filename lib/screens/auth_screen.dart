@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../models/assistant_launch_context.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
-import '../widgets/assistant_button.dart';
 import 'sign_up_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -184,14 +182,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: const AssistantButton(
-        heroTag: 'assistant_sign_in',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Sign in',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(32, 64, 32, 64),

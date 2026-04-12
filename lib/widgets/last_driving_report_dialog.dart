@@ -58,6 +58,42 @@ class _DocTheme {
   );
 }
 
+String _ambulanceTimeGateLabel(double sec) {
+  if (sec <= 0) return 'No per-CP limit';
+  return '${sec.toStringAsFixed(0)} s to reach';
+}
+
+List<Widget> _ambulanceReportRows(AmbulanceAttemptSnapshot a) {
+  String yn(bool v) => v ? 'Yes' : 'No';
+  String side(bool? y) {
+    if (y == null) return '—';
+    return y ? 'Left safe strip' : 'Right safe strip';
+  }
+
+  return [
+    _DocRow(
+      label: 'Elapsed / level timeout',
+      value:
+          '${a.elapsedSecs.toStringAsFixed(1)} s / ${a.levelTimeoutSecs.toStringAsFixed(0)} s max',
+    ),
+    _DocRow(label: 'CP1 on map', value: yn(a.mapHasCp1)),
+    if (a.mapHasCp1) ...[
+      _DocRow(label: 'CP1 cleared', value: yn(a.cp1Cleared)),
+      _DocRow(label: 'CP1 time gate', value: _ambulanceTimeGateLabel(a.cp1TimeLimitSecs)),
+    ],
+    _DocRow(label: 'CP2 on map', value: yn(a.mapHasCp2)),
+    if (a.mapHasCp2) ...[
+      _DocRow(label: 'CP2 cleared', value: yn(a.cp2Cleared)),
+      _DocRow(label: 'CP2 time gate', value: _ambulanceTimeGateLabel(a.cp2TimeLimitSecs)),
+    ],
+    _DocRow(label: 'Final gate (CPF) on map', value: yn(a.mapHasCpf)),
+    _DocRow(label: 'Pull-over done (P + zone + signal)', value: yn(a.pullOverCompleted)),
+    _DocRow(label: 'Yield side', value: side(a.yieldLeftSide)),
+    _DocRow(label: 'Ambulance AI (end)', value: a.ambulanceAiState),
+    _DocRow(label: 'Ambulance route finished', value: yn(a.ambulanceRouteCompleted)),
+  ];
+}
+
 bool _hasFailureScreenshot(LastDrivingReport report) {
   final u = report.screenshotUrl?.trim();
   if (u != null && u.isNotEmpty) return true;
@@ -75,6 +111,70 @@ class _FailureScreenshotImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = report.screenshotUrl?.trim();
     final path = report.screenshotPath?.trim();
+    if (url != null && url.isNotEmpty) {
+      return Image.network(
+        url,
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          if (path != null && path.isNotEmpty) {
+            return Image.file(
+              File(path),
+              fit: BoxFit.cover,
+              width: double.infinity,
+              errorBuilder: (context, e, s) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text('Screenshot unavailable.', style: _DocTheme.small),
+              ),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Screenshot could not be loaded.',
+              style: _DocTheme.small,
+            ),
+          );
+        },
+      );
+    }
+    if (path != null && path.isNotEmpty) {
+      return Image.file(
+        File(path),
+        fit: BoxFit.cover,
+        width: double.infinity,
+        errorBuilder: (context, error, stackTrace) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Screenshot file is no longer available.',
+              style: _DocTheme.small,
+            ),
+          );
+        },
+      );
+    }
+    return const SizedBox.shrink();
+  }
+}
+
+bool _hasPenaltyScreenshot(PenaltyRecord record) {
+  final u = record.screenshotUrl?.trim();
+  if (u != null && u.isNotEmpty) return true;
+  final p = record.screenshotPath?.trim();
+  return p != null && p.isNotEmpty;
+}
+
+/// Prefers remote screenshot URL; falls back to local file path.
+class _PenaltyScreenshotImage extends StatelessWidget {
+  final PenaltyRecord record;
+
+  const _PenaltyScreenshotImage({required this.record});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = record.screenshotUrl?.trim();
+    final path = record.screenshotPath?.trim();
     if (url != null && url.isNotEmpty) {
       return Image.network(
         url,
@@ -294,6 +394,18 @@ class _DrivingReportDocument extends StatelessWidget {
                             label: 'Time on attempt',
                             value: _formatDurationMs(report.timeSpentMs),
                           ),
+                          if (report.ambulance != null) ...[
+                            const SizedBox(height: 14),
+                            Text(
+                              'Ambulance level — checkpoints & timers',
+                              style: _DocTheme.label.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: _DocTheme.ink,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ..._ambulanceReportRows(report.ambulance!),
+                          ],
                           const SizedBox(height: 14),
                           Text(
                             'Checklist findings',
@@ -331,6 +443,38 @@ class _DrivingReportDocument extends StatelessWidget {
                                 child: _FailureScreenshotImage(report: report),
                               ),
                             ),
+                          ],
+                          if (report.penaltyRecords.isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              'Penalty screenshots',
+                              style: _DocTheme.label.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: _DocTheme.ink,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            for (final rec in report.penaltyRecords) ...[
+                              Text(rec.description, style: _DocTheme.body),
+                              if (_hasPenaltyScreenshot(rec)) ...[
+                                const SizedBox(height: 6),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: ConstrainedBox(
+                                    constraints:
+                                        const BoxConstraints(maxHeight: 220),
+                                    child: _PenaltyScreenshotImage(record: rec),
+                                  ),
+                                ),
+                              ] else ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'No image on file for this penalty.',
+                                  style: _DocTheme.small,
+                                ),
+                              ],
+                              const SizedBox(height: 12),
+                            ],
                           ],
                           if (report.failureMessage != null &&
                               report.failureMessage!.trim().isNotEmpty) ...[

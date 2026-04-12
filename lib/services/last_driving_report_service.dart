@@ -30,12 +30,30 @@ class LastDrivingReportService {
   static ({int correct, int mistakes, int total}) _rubricCounts(
     DrivingAttemptSummary s, {
     required bool roadCrossingLayout,
+    bool dashedMarkingsLayout = false,
   }) {
     final List<bool> checks;
     if (roadCrossingLayout) {
       checks = [
         s.enteredApproachZone,
         s.waitedAtRoadCrossing,
+        s.reachedFinishZone,
+        s.nonCrashBumpCount == 0,
+      ];
+    } else if (s.ambulance != null) {
+      final a = s.ambulance!;
+      checks = [
+        if (a.mapHasCp1) a.cp1Cleared,
+        if (a.mapHasCp2) a.cp2Cleared,
+        a.pullOverCompleted,
+        s.reachedFinishZone,
+        s.nonCrashBumpCount == 0,
+      ];
+    } else if (dashedMarkingsLayout) {
+      checks = [
+        s.signaledCorrectlyInApproachZone,
+        s.enteredMidTurnZone,
+        s.hadCorrectSignalInMidTurnZone,
         s.reachedFinishZone,
         s.nonCrashBumpCount == 0,
       ];
@@ -50,8 +68,16 @@ class LastDrivingReportService {
       ];
     }
     final correct = checks.where((e) => e).length;
-    final total = checks.length;
-    return (correct: correct, mistakes: total - correct, total: total);
+    final checklistLen = checks.length;
+    final penaltyCount = s.penalties.length;
+    final total = checklistLen + penaltyCount;
+    final mistakes = total - correct;
+    return (correct: correct, mistakes: mistakes, total: total);
+  }
+
+  static bool _isDashedMarkingsMap(GameLevel level) {
+    final a = (level.mapAsset ?? '').toLowerCase();
+    return a.contains('lane-markings-dashed') || level.scenarioId == 'markings_dashed';
   }
 
   static String _signalPhrase(String expected) {
@@ -69,6 +95,7 @@ class LastDrivingReportService {
   static List<String> mistakeDetailLines(
     DrivingAttemptSummary s, {
     required bool roadCrossingLayout,
+    bool dashedMarkingsLayout = false,
   }) {
     final lines = <String>[];
     if (roadCrossingLayout) {
@@ -85,6 +112,59 @@ class LastDrivingReportService {
       if (!s.reachedFinishZone) {
         lines.add(
           'Route completion — the vehicle did not reach the green finish zone.',
+        );
+      }
+      if (s.nonCrashBumpCount > 0) {
+        lines.add(
+          'Obstacle discipline — recorded ${s.nonCrashBumpCount} minor non-crash contact(s); a clean run requires none.',
+        );
+      }
+    } else if (s.ambulance != null) {
+      final a = s.ambulance!;
+      if (a.mapHasCp1 && !a.cp1Cleared) {
+        lines.add(
+          'Checkpoint 1 — the vehicle did not reach CP1 before its time limit (or the map defines CP1 and it was not cleared).',
+        );
+      }
+      if (a.mapHasCp2 && !a.cp2Cleared) {
+        lines.add(
+          'Checkpoint 2 — the vehicle did not reach CP2 before its time limit (or the map defines CP2 and it was not cleared).',
+        );
+      }
+      if (!a.pullOverCompleted) {
+        lines.add(
+          'Safe pull-over — Park (P) in the matching safe zone with the correct exclusive turn signal was not completed before the attempt ended.',
+        );
+      }
+      if (!s.reachedFinishZone) {
+        lines.add(
+          'Ambulance finish — the ambulance did not reach the success area while you remained correctly yielded, or the route did not complete.',
+        );
+      }
+      if (s.nonCrashBumpCount > 0) {
+        lines.add(
+          'Obstacle discipline — recorded ${s.nonCrashBumpCount} minor non-crash contact(s); a clean run requires none.',
+        );
+      }
+    } else if (dashedMarkingsLayout) {
+      if (!s.signaledCorrectlyInApproachZone) {
+        lines.add(
+          'Signalling (approach) — the right turn signal was not used before leaving the yellow approach zone.',
+        );
+      }
+      if (!s.enteredMidTurnZone) {
+        lines.add(
+          'Turn execution — the purple turn execution zone was not entered.',
+        );
+      }
+      if (!s.hadCorrectSignalInMidTurnZone) {
+        lines.add(
+          'Signalling (turn zone) — the right turn signal was not kept on throughout the purple turn zone.',
+        );
+      }
+      if (!s.reachedFinishZone) {
+        lines.add(
+          'Route completion — the green finish zone was not reached.',
         );
       }
       if (s.nonCrashBumpCount > 0) {
@@ -124,6 +204,9 @@ class LastDrivingReportService {
           'Obstacle discipline — recorded ${s.nonCrashBumpCount} minor non-crash contact(s); a clean run requires none.',
         );
       }
+    }
+    for (final p in s.penalties) {
+      lines.add('Penalty (screenshot saved): $p');
     }
     return lines;
   }
@@ -241,6 +324,15 @@ class LastDrivingReportService {
   Map<String, dynamic> _firestorePayload(LastDrivingReport report, GameLevel level) {
     final j = Map<String, dynamic>.from(report.toJson());
     j.remove('screenshotPath');
+    final pr = j['penaltyRecords'];
+    if (pr is List) {
+      j['penaltyRecords'] = pr.map((e) {
+        if (e is! Map) return e;
+        final m = Map<String, dynamic>.from(e);
+        m.remove('screenshotPath');
+        return m;
+      }).toList();
+    }
     if (level.moduleId != null && level.moduleId!.trim().isNotEmpty) {
       j['moduleId'] = level.moduleId!.trim();
     }
@@ -320,6 +412,8 @@ class LastDrivingReportService {
       roadCrossingLayout: baseReport.roadCrossingLayout,
       screenshotPath: baseReport.screenshotPath,
       screenshotUrl: url,
+      penaltyRecords: baseReport.penaltyRecords,
+      ambulance: baseReport.ambulance,
     );
     await _persistReportToPrefs(updated, level.id);
 
@@ -328,15 +422,79 @@ class LastDrivingReportService {
     }
   }
 
+  /// Uploads each penalty screenshot to Cloudinary and merges URLs into prefs + Firestore.
+  Future<void> _uploadPenaltyScreenshots({
+    required LastDrivingReport initialReport,
+    required GameLevel level,
+    required List<({String description, Uint8List bytes})> captures,
+    String? uid,
+  }) async {
+    if (captures.isEmpty) return;
+    await CloudinaryConfig.ensureLoaded();
+    if (!CloudinaryConfig.isConfigured) {
+      if (uid != null && uid.isNotEmpty) {
+        await _enqueueDrivingLastRun(uid, level, _firestorePayload(initialReport, level));
+      }
+      return;
+    }
+    final owner = (uid != null && uid.isNotEmpty) ? uid : 'guest';
+    final safeId = level.id.replaceAll(RegExp(r'[^\w\-]+'), '_');
+    var report = initialReport;
+    for (var i = 0; i < captures.length; i++) {
+      final cap = captures[i];
+      if (cap.bytes.isEmpty) continue;
+      final ts = DateTime.now().millisecondsSinceEpoch;
+      final url = await CloudinaryUploadService.uploadImageBytes(
+        bytes: cap.bytes,
+        fileName: '${safeId}_pen_${i}_$ts.png',
+        publicId: '${owner}_${safeId}_pen_${i}_$ts',
+      );
+      if (url == null || url.isEmpty) continue;
+      final old = report.penaltyRecords;
+      if (i >= old.length) break;
+      final updated = List<PenaltyRecord>.generate(old.length, (j) {
+        if (j != i) return old[j];
+        return PenaltyRecord(
+          description: old[j].description,
+          screenshotPath: old[j].screenshotPath,
+          screenshotUrl: url,
+        );
+      });
+      report = LastDrivingReport(
+        levelId: report.levelId,
+        levelName: report.levelName,
+        passed: report.passed,
+        score: report.score,
+        correctMoves: report.correctMoves,
+        mistakes: report.mistakes,
+        mistakeDetails: report.mistakeDetails,
+        timeSpentMs: report.timeSpentMs,
+        recordedAt: report.recordedAt,
+        failureMessage: report.failureMessage,
+        roadCrossingLayout: report.roadCrossingLayout,
+        screenshotPath: report.screenshotPath,
+        screenshotUrl: report.screenshotUrl,
+        penaltyRecords: updated,
+        ambulance: report.ambulance,
+      );
+      await _persistReportToPrefs(report, level.id);
+    }
+    if (uid != null && uid.isNotEmpty) {
+      await _enqueueDrivingLastRun(uid, level, _firestorePayload(report, level));
+    }
+  }
+
   Future<void> recordAttempt({
     required DrivingAttemptSummary summary,
     required GameLevel level,
     Uint8List? screenshotBytes,
+    List<({String description, Uint8List bytes})> penaltyCaptures = const [],
   }) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final road = LastDrivingReport.isRoadCrossingMap(level.mapAsset);
-    final counts = _rubricCounts(summary, roadCrossingLayout: road);
-    final mistakeDetails = mistakeDetailLines(summary, roadCrossingLayout: road);
+    final dashed = _isDashedMarkingsMap(level);
+    final counts = _rubricCounts(summary, roadCrossingLayout: road, dashedMarkingsLayout: dashed);
+    final mistakeDetails = mistakeDetailLines(summary, roadCrossingLayout: road, dashedMarkingsLayout: dashed);
     final recordedAt = DateTime.now().toUtc();
 
     String? screenshotPath;
@@ -349,6 +507,25 @@ class LastDrivingReportService {
       uploadSafeId = level.id.replaceAll(RegExp(r'[^\w\-]+'), '_');
       objectName = '${uploadSafeId}_$uploadTs.png';
       screenshotPath = await _writeScreenshotToDisk(screenshotBytes, objectName);
+    }
+
+    final uploadSafeIdForPenalties =
+        level.id.replaceAll(RegExp(r'[^\w\-]+'), '_');
+    final penaltyRecords = <PenaltyRecord>[];
+    for (var i = 0; i < penaltyCaptures.length; i++) {
+      final cap = penaltyCaptures[i];
+      final ts = DateTime.now().millisecondsSinceEpoch + i;
+      final penObjectName = '${uploadSafeIdForPenalties}_penalty_${i}_$ts.png';
+      final path = cap.bytes.isNotEmpty
+          ? await _writeScreenshotToDisk(cap.bytes, penObjectName)
+          : null;
+      penaltyRecords.add(
+        PenaltyRecord(
+          description: cap.description,
+          screenshotPath: path,
+          screenshotUrl: null,
+        ),
+      );
     }
 
     final report = LastDrivingReport(
@@ -365,15 +542,19 @@ class LastDrivingReportService {
       roadCrossingLayout: road,
       screenshotPath: screenshotPath,
       screenshotUrl: null,
+      penaltyRecords: penaltyRecords,
+      ambulance: summary.ambulance,
     );
 
     await _persistReportToPrefs(report, level.id);
 
-    if (screenshotBytes != null &&
+    final hasMainScreenshot = screenshotBytes != null &&
         screenshotBytes.isNotEmpty &&
         objectName != null &&
         uploadTs != null &&
-        uploadSafeId != null) {
+        uploadSafeId != null;
+
+    if (hasMainScreenshot) {
       unawaited(
         _finalizeCloudinaryUpload(
           baseReport: report,
@@ -385,10 +566,18 @@ class LastDrivingReportService {
           uid: uid,
         ),
       );
-      return;
     }
 
-    if (uid != null && uid.isNotEmpty) {
+    if (penaltyCaptures.isNotEmpty) {
+      unawaited(
+        _uploadPenaltyScreenshots(
+          initialReport: report,
+          level: level,
+          captures: penaltyCaptures,
+          uid: uid,
+        ),
+      );
+    } else if (!hasMainScreenshot && uid != null && uid.isNotEmpty) {
       await _enqueueDrivingLastRun(uid, level, _firestorePayload(report, level));
     }
   }

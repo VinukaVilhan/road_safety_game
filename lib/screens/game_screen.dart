@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -40,6 +41,8 @@ class GameScreenState extends State<GameScreen> {
   final MusicService _musicService = MusicService();
   bool _resultDialogVisible = false;
   bool _levelStoryShown = false;
+  /// Screenshot bytes captured when the game reports a non-fatal penalty.
+  final List<({String description, Uint8List bytes})> _penaltyCaptures = [];
 
   static const String _radioIconAsset = 'assets/images/Radio.png';
 
@@ -89,12 +92,16 @@ class GameScreenState extends State<GameScreen> {
       scenarioId: widget.level.scenarioId,
       onTestPassed: _handleTestPassed,
       onTestFailed: (message) => unawaited(_handleTestFailed(message)),
+      onPenaltyRecorded: (description) => unawaited(_onPenaltyRecorded(description)),
       onOdometerDeltaMeters: OdometerService.instance.recordSessionDelta,
       turnSignalLeft: _turnSignalLeftNotifier,
       turnSignalRight: _turnSignalRightNotifier,
     );
     // Configure the game based on the level
     _configureGameForLevel();
+    if (_willShowLevelBriefing()) {
+      game.pauseEngine();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showLevelStoryIfAvailable();
     });
@@ -118,14 +125,39 @@ class GameScreenState extends State<GameScreen> {
     }
   }
 
+  bool _willShowLevelBriefing() {
+    if (widget.level.scenarioId == 'emergency_ambulance') return true;
+    final story = _levelStoryText();
+    return story != null && story.trim().isNotEmpty;
+  }
+
+  void _resumeGameAfterBriefing() {
+    if (!mounted) return;
+    game.resumeEngine();
+    UiSoundService().playLevelEngineStart();
+  }
+
   void _showLevelStoryIfAvailable() {
     if (!mounted) return;
+    if (_levelStoryShown) return;
+
+    if (widget.level.scenarioId == 'emergency_ambulance') {
+      _levelStoryShown = true;
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => const _AmbulanceBriefingCarouselDialog(),
+      ).then((_) {
+        if (mounted) _resumeGameAfterBriefing();
+      });
+      return;
+    }
+
     final story = _levelStoryText();
     if (story == null || story.trim().isEmpty) {
       UiSoundService().playLevelEngineStart();
       return;
     }
-    if (_levelStoryShown) return;
     _levelStoryShown = true;
     final theme = Theme.of(context).textTheme;
     showDialog<void>(
@@ -154,7 +186,7 @@ class GameScreenState extends State<GameScreen> {
         );
       },
     ).then((_) {
-      if (mounted) UiSoundService().playLevelEngineStart();
+      if (mounted) _resumeGameAfterBriefing();
     });
   }
 
@@ -165,6 +197,9 @@ class GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
+    if (game.paused) {
+      game.resumeEngine();
+    }
     _odometerFlushTimer?.cancel();
     unawaited(OdometerService.instance.flushPendingToPersistence());
     _turnSignalTapTimer?.cancel();
@@ -700,7 +735,7 @@ class GameScreenState extends State<GameScreen> {
 
   void _showPauseDialog() {
     final theme = Theme.of(context).textTheme;
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -741,7 +776,10 @@ class GameScreenState extends State<GameScreen> {
           ],
         );
       },
-    );
+    ).then((_) {
+      if (!mounted) return;
+      game.resumeAmbientAudioAfterUiOverlay();
+    });
   }
 
   Future<Uint8List?> _captureGameScreenshot() async {
@@ -757,15 +795,38 @@ class GameScreenState extends State<GameScreen> {
     }
   }
 
+  Future<void> _onPenaltyRecorded(String description) async {
+    if (!mounted) return;
+    final bytes = await _captureGameScreenshot();
+    if (bytes == null || bytes.isEmpty) return;
+    if (!mounted) return;
+    _penaltyCaptures.add((description: description, bytes: bytes));
+  }
+
+  bool get _isMarkingsDashedLevel {
+    if (widget.level.scenarioId == 'emergency_ambulance') return false;
+    final a = (widget.level.mapAsset ?? '').toLowerCase();
+    return a.contains('lane-markings-dashed') ||
+        widget.level.scenarioId == 'markings_dashed';
+  }
+
   void _handleTestPassed() {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
-    UiSoundService().playLevelPassed();
-    final summary = game.getAttemptSummary(passed: true);
+    final summary = game.getAttemptSummary();
+    final penaltyPayload =
+        List<({String description, Uint8List bytes})>.from(_penaltyCaptures);
+    _penaltyCaptures.clear();
+    if (summary.passed) {
+      UiSoundService().playLevelPassed();
+    } else {
+      UiSoundService().playLevelFailed();
+    }
     unawaited(
       LastDrivingReportService.instance.recordAttempt(
         summary: summary,
         level: widget.level,
+        penaltyCaptures: penaltyPayload,
       ),
     );
 
@@ -773,18 +834,26 @@ class GameScreenState extends State<GameScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
+        final title = summary.passed
+            ? 'Test Passed!'
+            : 'Attempt not passed';
         return AlertDialog(
           backgroundColor: const Color(0xFF1a1a2e),
-          title: const Text('Test Passed!', style: TextStyle(color: Colors.white)),
+          title: Text(title, style: const TextStyle(color: Colors.white)),
           content: _buildAttemptSummaryContent(summary),
           actions: [
             TextButton(
               onPressed: () async {
                 UiSoundService().playMenuTap();
-                await LevelProgressService.markLevelCompleted(
-                  widget.level.id,
-                  moduleId: widget.level.moduleId,
-                );
+                // Dashed-lines: reaching the green finish unlocks the level even if penalties
+                // prevented a "pass" on the report.
+                if (summary.passed ||
+                    (_isMarkingsDashedLevel && summary.reachedFinishZone)) {
+                  await LevelProgressService.markLevelCompleted(
+                    widget.level.id,
+                    moduleId: widget.level.moduleId,
+                  );
+                }
                 if (!mounted) return;
                 Navigator.of(context).pop();
                 Navigator.of(context).pop(widget.level.id);
@@ -803,10 +872,14 @@ class GameScreenState extends State<GameScreen> {
     final screenshotBytes = await _captureGameScreenshot();
     UiSoundService().playLevelFailed();
     final summary = game.getAttemptSummary(passed: false, failureMessage: message);
+    final penaltyPayload =
+        List<({String description, Uint8List bytes})>.from(_penaltyCaptures);
+    _penaltyCaptures.clear();
     await LastDrivingReportService.instance.recordAttempt(
       summary: summary,
       level: widget.level,
       screenshotBytes: screenshotBytes,
+      penaltyCaptures: penaltyPayload,
     );
 
     showDialog(
@@ -826,6 +899,7 @@ class GameScreenState extends State<GameScreen> {
                 // Restart in place so this route is not disposed (dispose forces
                 // portrait and races with the new GameScreen on pushReplacement).
                 game.restartLevel();
+                _penaltyCaptures.clear();
                 _steeringRotation.value = 0.0;
                 setState(() => _currentGear = 1);
                 _applyGearChange();
@@ -985,6 +1059,9 @@ class GameScreenState extends State<GameScreen> {
     final isRoadCrossingLevel =
         (widget.level.mapAsset ?? '').toLowerCase().contains('road-crossing');
     final signalName = _signalLabel(summary.expectedTurnSignal);
+    final midTurnLabel = _isMarkingsDashedLevel
+        ? 'Kept $signalName on throughout the purple turn zone.'
+        : 'Kept $signalName while turning.';
     return SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -997,6 +1074,31 @@ class GameScreenState extends State<GameScreen> {
             ),
             const SizedBox(height: 10),
           ],
+          if (summary.penalties.isNotEmpty) ...[
+            Text(
+              'Penalties (${summary.penalties.length})',
+              style: const TextStyle(
+                color: Colors.orangeAccent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ...summary.penalties.map(
+              (p) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '• $p',
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'Screenshots for each penalty are saved in your driving report.',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+            const SizedBox(height: 10),
+          ],
           if (isRoadCrossingLevel) ...[
             _buildCheckRow('Entered speed limit zone (yellow).', summary.enteredApproachZone),
             const SizedBox(height: 6),
@@ -1006,6 +1108,99 @@ class GameScreenState extends State<GameScreen> {
             ),
             const SizedBox(height: 6),
             _buildCheckRow('Reached finish zone (green).', summary.reachedFinishZone),
+          ] else if (_isMarkingsDashedLevel) ...[
+            _buildCheckRow(
+              'Right turn signal used in approach zone (yellow).',
+              summary.signaledCorrectlyInApproachZone,
+            ),
+            const SizedBox(height: 6),
+            _buildCheckRow('Entered turn execution zone (purple).', summary.enteredMidTurnZone),
+            const SizedBox(height: 6),
+            _buildCheckRow(
+              midTurnLabel,
+              summary.hadCorrectSignalInMidTurnZone,
+            ),
+            const SizedBox(height: 6),
+            _buildCheckRow('Reached finish zone (green).', summary.reachedFinishZone),
+          ] else if (widget.level.scenarioId == 'emergency_ambulance') ...[
+            if (summary.ambulance != null) ...[
+              Builder(
+                builder: (context) {
+                  final a = summary.ambulance!;
+                  String yn(bool v) => v ? 'Yes' : 'No';
+                  String side(bool? y) {
+                    if (y == null) return '—';
+                    return y ? 'Left safe strip' : 'Right safe strip';
+                  }
+
+                  String cpGate(double sec) {
+                    if (sec <= 0) return 'no per-CP limit';
+                    return '${sec.toStringAsFixed(0)} s to reach';
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Level timer: ${a.elapsedSecs.toStringAsFixed(1)} s of '
+                        '${a.levelTimeoutSecs.toStringAsFixed(0)} s max (whole level timeout).',
+                        style: const TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      const SizedBox(height: 8),
+                      if (a.mapHasCp1) ...[
+                        _buildCheckRow('Reached Checkpoint 1 in time.', a.cp1Cleared),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 26, bottom: 4),
+                          child: Text(
+                            'CP1 time gate: ${cpGate(a.cp1TimeLimitSecs)}',
+                            style: const TextStyle(color: Colors.white38, fontSize: 11),
+                          ),
+                        ),
+                      ],
+                      if (a.mapHasCp2) ...[
+                        _buildCheckRow('Reached Checkpoint 2 in time.', a.cp2Cleared),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 26, bottom: 4),
+                          child: Text(
+                            'CP2 time gate: ${cpGate(a.cp2TimeLimitSecs)}',
+                            style: const TextStyle(color: Colors.white38, fontSize: 11),
+                          ),
+                        ),
+                      ],
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Text(
+                          a.mapHasCpf
+                              ? 'Map has a final gate (CPF): complete pull-over before crossing it.'
+                              : 'No CPF final gate on this map layout.',
+                          style: const TextStyle(color: Colors.white38, fontSize: 11),
+                        ),
+                      ),
+                      _buildCheckRow(
+                        'Safe pull-over completed (Park + matching zone + correct signal).',
+                        a.pullOverCompleted,
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 26, bottom: 4),
+                        child: Text(
+                          'Yield side: ${side(a.yieldLeftSide)}',
+                          style: const TextStyle(color: Colors.white38, fontSize: 11),
+                        ),
+                      ),
+                      Text(
+                        'Ambulance AI at end: ${a.ambulanceAiState} · route completed: ${yn(a.ambulanceRouteCompleted)}',
+                        style: const TextStyle(color: Colors.white38, fontSize: 11),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                  );
+                },
+              ),
+            ],
+            _buildCheckRow(
+              'Ambulance reached the finish area while you stayed correctly yielded.',
+              summary.reachedFinishZone && summary.passed,
+            ),
           ] else ...[
             _buildCheckRow('Entered approach zone (yellow).', summary.enteredApproachZone),
             const SizedBox(height: 6),
@@ -1017,7 +1212,7 @@ class GameScreenState extends State<GameScreen> {
             _buildCheckRow('Entered turn execution zone (purple).', summary.enteredMidTurnZone),
             const SizedBox(height: 6),
             _buildCheckRow(
-              'Kept $signalName while turning.',
+              midTurnLabel,
               summary.hadCorrectSignalInMidTurnZone,
             ),
             const SizedBox(height: 6),
@@ -1043,6 +1238,201 @@ class GameScreenState extends State<GameScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AmbulanceBriefingSlide {
+  final String title;
+  final String body;
+  const _AmbulanceBriefingSlide(this.title, this.body);
+}
+
+/// Swipe or use Next/Back; one short tip per page for the emergency ambulance level.
+class _AmbulanceBriefingCarouselDialog extends StatefulWidget {
+  const _AmbulanceBriefingCarouselDialog();
+
+  @override
+  State<_AmbulanceBriefingCarouselDialog> createState() =>
+      _AmbulanceBriefingCarouselDialogState();
+}
+
+class _AmbulanceBriefingCarouselDialogState
+    extends State<_AmbulanceBriefingCarouselDialog> {
+  static const List<_AmbulanceBriefingSlide> _slides = [
+    _AmbulanceBriefingSlide(
+      'Sirens on the way',
+      'An ambulance can appear while you drive. Slow down and be ready to yield safely.',
+    ),
+    _AmbulanceBriefingSlide(
+      'Hit the early checkpoints',
+      'Reach Checkpoint 1 and Checkpoint 2 within the time limits.',
+    ),
+    _AmbulanceBriefingSlide(
+      'Signals and side',
+      'Left safe strip: left indicator only. Right strip: right indicator only.',
+    ),
+    _AmbulanceBriefingSlide(
+      'Three steps to yield',
+      'After Checkpoint 2, in order:\n'
+      '1) Overlap the matching safe zone with the correct signal on (you may still be moving).\n'
+      '2) Bring both wheels on that side fully inside the zone.\n'
+      '3) Shift to Park (P). The ambulance will only pass after all three are done.',
+    ),
+    _AmbulanceBriefingSlide(
+      'When to pull over',
+      'After you clear Checkpoint 2, finish your pull-over before you cross the final gate (CPF).',
+    ),
+    _AmbulanceBriefingSlide(
+      'While it passes',
+      'Stay slow and yielded. The ambulance will pass you and follow its route.',
+    ),
+    _AmbulanceBriefingSlide(
+      'How you pass',
+      'You complete the level when the ambulance reaches the success area and you remain correctly stopped and yielded.',
+    ),
+  ];
+
+  late final PageController _pageController;
+  int _pageIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+    final w = MediaQuery.sizeOf(context).width * 0.62;
+    final boxW = math.min(440.0, w);
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1a1a2e),
+      title: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Text(
+              'Ambulance — briefing',
+              style: theme.titleLarge!.copyWith(color: Colors.white),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              UiSoundService().playMenuTap();
+              Navigator.of(context).pop();
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white60,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              'Skip',
+              style: theme.labelLarge!.copyWith(color: Colors.white60),
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: boxW,
+        height: 200,
+        child: Column(
+          children: [
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: _slides.length,
+                onPageChanged: (i) => setState(() => _pageIndex = i),
+                itemBuilder: (context, i) {
+                  final s = _slides[i];
+                  return SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          s.title,
+                          style: theme.titleSmall!.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          s.body,
+                          style: theme.bodyMedium!.copyWith(
+                            color: Colors.white70,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                _slides.length,
+                (i) => Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: i == _pageIndex ? Colors.white : Colors.white30,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        if (_pageIndex > 0)
+          TextButton(
+            onPressed: () {
+              UiSoundService().playMenuTap();
+              _pageController.previousPage(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+              );
+            },
+            child: Text(
+              'Back',
+              style: theme.labelLarge!.copyWith(color: Colors.white70),
+            ),
+          ),
+        TextButton(
+          onPressed: () {
+            UiSoundService().playMenuTap();
+            if (_pageIndex < _slides.length - 1) {
+              _pageController.nextPage(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+              );
+            } else {
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text(
+            _pageIndex < _slides.length - 1 ? 'Next' : 'Start Level',
+            style: theme.labelLarge!.copyWith(color: Colors.greenAccent),
+          ),
+        ),
+      ],
     );
   }
 }

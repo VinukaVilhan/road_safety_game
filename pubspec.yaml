@@ -52,6 +52,7 @@ dependencies:
   flutter_svg: ^2.2.2
   shared_preferences: ^2.3.3
   file_picker: ^8.1.6
+  image_picker: ^1.1.2
   permission_handler: ^11.3.1
   flame_audio: ^2.11.8
   google_generative_ai: ^0.4.6

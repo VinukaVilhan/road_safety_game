@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/assistant_launch_context.dart';
 import '../models/assistant_message.dart';
@@ -89,7 +91,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         text:
             "Hi — you've opened the instructor from your saved run on \"${r.levelName}\". "
             'The checklist and scores from that attempt are in my context. Ask what anything means '
-            'or how to improve next time. You can still attach a road-sign photo with the image button.',
+            'or how to improve next time. Use the gallery or camera button to attach a road-sign photo.',
         at: DateTime.now(),
       );
     }
@@ -97,8 +99,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       role: AssistantMessageRole.assistant,
       text:
           "Hi — I'm your Road Rules instructor. Ask about signs, procedures, "
-          'in-game checklists, or your latest level reports. Tap the image icon '
-          'to attach a photo of a real road sign.',
+            'in-game checklists, or your latest level reports. Use the gallery or camera '
+            'button to attach a photo of a real road sign.',
       at: DateTime.now(),
     );
   }
@@ -288,6 +290,15 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     });
   }
 
+  void _setPendingRoadImage(Uint8List bytes, {String mimeType = 'image/jpeg'}) {
+    if (!mounted) return;
+    setState(() {
+      _pendingImageBytes = bytes;
+      _pendingMimeType = mimeType;
+      _banner = null;
+    });
+  }
+
   Future<void> _pickRoadSignPhoto() async {
     if (_sending || _bootstrapping || !AssistantService.instance.isReady) return;
     UiSoundService().playMenuTap();
@@ -306,14 +317,40 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         });
         return;
       }
-      setState(() {
-        _pendingImageBytes = f.bytes;
-        _pendingMimeType = mimeTypeFromFileName(f.name);
-        _banner = null;
-      });
+      _setPendingRoadImage(f.bytes!, mimeType: mimeTypeFromFileName(f.name));
     } catch (e) {
       if (mounted) {
         setState(() => _banner = 'Could not open photo picker: $e');
+      }
+    }
+  }
+
+  Future<void> _takeRoadSignPhotoWithCamera() async {
+    if (_sending || _bootstrapping || !AssistantService.instance.isReady) return;
+    if (kIsWeb) {
+      setState(() {
+        _banner = 'Camera is not available in the web build. Use gallery attach instead.';
+      });
+      return;
+    }
+    UiSoundService().playMenuTap();
+    try {
+      final x = await ImagePicker().pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+        preferredCameraDevice: CameraDevice.rear,
+      );
+      if (!mounted) return;
+      if (x == null) return;
+      final bytes = await x.readAsBytes();
+      if (bytes.isEmpty) {
+        setState(() => _banner = 'Empty photo. Try taking the picture again.');
+        return;
+      }
+      _setPendingRoadImage(bytes, mimeType: 'image/jpeg');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _banner = 'Could not use camera: $e');
       }
     }
   }
@@ -579,7 +616,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Road sign photo will be sent with your next message.',
+                        'Photo will be sent with your next message.',
                         style: bodyStyle.copyWith(fontSize: 12, color: SwissTheme.textSecondary),
                       ),
                     ),
@@ -599,7 +636,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    tooltip: 'Attach road sign photo',
+                    tooltip: 'Photo from gallery',
                     onPressed: (_sending || _bootstrapping || !AssistantService.instance.isReady)
                         ? null
                         : _pickRoadSignPhoto,
@@ -608,6 +645,17 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                       color: SwissTheme.textPrimary,
                     ),
                   ),
+                  if (!kIsWeb)
+                    IconButton(
+                      tooltip: 'Take photo with camera',
+                      onPressed: (_sending || _bootstrapping || !AssistantService.instance.isReady)
+                          ? null
+                          : _takeRoadSignPhotoWithCamera,
+                      icon: Icon(
+                        Icons.photo_camera_outlined,
+                        color: SwissTheme.textPrimary,
+                      ),
+                    ),
                   Expanded(
                     child: TextField(
                       controller: _controller,
@@ -622,7 +670,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                       },
                       style: bodyStyle,
                       decoration: InputDecoration(
-                        hintText: 'Ask about signs, rules, or attach a photo…',
+                        hintText: 'Ask about signs, rules, or attach a photo (gallery or camera)…',
                         hintStyle: bodyStyle.copyWith(color: SwissTheme.textSecondary),
                         filled: true,
                         fillColor: SwissTheme.backgroundWhite,

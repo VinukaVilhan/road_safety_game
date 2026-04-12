@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="80" height="100" tilewidth="16" tileheight="16" infinite="0" nextlayerid="22" nextobjectid="37">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="80" height="100" tilewidth="16" tileheight="16" infinite="0" nextlayerid="23" nextobjectid="41">
  <tileset firstgid="1" name="Road" tilewidth="16" tileheight="16" tilecount="144" columns="12">
   <image source="../images/new-map.png" width="192" height="192"/>
  </tileset>
@@ -266,8 +266,13 @@
   <object id="23" x="970.667" y="16" width="122.667" height="72"/>
  </objectgroup>
  <group id="17" name="Checkpoints">
+  <objectgroup id="22" name="CPF" class="CPF">
+   <object id="38" type="CPF" x="954" y="112" width="138" height="30"/>
+   <object id="39" x="1408" y="542"/>
+   <object id="40" x="-556" y="1260"/>
+  </objectgroup>
   <objectgroup color="#aa5500" id="21" name="CP4" class="CP4">
-   <object id="36" x="961.333" y="265.333" width="128" height="25.3333"/>
+   <object id="36" x="961.333" y="311.333" width="128" height="25.3333"/>
   </objectgroup>
   <objectgroup color="#aa5500" id="20" name="CP3" class="CP3">
    <object id="35" x="955.128" y="595.343" width="138.94" height="12" rotation="52.0748"/>

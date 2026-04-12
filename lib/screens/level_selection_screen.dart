@@ -172,6 +172,10 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
   }
 
   bool _isUnderDevelopmentLevel(GameLevel level) {
+    if (level.topic == DrivingTopic.Parking ||
+        level.topic == DrivingTopic.RoadSigns) {
+      return true;
+    }
     if (level.topic == DrivingTopic.RoadMarkings &&
         _underDevelopmentRoadMarkingsLevelIds.contains(level.id)) {
       return true;

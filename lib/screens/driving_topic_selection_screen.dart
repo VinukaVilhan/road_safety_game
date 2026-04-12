@@ -27,8 +27,12 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
   late final TextStyle _dialogButtonStyle;
 
   static bool _isUnderDevelopmentTopic(DrivingTopic topic) {
-    /// Controls tutorial module (Driving test → CONTROLS), not in-game HUD.
-    return topic == DrivingTopic.Practice;
+    /// [Practice]: controls tutorial module (Driving test → CONTROLS), not in-game HUD.
+    /// [Parking]: practical parking scenarios not ready yet.
+    /// [RoadSigns]: practical road-sign levels not ready yet.
+    return topic == DrivingTopic.Practice ||
+        topic == DrivingTopic.Parking ||
+        topic == DrivingTopic.RoadSigns;
   }
 
   @override

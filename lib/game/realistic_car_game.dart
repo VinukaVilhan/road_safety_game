@@ -12,6 +12,8 @@ import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../models/last_driving_report.dart';
+
 /// True if this object layer should supply axis-aligned collision rectangles.
 bool _isTiledCollisionObjectLayer(ObjectGroup layer) {
   final nameNorm = layer.name.replaceAll(' ', '_').toLowerCase();
@@ -100,7 +102,7 @@ class _DrivingZone {
   });
 }
 
-/// [emergency_ambulance]: CP1–CP4 from Tiled (`class` CP1…CP4, including under [Group]).
+/// [emergency_ambulance]: CP1–CP4 and CPF from Tiled (`class` CP1…CP4 / CPF, including under [Group]).
 class _AmbulanceCheckpoint {
   final String id;
   final Rect rect;
@@ -140,6 +142,10 @@ class DrivingAttemptSummary {
   final bool reachedFinishZone;
   final int nonCrashBumpCount;
   final int score;
+  /// Recorded rule violations (e.g. dashed-lines penalties) that do not stop the run.
+  final List<String> penalties;
+  /// Non-null when the attempt was the ambulance practical scenario.
+  final AmbulanceAttemptSnapshot? ambulance;
 
   const DrivingAttemptSummary({
     required this.passed,
@@ -154,6 +160,8 @@ class DrivingAttemptSummary {
     required this.reachedFinishZone,
     required this.nonCrashBumpCount,
     required this.score,
+    this.penalties = const [],
+    this.ambulance,
   });
 }
 
@@ -487,20 +495,17 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   /// Win trigger after the ambulance has cleared its route ([Success_Layer]).
   final List<Rect> _successLayerRects = [];
 
-  /// [emergency_ambulance]: correct indicator was broken while in a safe zone before parking.
-  bool _ambulancePullOverSignalViolated = false;
-
-  /// [emergency_ambulance]: parked once in the matching zone with correct signal (then signal may go off).
+  /// [emergency_ambulance]: parked in matching safe zone with correct signal; ambulance may pass
+  /// once true (then signal may be cancelled while staying in P in that zone).
   bool _ambulancePullOverComplete = false;
 
-  /// After [_ambulancePullOverComplete]: `true` = left safe zone, `false` = right.
+  /// Locked when stage 1 completes: `true` = left safe zone sequence, `false` = right.
   bool? _ambulanceYieldCompletedLeftSide;
 
-  /// [emergency_ambulance]: CP1–CP4 rects from TMX (including nested under [Group]).
+  /// [emergency_ambulance]: CP1–CP4 and CPF rects from TMX (including nested under [Group]).
   final List<_AmbulanceCheckpoint> _ambCheckpoints = [];
   bool _ambCp1Cleared = false;
   bool _ambCp2Cleared = false;
-  bool _ambCp3Cleared = false;
   double _ambCpElapsed = 0.0;
   double _ambTotalElapsed = 0.0;
 
@@ -525,6 +530,9 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   final void Function(String message)? onTestFailed;
   final VoidCallback? onTestPassed;
 
+  /// Optional: called when a non-fatal penalty is recorded (e.g. dashed-lines signalling).
+  final void Function(String description)? onPenaltyRecorded;
+
   /// Optional: approximate distance driven this session (metres) for profile / stats.
   final void Function(double deltaMeters)? onOdometerDeltaMeters;
 
@@ -543,6 +551,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   bool _enteredMidTurnZone = false;
   bool _midTurnSignalWasCorrect = false;
   bool _reachedFinishZone = false;
+  final List<String> _penalties = [];
+  /// Approach zones the car is currently overlapping (dashed level — exit detection).
+  final Set<int> _approachZonesCurrentlyInside = {};
+  /// Approach zones where the right signal was turned on during the current visit.
+  final Set<int> _approachZonesRightSignalGiven = {};
+  /// Mid-turn zones the car center is currently inside ([markings_dashed]).
+  final Set<int> _midTurnZonesCurrentlyInside = {};
+  /// Mid-turn zones where a wrong-signal penalty has already been issued this visit.
+  /// Cleared on zone exit so re-entry can be penalized again.
+  final Set<int> _midTurnZonesWrongSignalPenaltyIssued = {};
   String? _latestFailureMessage;
   int _nonCrashBumpCount = 0;
   DateTime? _lastNonCrashBumpAt;
@@ -572,10 +590,23 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     this.scenarioId,
     this.onTestFailed,
     this.onTestPassed,
+    this.onPenaltyRecorded,
     this.onOdometerDeltaMeters,
     this.turnSignalLeft,
     this.turnSignalRight,
   });
+
+  bool get _isEmergencyAmbulanceScenario =>
+      (scenarioId ?? '').trim().toLowerCase() == 'emergency_ambulance';
+
+  /// Dashed lane markings level: non-fatal penalties + Wrong_Layer fail.
+  /// Never mixed with the ambulance scenario (even if the TMX was copied from a dashed map).
+  bool get _usesPenaltyModeMarkingsDashed {
+    if (_isEmergencyAmbulanceScenario) return false;
+    final a = (mapAsset ?? '').toLowerCase();
+    final s = (scenarioId ?? '').toLowerCase();
+    return a.contains('lane-markings-dashed') || s == 'markings_dashed';
+  }
 
   void reportOdometerMeters(double deltaMeters) {
     if (_testFinished) return;
@@ -590,6 +621,21 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   Future<void> onLoad() async {
     super.onLoad();
     _attemptStartedAt = DateTime.now();
+
+    // Tell audioplayers to never request AudioFocus on Android.
+    // This prevents just_audio UI sounds from stealing focus away from the
+    // engine / siren loops and silencing them.
+    try {
+      await AudioPlayer.global.setAudioContext(AudioContext(
+        android: const AudioContextAndroid(
+          audioFocus: AndroidAudioFocus.none,
+          contentType: AndroidContentType.sonification,
+          usageType: AndroidUsageType.game,
+          stayAwake: false,
+          isSpeakerphoneOn: false,
+        ),
+      ));
+    } catch (_) {}
 
     // Only preload assets that exist under assets/audio/ (see pubspec assets).
     try {
@@ -1157,6 +1203,11 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _enteredMidTurnZone = false;
     _midTurnSignalWasCorrect = false;
     _reachedFinishZone = false;
+    _penalties.clear();
+    _approachZonesCurrentlyInside.clear();
+    _approachZonesRightSignalGiven.clear();
+    _midTurnZonesCurrentlyInside.clear();
+    _midTurnZonesWrongSignalPenaltyIssued.clear();
     _latestFailureMessage = null;
     _nonCrashBumpCount = 0;
     _lastNonCrashBumpAt = null;
@@ -1168,12 +1219,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     roadCrossingCountdown.value = null;
     roadCrossingApproachHint.value = null;
     _junctionBoxStoppedElapsedSec = 0.0;
-    _ambulancePullOverSignalViolated = false;
     _ambulancePullOverComplete = false;
     _ambulanceYieldCompletedLeftSide = null;
     _ambCp1Cleared = false;
     _ambCp2Cleared = false;
-    _ambCp3Cleared = false;
     _ambCpElapsed = 0.0;
     _ambTotalElapsed = 0.0;
     _ambulanceDecoration?.removeFromParent();
@@ -1201,6 +1250,23 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     c.markOdometerTeleport();
     c.pathHistory.clear();
     camera.follow(c, snap: true);
+    resumeAmbientAudioAfterUiOverlay();
+  }
+
+  /// After route overlays or OS audio ducking, [audioplayers] loops can stay paused
+  /// while state still expects them to run. Safe to call from UI when dialogs close.
+  void resumeAmbientAudioAfterUiOverlay() {
+    _vehicleSfx.resumePausedOutputs();
+    final siren = _ambulanceSirenPlayer;
+    if (siren != null && siren.state == PlayerState.paused) {
+      unawaited(siren.resume());
+    }
+  }
+
+  @override
+  void resumeEngine() {
+    super.resumeEngine();
+    resumeAmbientAudioAfterUiOverlay();
   }
 
   @override
@@ -1221,11 +1287,13 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _updateRoadCrossingApproachHint();
     _updateRoadCrossingParkCountdown(dt);
     _enforceSpeedLimitZones();
+    _updateMarkingsDashedYellowZoneRules();
     _updateMidTurnSignalValidation();
     _updateDrivingRuleZones();
     _updateJunctionBoxStopFail(dt);
-    _updateAmbulancePullOverState();
+    // Checkpoints before pull-over (CP overlap can occur same frame as pull-over update).
     _updateAmbulanceCheckpoints(dt);
+    _updateAmbulancePullOverState();
     _updateAmbulanceLevelSuccess();
   }
 
@@ -1407,37 +1475,27 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       return false;
     }
     if (c.velocity.length >= 10) return false;
-    final leftOn = turnSignalLeft!.value;
-    final rightOn = turnSignalRight!.value;
-    final hasSignal = (leftOn && !rightOn) || (rightOn && !leftOn);
     final hasZones =
         _safeZoneLeftRects.isNotEmpty || _safeZoneRightRects.isNotEmpty;
     if (!hasZones) {
-      return hasSignal;
+      final leftOn = turnSignalLeft!.value;
+      final rightOn = turnSignalRight!.value;
+      return (leftOn && !rightOn) || (rightOn && !leftOn);
     }
-    if (_ambulancePullOverComplete) {
-      if (!c.isInPark) return false;
-      if (_ambulanceYieldCompletedLeftSide == true) {
-        return _isCarAabbInsideAnyRect(_safeZoneLeftRects);
-      }
-      if (_ambulanceYieldCompletedLeftSide == false) {
-        return _isCarAabbInsideAnyRect(_safeZoneRightRects);
-      }
-      return false;
-    }
-    if (!hasSignal) return false;
+    // With safe zones, pull-over must be completed ([_updateAmbulancePullOverState]).
+    if (!_ambulancePullOverComplete) return false;
     if (!c.isInPark) return false;
-    if (leftOn && !rightOn) {
+    if (_ambulanceYieldCompletedLeftSide == true) {
       return _isCarAabbInsideAnyRect(_safeZoneLeftRects);
     }
-    if (rightOn && !leftOn) {
+    if (_ambulanceYieldCompletedLeftSide == false) {
       return _isCarAabbInsideAnyRect(_safeZoneRightRects);
     }
     return false;
   }
 
-  /// Tracks safe-zone pull-over: indicator must stay correct until Park in the matching zone;
-  /// after that the player may cancel signals. Cleared on full exit from both zones (retry).
+  /// Safe-zone pull-over: complete when Park + overlap matching zone + correct exclusive
+  /// signal. After that, signal may be cancelled while the car stays in P in that zone.
   void _updateAmbulancePullOverState() {
     if (scenarioId != 'emergency_ambulance' || _testFinished || car == null) {
       return;
@@ -1453,56 +1511,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       width: c.size.x,
       height: c.size.y,
     );
-    var inLeft = false;
-    for (final r in _safeZoneLeftRects) {
-      if (carRect.overlaps(r)) {
-        inLeft = true;
-        break;
-      }
-    }
-    var inRight = false;
-    for (final r in _safeZoneRightRects) {
-      if (carRect.overlaps(r)) {
-        inRight = true;
-        break;
-      }
-    }
-    final leftOn = turnSignalLeft!.value;
-    final rightOn = turnSignalRight!.value;
-    final exclusiveLeft = leftOn && !rightOn;
-    final exclusiveRight = rightOn && !leftOn;
-
-    // Fail fast: Park in a safe zone without a valid matching indicator / after a signal violation.
-    if (!_ambulancePullOverComplete &&
-        c.isInPark &&
-        (inLeft || inRight)) {
-      if (!leftOn && !rightOn) {
-        _failTest('You must signal before pulling over for an emergency vehicle.');
-        return;
-      }
-      if (leftOn && rightOn) {
-        _failTest('Use only one turn signal when pulling over.');
-        return;
-      }
-      if (inLeft && !leftOn) {
-        _failTest('You pulled over in the wrong lane — use the correct indicator.');
-        return;
-      }
-      if (inRight && !rightOn) {
-        _failTest('You pulled over in the wrong lane — use the correct indicator.');
-        return;
-      }
-      if (_ambulancePullOverSignalViolated) {
-        _failTest('You pulled over in the wrong lane — use the correct indicator.');
-        return;
-      }
-    }
-
-    if (!inLeft && !inRight) {
-      if (!_ambulancePullOverComplete) {
-        _ambulancePullOverSignalViolated = false;
-      }
-    }
+    final inLeft = _safeZoneLeftRects.any((r) => carRect.overlaps(r));
+    final inRight = _safeZoneRightRects.any((r) => carRect.overlaps(r));
+    final exclusiveLeft = turnSignalLeft!.value && !turnSignalRight!.value;
+    final exclusiveRight = turnSignalRight!.value && !turnSignalLeft!.value;
 
     if (_ambulancePullOverComplete) {
       final wantLeft = _ambulanceYieldCompletedLeftSide == true;
@@ -1510,28 +1522,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       if (!c.isInPark || !inOkZone) {
         _ambulancePullOverComplete = false;
         _ambulanceYieldCompletedLeftSide = null;
-      } else {
-        return;
       }
+      return;
     }
 
-    if (!_ambulancePullOverSignalViolated) {
-      if (inLeft && !exclusiveLeft) {
-        _ambulancePullOverSignalViolated = true;
-      }
-      if (inRight && !exclusiveRight) {
-        _ambulancePullOverSignalViolated = true;
-      }
-    }
-
-    if (!_ambulancePullOverSignalViolated) {
-      if (c.isInPark && inLeft && exclusiveLeft) {
-        _ambulancePullOverComplete = true;
-        _ambulanceYieldCompletedLeftSide = true;
-      } else if (c.isInPark && inRight && exclusiveRight) {
-        _ambulancePullOverComplete = true;
-        _ambulanceYieldCompletedLeftSide = false;
-      }
+    if (c.isInPark && inLeft && exclusiveLeft) {
+      _ambulancePullOverComplete = true;
+      _ambulanceYieldCompletedLeftSide = true;
+    } else if (c.isInPark && inRight && exclusiveRight) {
+      _ambulancePullOverComplete = true;
+      _ambulanceYieldCompletedLeftSide = false;
     }
   }
 
@@ -1542,12 +1542,17 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     for (final og in ogs) {
       final cls = (og.class_ ?? '').trim().toLowerCase();
       final name = og.name.trim().toLowerCase();
-      final id = cls == 'cp1' || cls == 'cp2' || cls == 'cp3' || cls == 'cp4'
+      final id = cls == 'cp1' ||
+              cls == 'cp2' ||
+              cls == 'cp3' ||
+              cls == 'cp4' ||
+              cls == 'cpf'
           ? cls
           : ((name == 'cp1' ||
                   name == 'cp2' ||
                   name == 'cp3' ||
-                  name == 'cp4')
+                  name == 'cp4' ||
+                  name == 'cpf')
               ? name
               : '');
       if (id.isEmpty) continue;
@@ -1564,7 +1569,9 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       }
       if (rect == null) continue;
       final limit = timeFromProperty ??
-          ((id == 'cp1' || id == 'cp2') ? _ambCpDefaultTimeLimitSecs : 0.0);
+          ((id == 'cp1' || id == 'cp2')
+              ? _ambCpDefaultTimeLimitSecs
+              : 0.0);
       _ambCheckpoints.add(
         _AmbulanceCheckpoint(id: id, rect: rect, timeLimitSecs: limit),
       );
@@ -1593,8 +1600,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
 
     final cp1 = cp('cp1');
     final cp2 = cp('cp2');
-    final cp3 = cp('cp3');
-    final cp4 = cp('cp4');
+    final cpf = cp('cpf');
     if (cp1 == null) _ambCp1Cleared = true;
     if (cp2 == null) _ambCp2Cleared = true;
 
@@ -1633,23 +1639,15 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       return;
     }
 
-    if (!_ambulancePullOverComplete) {
-      if (cp3 != null && carOverlaps(cp3.rect)) {
-        _failTest(
-          'You failed to pull over before the ambulance — missed the safe zone.',
-        );
-        return;
-      }
-      if (cp4 != null && carOverlaps(cp4.rect) && !_ambCp3Cleared) {
-        _failTest(
-          'You drove past all pull-over opportunities without stopping for the ambulance.',
-        );
-        return;
-      }
-    }
-
-    if (_ambulancePullOverComplete && cp3 != null && carOverlaps(cp3.rect)) {
-      _ambCp3Cleared = true;
+    // After CP2, the player must complete pull-over before crossing CPF (Tiled final gate).
+    if (_ambCp2Cleared &&
+        !_ambulancePullOverComplete &&
+        cpf != null &&
+        carOverlaps(cpf.rect)) {
+      _failTest(
+        'You must park in a safe zone with the correct signal between Checkpoint 2 and the final checkpoint.',
+      );
+      return;
     }
   }
 
@@ -1722,6 +1720,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
 
   String _zoneKindForScenario(String zoneClass) {
     final normalized = zoneClass.trim().toLowerCase();
+    // Tiled often sets object type to Zone_Approach on yellow approach rects (lane-markings-dashed, etc.).
+    if (normalized == 'zone_approach' || normalized.startsWith('zone_approach')) {
+      return 'zone_check';
+    }
     if (normalized == 'zone_check' || normalized.startsWith('zone_check')) {
       return 'zone_check';
     }
@@ -1744,6 +1746,9 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     if (normalized == 'finish_zone') {
       return 'zone_fail_wt';
     }
+    if (normalized == 'wrong_layer' || normalized.startsWith('wrong_layer')) {
+      return 'wrong_layer';
+    }
     return normalized;
   }
 
@@ -1762,7 +1767,9 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
         v == 'zone_speedlimit' ||
         v.startsWith('zone_speedlimit') ||
         v == 'zig_zag' ||
-        v.startsWith('zig_zag');
+        v.startsWith('zig_zag') ||
+        v == 'wrong_layer' ||
+        v.startsWith('wrong_layer');
   }
 
   String _expectedSignalForSummary() {
@@ -1817,9 +1824,55 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     final elapsed = now.difference(startedAt);
     final expected = _expectedSignalForSummary();
     final resolvedFailure = failureMessage ?? _latestFailureMessage;
+    var effectivePassed = passed ?? (_testFinished && resolvedFailure == null);
+    if (_usesPenaltyModeMarkingsDashed &&
+        effectivePassed &&
+        _penalties.isNotEmpty) {
+      effectivePassed = false;
+    }
+    String? failureOut = resolvedFailure;
+    if (!effectivePassed &&
+        failureOut == null &&
+        _usesPenaltyModeMarkingsDashed &&
+        _penalties.isNotEmpty &&
+        _testFinished &&
+        _reachedFinishZone) {
+      failureOut =
+          'You reached the finish but had driving rule penalties — attempt did not pass.';
+    }
+    AmbulanceAttemptSnapshot? ambSnap;
+    if (_isEmergencyAmbulanceScenario) {
+      _AmbulanceCheckpoint? acp(String id) {
+        for (final c in _ambCheckpoints) {
+          if (c.id == id) return c;
+        }
+        return null;
+      }
+
+      final cp1 = acp('cp1');
+      final cp2 = acp('cp2');
+      final cpf = acp('cpf');
+      final deco = _ambulanceDecoration;
+      ambSnap = AmbulanceAttemptSnapshot(
+        mapHasCp1: cp1 != null,
+        mapHasCp2: cp2 != null,
+        mapHasCpf: cpf != null,
+        cp1Cleared: _ambCp1Cleared,
+        cp2Cleared: _ambCp2Cleared,
+        pullOverCompleted: _ambulancePullOverComplete,
+        yieldLeftSide: _ambulanceYieldCompletedLeftSide,
+        elapsedSecs: _ambTotalElapsed,
+        levelTimeoutSecs: _ambLevelTimeoutSecs,
+        cp1TimeLimitSecs: cp1?.timeLimitSecs ?? 0,
+        cp2TimeLimitSecs: cp2?.timeLimitSecs ?? 0,
+        ambulanceRouteCompleted: deco?.routeCompleted ?? false,
+        ambulanceAiState: deco == null ? 'none' : deco.state.name,
+      );
+    }
+
     return DrivingAttemptSummary(
-      passed: passed ?? (_testFinished && resolvedFailure == null),
-      failureMessage: resolvedFailure,
+      passed: effectivePassed,
+      failureMessage: failureOut,
       timeSpent: elapsed,
       expectedTurnSignal: expected,
       waitedAtRoadCrossing: _roadCrossingStopSatisfied,
@@ -1830,6 +1883,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       reachedFinishZone: _reachedFinishZone,
       nonCrashBumpCount: _nonCrashBumpCount,
       score: _computeScore(elapsed),
+      penalties: List<String>.unmodifiable(_penalties),
+      ambulance: ambSnap,
     );
   }
 
@@ -1842,6 +1897,63 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     }
     _lastNonCrashBumpAt = now;
     _nonCrashBumpCount += 1;
+  }
+
+  void _recordPenalty(String description, {bool playWhistle = true}) {
+    if (_testFinished) return;
+    _penalties.add(description);
+    if (playWhistle && _usesPenaltyModeMarkingsDashed) {
+      unawaited(_playRuleBreakWhistle());
+    }
+    onPenaltyRecorded?.call(description);
+  }
+
+  /// [lane-markings-dashed]: the driver must turn the **right** signal on (left off)
+  /// at some point **before leaving** the yellow approach zone. A penalty fires on
+  /// exit if the right signal was never turned on during that visit.
+  void _updateMarkingsDashedYellowZoneRules() {
+    if (!_usesPenaltyModeMarkingsDashed ||
+        _testFinished ||
+        car == null ||
+        turnSignalLeft == null ||
+        turnSignalRight == null) {
+      return;
+    }
+
+    final carRect = Rect.fromCenter(
+      center: Offset(car!.position.x, car!.position.y),
+      width: car!.size.x,
+      height: car!.size.y,
+    );
+    final rightOn = turnSignalRight!.value;
+    final leftOn = turnSignalLeft!.value;
+    final approachOk = rightOn && !leftOn;
+
+    final nowInside = <int>{};
+
+    for (final zone in _drivingZones) {
+      if (_zoneKindForScenario(zone.zoneClass) != 'zone_check') continue;
+
+      if (carRect.overlaps(zone.rect)) {
+        nowInside.add(zone.objectId);
+        if (approachOk) {
+          _signalOkInApproachZone = true;
+          _approachZonesRightSignalGiven.add(zone.objectId);
+        }
+      } else if (_approachZonesCurrentlyInside.contains(zone.objectId)) {
+        // Car just exited this approach zone.
+        if (!_approachZonesRightSignalGiven.contains(zone.objectId)) {
+          _recordPenalty(
+            'Right turn signal was not used before leaving the yellow approach zone.',
+          );
+        }
+        _approachZonesRightSignalGiven.remove(zone.objectId);
+      }
+    }
+
+    _approachZonesCurrentlyInside
+      ..clear()
+      ..addAll(nowInside);
   }
 
   bool _turnSignalsMatchExpected(String expected, bool leftOn, bool rightOn) {
@@ -1882,6 +1994,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   }
 
   void _updateMidTurnSignalValidation() {
+    if (_isEmergencyAmbulanceScenario) return;
     if (_testFinished ||
         car == null ||
         _midTurnZones.isEmpty ||
@@ -1890,6 +2003,15 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       return;
     }
 
+    if (_usesPenaltyModeMarkingsDashed) {
+      _updateMidTurnSignalValidationPenaltyMode();
+    } else {
+      _updateMidTurnSignalValidationFailMode();
+    }
+  }
+
+  /// Junction-style maps: wrong signal while inside mid-turn zone fails the run.
+  void _updateMidTurnSignalValidationFailMode() {
     final leftOn = turnSignalLeft!.value;
     final rightOn = turnSignalRight!.value;
     final center = Offset(car!.position.x, car!.position.y);
@@ -1906,6 +2028,77 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       }
       _midTurnSignalWasCorrect = true;
     }
+  }
+
+  /// True if [center] is inside the mid-turn hit path, with a small padding so boundary
+  /// float errors do not miss a frame the player is clearly in the zone.
+  bool _carCenterInMidTurnZone(_MidTurnZone zone, Offset center) {
+    if (zone.hitPath.contains(center)) return true;
+    final b = zone.hitPath.getBounds();
+    if (b.isEmpty ||
+        !b.left.isFinite ||
+        !b.top.isFinite ||
+        !b.right.isFinite ||
+        !b.bottom.isFinite) {
+      return false;
+    }
+    const pad = 6.0;
+    return Rect.fromLTRB(
+      b.left - pad,
+      b.top - pad,
+      b.right + pad,
+      b.bottom + pad,
+    ).contains(center);
+  }
+
+  /// Dashed markings: the expected signal must be **on the whole time** the car is inside
+  /// the purple mid-turn zone — from entry to exit. The first frame the signal is wrong
+  /// while inside issues one penalty; the penalty flag resets on zone exit.
+  void _updateMidTurnSignalValidationPenaltyMode() {
+    final leftOn = turnSignalLeft!.value;
+    final rightOn = turnSignalRight!.value;
+    final center = Offset(car!.position.x, car!.position.y);
+    final nowInside = <int>{};
+
+    for (final zone in _midTurnZones) {
+      final id = zone.objectId;
+      final inside = _carCenterInMidTurnZone(zone, center);
+
+      if (inside) {
+        nowInside.add(id);
+        _enteredMidTurnZone = true;
+        final signalOk = _turnSignalsMatchExpected(zone.expectedSignal, leftOn, rightOn);
+        if (signalOk) {
+          // Signal is correct this frame — mark success and allow re-penalizing if
+          // they turn the signal off again later in the same visit.
+          _midTurnSignalWasCorrect = true;
+          _midTurnZonesWrongSignalPenaltyIssued.remove(id);
+        } else if (!_midTurnZonesWrongSignalPenaltyIssued.contains(id)) {
+          // Signal is wrong and we haven't penalized yet this spell → penalty.
+          _midTurnZonesWrongSignalPenaltyIssued.add(id);
+          _midTurnSignalWasCorrect = false;
+          _recordPenalty(_midTurnPenaltyDescription(zone, leftOn, rightOn));
+        }
+      } else if (_midTurnZonesCurrentlyInside.contains(id)) {
+        // Car just exited — reset so re-entry gets a clean slate.
+        _midTurnZonesWrongSignalPenaltyIssued.remove(id);
+      }
+    }
+
+    _midTurnZonesCurrentlyInside
+      ..clear()
+      ..addAll(nowInside);
+  }
+
+  String _midTurnPenaltyDescription(_MidTurnZone zone, bool leftOn, bool rightOn) {
+    final exp = zone.expectedSignal;
+    if (exp == 'right') {
+      return 'Right turn signal must be on throughout the purple turn zone.';
+    }
+    if (exp == 'left') {
+      return 'Left turn signal must be on throughout the purple turn zone.';
+    }
+    return _midTurnFailMessage(zone, leftOn, rightOn);
   }
 
   bool _carRectOverlapsJunctionBoxTiles(Rect carWorldRect) {
@@ -1983,6 +2176,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   }
 
   void _updateDrivingRuleZones() {
+    if (_isEmergencyAmbulanceScenario) return;
     if (_testFinished || car == null || _drivingZones.isEmpty) return;
 
     final currentInside = <int>{};
@@ -2035,6 +2229,19 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       _testFinished = true;
       car?.coast();
       onTestPassed?.call();
+      return;
+    }
+
+    if (zoneKind == 'wrong_layer') {
+      _recordPenalty(
+        'Entered the wrong lane / prohibited area.',
+        playWhistle: false,
+      );
+      _failTest(
+        zone.failMessage?.isNotEmpty == true
+            ? zone.failMessage!
+            : 'Wrong turn — you entered the wrong lane.',
+      );
       return;
     }
 
@@ -2682,6 +2889,23 @@ class VehicleSfx {
   /// Call when the driving level restarts (e.g. Retry) so [Car_Start] plays again.
   void resetForLevelRestart() {
     _playedCarStartForLevel = false;
+    // Force the forward/reverse state machine to re-run; otherwise [wantForward]
+    // can stay true across retry and [tick] never calls [_beginForwardEngine] again.
+    _wantForwardEngine = false;
+    _wantReverse = false;
+    _inStartPhase = false;
+    _startElapsed = 0;
+    _stopForwardEngine();
+    unawaited(_stopReverse());
+  }
+
+  /// [AudioPlayer]s are sometimes left [PlayerState.paused] after route overlays or
+  /// focus changes even though we still want loops to play.
+  void resumePausedOutputs() {
+    for (final p in <AudioPlayer?>[_startPlayer, _engine, _reverse]) {
+      if (p == null || p.state != PlayerState.paused) continue;
+      unawaited(p.resume());
+    }
   }
 
   void tick(double dt, Car? car) {

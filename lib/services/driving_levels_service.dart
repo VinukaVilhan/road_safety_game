@@ -275,10 +275,10 @@ class DrivingLevelsService {
     GameLevel(
       id: "signs_warning",
       number: 1,
-      name: "Warning Signs",
+      name: "Warning Signs (under development)",
       description: "Basic warning signs (curves, school zones)",
       difficulty: LevelDifficulty.Easy,
-      isUnlocked: true,
+      isUnlocked: false,
       topic: DrivingTopic.RoadSigns,
       topicLevel: 1,
       unlockRequirementIds: [],
@@ -286,7 +286,7 @@ class DrivingLevelsService {
     GameLevel(
       id: "signs_regulatory",
       number: 2,
-      name: "Regulatory Signs",
+      name: "Regulatory Signs (under development)",
       description: "Speed limits, no parking, traffic rules",
       difficulty: LevelDifficulty.Easy,
       isUnlocked: false,
@@ -297,7 +297,7 @@ class DrivingLevelsService {
     GameLevel(
       id: "signs_priority",
       number: 3,
-      name: "Priority Signs",
+      name: "Priority Signs (under development)",
       description: "Give way, stop, priority road signs",
       difficulty: LevelDifficulty.Medium,
       isUnlocked: false,
@@ -308,7 +308,7 @@ class DrivingLevelsService {
     GameLevel(
       id: "signs_information",
       number: 4,
-      name: "Information Signs",
+      name: "Information Signs (under development)",
       description: "Direction signs, services, and guidance",
       difficulty: LevelDifficulty.Medium,
       isUnlocked: false,
@@ -319,7 +319,7 @@ class DrivingLevelsService {
     GameLevel(
       id: "signs_combined",
       number: 5,
-      name: "Multiple Signs Combined",
+      name: "Multiple Signs Combined (under development)",
       description: "Complex scenarios with multiple sign types",
       difficulty: LevelDifficulty.Hard,
       isUnlocked: false,
@@ -396,10 +396,10 @@ class DrivingLevelsService {
     GameLevel(
       id: "parking_parallel_basics",
       number: 1,
-      name: "Parallel Parking Basics",
+      name: "Parallel Parking Basics (under development)",
       description: "Simple parallel parking in easy spaces",
       difficulty: LevelDifficulty.Easy,
-      isUnlocked: true,
+      isUnlocked: false,
       topic: DrivingTopic.Parking,
       topicLevel: 1,
       unlockRequirementIds: [],
@@ -407,7 +407,7 @@ class DrivingLevelsService {
     GameLevel(
       id: "parking_perpendicular",
       number: 2,
-      name: "Perpendicular Parking",
+      name: "Perpendicular Parking (under development)",
       description: "90-degree angle parking",
       difficulty: LevelDifficulty.Easy,
       isUnlocked: false,
@@ -418,7 +418,7 @@ class DrivingLevelsService {
     GameLevel(
       id: "parking_parallel_advanced",
       number: 3,
-      name: "Parallel Parking Advanced",
+      name: "Parallel Parking Advanced (under development)",
       description: "Tight spaces with traffic",
       difficulty: LevelDifficulty.Medium,
       isUnlocked: false,
@@ -429,7 +429,7 @@ class DrivingLevelsService {
     GameLevel(
       id: "parking_angle",
       number: 4,
-      name: "Angle Parking",
+      name: "Angle Parking (under development)",
       description: "45-degree angle parking",
       difficulty: LevelDifficulty.Medium,
       isUnlocked: false,
@@ -440,7 +440,7 @@ class DrivingLevelsService {
     GameLevel(
       id: "parking_complex",
       number: 5,
-      name: "Complex Parking Scenarios",
+      name: "Complex Parking Scenarios (under development)",
       description: "Slopes, restricted zones, tight spaces",
       difficulty: LevelDifficulty.Hard,
       isUnlocked: false,

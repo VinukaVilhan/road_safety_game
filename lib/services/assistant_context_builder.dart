@@ -36,6 +36,23 @@ Road-crossing (zebra-style) level checklist:
     final fail = (r.failureMessage == null || r.failureMessage!.trim().isEmpty)
         ? ''
         : '\nFailure message: ${r.failureMessage}';
+    final penalties = r.penaltyRecords.isEmpty
+        ? ''
+        : '\nRecorded penalties (with screenshots): ${r.penaltyRecords.map((e) => e.description).join('; ')}';
+    final amb = r.ambulance;
+    final ambBlock = amb == null
+        ? ''
+        : '''
+Ambulance attempt snapshot:
+- Elapsed (in-level timer): ${amb.elapsedSecs.toStringAsFixed(1)} s / level timeout ${amb.levelTimeoutSecs.toStringAsFixed(0)} s
+- CP1 on map: ${amb.mapHasCp1}, cleared: ${amb.cp1Cleared}, time gate: ${amb.cp1TimeLimitSecs.toStringAsFixed(0)} s (0 = none)
+- CP2 on map: ${amb.mapHasCp2}, cleared: ${amb.cp2Cleared}, time gate: ${amb.cp2TimeLimitSecs.toStringAsFixed(0)} s (0 = none)
+- CPF final gate on map: ${amb.mapHasCpf}
+- Pull-over completed: ${amb.pullOverCompleted}
+- Yield side (left=true): ${amb.yieldLeftSide}
+- Ambulance AI state: ${amb.ambulanceAiState}
+- Ambulance route completed: ${amb.ambulanceRouteCompleted}
+''';
     return '''
 Level: ${r.levelName} (id: ${r.levelId})
 Passed: ${r.passed}
@@ -44,7 +61,7 @@ Checklist: ${r.correctMoves} satisfied, ${r.mistakes} missed
 Road-crossing layout: ${r.roadCrossingLayout}
 Time (ms): ${r.timeSpentMs}
 Mistake / feedback lines:
-$details$fail
+$details$fail$penalties$ambBlock
 ''';
   }
 

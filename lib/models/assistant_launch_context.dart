@@ -13,6 +13,7 @@ class AssistantLaunchContext {
     this.includeFullRoadSignCatalog = false,
     this.theoryTestName,
     this.currentMcqQuestion,
+    this.assistantSessionId,
   });
 
   /// Short label for the model, e.g. "Main menu", "Level list".
@@ -38,4 +39,7 @@ class AssistantLaunchContext {
 
   /// Current MCQ while doing a road-sign test.
   final McqQuestion? currentMcqQuestion;
+
+  /// Local transcript key; when null, derived as `general` or from [lastReport].
+  final String? assistantSessionId;
 }

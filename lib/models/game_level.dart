@@ -83,9 +83,9 @@ extension DrivingTopicExtension on DrivingTopic {
       case DrivingTopic.EmergencySituations:
         return 'Handle braking, breakdowns, and emergencies';
       case DrivingTopic.Parking:
-        return 'Under development — parallel, perpendicular, and angle parking';
+        return 'Parallel, perpendicular, and angle parking';
       case DrivingTopic.Practice:
-        return 'Learn what each control does';
+        return 'Steering, pedals, gears, and signals';
     }
   }
   

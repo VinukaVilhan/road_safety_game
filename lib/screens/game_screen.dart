@@ -271,8 +271,7 @@ class GameScreenState extends State<GameScreen> {
                         ],
                       ),
                       
-                      const SizedBox(height: 10),
-                      
+                      const SizedBox(height: 12),
                       // Pedals row
                       PedalsWidget(
                         onAcceleratorDown: _startAccelerating,

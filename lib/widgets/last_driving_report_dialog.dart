@@ -2,7 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../models/assistant_launch_context.dart';
 import '../models/last_driving_report.dart';
+import '../screens/assistant_chat_screen.dart';
+import '../services/instructor_chat_sessions_service.dart';
 import '../services/ui_sound_service.dart';
 
 /// Paper-like colours and typography for the session report (distinct from game HUD).
@@ -121,8 +124,9 @@ class _FailureScreenshotImage extends StatelessWidget {
 
 /// Read-only session report shown from the level card (document-style layout).
 void showLastDrivingReportDialog(BuildContext context, LastDrivingReport report) {
-  final maxH = MediaQuery.sizeOf(context).height * 0.72;
+  final maxH = MediaQuery.sizeOf(context).height * 0.86;
   final maxW = 420.0;
+  final navigator = Navigator.of(context);
 
   showDialog<void>(
     context: context,
@@ -142,6 +146,21 @@ void showLastDrivingReportDialog(BuildContext context, LastDrivingReport report)
                 UiSoundService().playMenuTap();
                 Navigator.of(dialogContext).pop();
               },
+              onAskFromAi: () {
+                UiSoundService().playMenuTap();
+                Navigator.of(dialogContext).pop();
+                navigator.push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AssistantChatScreen(
+                      launchContext: AssistantLaunchContext(
+                        screenTitle: 'Last run report — ${report.levelName}',
+                        lastReport: report,
+                        assistantSessionId: InstructorChatSessionsService.sessionIdForReport(report),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -153,10 +172,12 @@ void showLastDrivingReportDialog(BuildContext context, LastDrivingReport report)
 class _DrivingReportDocument extends StatelessWidget {
   final LastDrivingReport report;
   final VoidCallback onClose;
+  final VoidCallback onAskFromAi;
 
   const _DrivingReportDocument({
     required this.report,
     required this.onClose,
+    required this.onAskFromAi,
   });
 
   String _formatDurationMs(int ms) {
@@ -251,7 +272,7 @@ class _DrivingReportDocument extends StatelessWidget {
                   const Divider(height: 1, thickness: 1, color: _DocTheme.rule),
                   Expanded(
                     child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -332,22 +353,43 @@ class _DrivingReportDocument extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1, thickness: 1, color: _DocTheme.rule),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: onClose,
-                      style: TextButton.styleFrom(
-                        foregroundColor: _DocTheme.ink,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      ),
-                      child: Text(
-                        'Close',
-                        style: _DocTheme.body.copyWith(
-                          fontWeight: FontWeight.w600,
-                          decoration: TextDecoration.underline,
-                          decorationColor: _DocTheme.inkMuted,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Row(
+                      children: [
+                        TextButton.icon(
+                          onPressed: onAskFromAi,
+                          style: TextButton.styleFrom(
+                            foregroundColor: _DocTheme.ink,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: Icon(Icons.smart_toy_outlined, size: 20, color: _DocTheme.marginLine),
+                          label: Text(
+                            'Ask from AI',
+                            style: _DocTheme.body.copyWith(
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                              decorationColor: _DocTheme.inkMuted,
+                            ),
+                          ),
                         ),
-                      ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: onClose,
+                          style: TextButton.styleFrom(
+                            foregroundColor: _DocTheme.ink,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          ),
+                          child: Text(
+                            'Close',
+                            style: _DocTheme.body.copyWith(
+                              fontWeight: FontWeight.w600,
+                              decoration: TextDecoration.underline,
+                              decorationColor: _DocTheme.inkMuted,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

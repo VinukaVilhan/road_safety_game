@@ -117,6 +117,13 @@ Options: ${q.options.join(' | ')}
       sections.add('Current question context:\n${_formatMcq(ctx.currentMcqQuestion!)}');
     }
 
+    if (ctx.lastReport != null && ctx.level == null) {
+      sections.add(
+        'The user is viewing this saved practical session report (read-only document):\n'
+        '${_formatReport(ctx.lastReport!)}',
+      );
+    }
+
     if (ctx.level != null) {
       sections.add(_formatLevel(ctx.level!));
       LastDrivingReport? report = ctx.lastReport;

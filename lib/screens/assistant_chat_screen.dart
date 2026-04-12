@@ -6,13 +6,16 @@ import 'package:flutter/services.dart';
 
 import '../models/assistant_launch_context.dart';
 import '../models/assistant_message.dart';
-import '../services/assistant_chat_history_service.dart';
+import '../models/instructor_chat_session.dart';
+import '../models/last_driving_report.dart';
 import '../services/assistant_context_builder.dart';
 import '../services/assistant_image_prepare.dart';
 import '../services/assistant_service.dart';
+import '../services/instructor_chat_sessions_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../services/ui_sound_service.dart';
+import 'instructor_chats_list_screen.dart';
 
 /// Full-screen chat with the Gemini-backed virtual instructor.
 class AssistantChatScreen extends StatefulWidget {
@@ -31,20 +34,65 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<AssistantMessage> _messages = [];
+
+  late final String _sessionId =
+      InstructorChatSessionsService.instance.resolveSessionId(widget.launchContext);
+
+  /// Report shown in the reference card and sent to the model (from launch or stored session).
+  LastDrivingReport? _effectiveReport;
+  InstructorChatSession? _sessionMeta;
+  String _appBarTitle = 'AI INSTRUCTOR';
+
   bool _bootstrapping = true;
   bool _sending = false;
   String? _banner;
   Uint8List? _pendingImageBytes;
   String _pendingMimeType = 'image/jpeg';
 
-  static const List<String> _quickChips = [
+  static const List<String> _defaultQuickChips = [
     'What are the rules for practical levels?',
     'Explain road signs from this app.',
     'How do I read my last level report?',
     'What does this sign mean? (attach a photo)',
   ];
 
-  static AssistantMessage _welcomeMessage() {
+  static const List<String> _reportQuickChips = [
+    'What do the checklist lines mean for this attempt?',
+    'What should I practise before trying again?',
+    'How does this score relate to passing?',
+  ];
+
+  AssistantLaunchContext _contextForModel() {
+    return AssistantLaunchContext(
+      screenTitle: widget.launchContext.screenTitle,
+      level: widget.launchContext.level,
+      lastReport: _effectiveReport ?? widget.launchContext.lastReport,
+      drivingTopic: widget.launchContext.drivingTopic,
+      levelIdsForReportDigest: widget.launchContext.levelIdsForReportDigest,
+      includeFullRoadSignCatalog: widget.launchContext.includeFullRoadSignCatalog,
+      theoryTestName: widget.launchContext.theoryTestName,
+      currentMcqQuestion: widget.launchContext.currentMcqQuestion,
+      assistantSessionId: _sessionId,
+    );
+  }
+
+  List<String> _quickChipsForLaunch() {
+    if (_effectiveReport != null) return _reportQuickChips;
+    return _defaultQuickChips;
+  }
+
+  AssistantMessage _welcomeForLaunch() {
+    final r = _effectiveReport ?? widget.launchContext.lastReport;
+    if (r != null) {
+      return AssistantMessage(
+        role: AssistantMessageRole.assistant,
+        text:
+            "Hi — you've opened the instructor from your saved run on \"${r.levelName}\". "
+            'The checklist and scores from that attempt are in my context. Ask what anything means '
+            'or how to improve next time. You can still attach a road-sign photo with the image button.',
+        at: DateTime.now(),
+      );
+    }
     return AssistantMessage(
       role: AssistantMessageRole.assistant,
       text:
@@ -56,8 +104,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   }
 
   Future<void> _persistMessages() async {
-    if (_messages.isEmpty) return;
-    await AssistantChatHistoryService.instance.save(_messages);
+    await InstructorChatSessionsService.instance.saveMessages(_sessionId, _messages);
   }
 
   @override
@@ -80,13 +127,26 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       _bootstrapping = true;
       _banner = null;
     });
+    final kind = _sessionId.startsWith('report_')
+        ? InstructorChatSession.kindLevelReport
+        : InstructorChatSession.kindGeneral;
+    await InstructorChatSessionsService.instance.ensureSession(
+      id: _sessionId,
+      kind: kind,
+      report: widget.launchContext.lastReport,
+    );
+    _sessionMeta = await InstructorChatSessionsService.instance.getSession(_sessionId);
+    _effectiveReport = widget.launchContext.lastReport ?? _sessionMeta?.lastReport;
+    _appBarTitle = _sessionMeta?.title ??
+        (_effectiveReport != null ? 'INSTRUCTOR · LAST RUN' : 'AI INSTRUCTOR');
+
     var saved = <AssistantMessage>[];
     try {
-      saved = await AssistantChatHistoryService.instance.load();
+      saved = await InstructorChatSessionsService.instance.loadMessages(_sessionId);
     } catch (_) {}
     try {
-      final augmented = await AssistantContextBuilder.build(widget.launchContext);
-      final geminiHistory = AssistantChatHistoryService.toGeminiHistory(saved);
+      final augmented = await AssistantContextBuilder.build(_contextForModel());
+      final geminiHistory = InstructorChatSessionsService.toGeminiHistory(saved);
       await AssistantService.instance.init(
         augmentedContext: augmented,
         history: geminiHistory,
@@ -107,7 +167,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         });
       } else {
         setState(() {
-          _messages.add(_welcomeMessage());
+          _messages.add(_welcomeForLaunch());
         });
         await _persistMessages();
       }
@@ -125,7 +185,9 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 
   @override
   void dispose() {
-    unawaited(AssistantChatHistoryService.instance.save(List<AssistantMessage>.from(_messages)));
+    unawaited(
+      InstructorChatSessionsService.instance.saveMessages(_sessionId, List<AssistantMessage>.from(_messages)),
+    );
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -144,15 +206,15 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       _bootstrapping = true;
       _banner = null;
     });
-    await AssistantChatHistoryService.instance.clear();
+    await InstructorChatSessionsService.instance.saveMessages(_sessionId, const []);
     try {
-      final augmented = await AssistantContextBuilder.build(widget.launchContext);
+      final augmented = await AssistantContextBuilder.build(_contextForModel());
       await AssistantService.instance.init(augmentedContext: augmented, history: const []);
       if (!mounted) return;
       setState(() {
         _messages.clear();
         if (AssistantService.instance.isReady) {
-          _messages.add(_welcomeMessage());
+          _messages.add(_welcomeForLaunch());
         }
         _banner = AssistantService.instance.isReady
             ? null
@@ -170,6 +232,49 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         _scrollToBottom();
       }
     }
+  }
+
+  Future<void> _renameThisChat() async {
+    if (_bootstrapping || _sending) return;
+    UiSoundService().playMenuTap();
+    final controller = TextEditingController(text: _sessionMeta?.title ?? _appBarTitle);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Rename chat', style: AppFonts.pixelifySans(fontSize: 18, fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 64,
+          decoration: const InputDecoration(
+            labelText: 'Title',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final t = controller.text.trim();
+    controller.dispose();
+    if (t.isEmpty) return;
+    await InstructorChatSessionsService.instance.renameSession(_sessionId, t);
+    final m = await InstructorChatSessionsService.instance.getSession(_sessionId);
+    if (!mounted) return;
+    setState(() {
+      _sessionMeta = m;
+      _appBarTitle = m?.title ?? _appBarTitle;
+    });
+  }
+
+  void _openChatsList() {
+    UiSoundService().playMenuTap();
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const InstructorChatsListScreen()),
+    );
   }
 
   void _scrollToBottom() {
@@ -286,18 +391,24 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         elevation: 0,
         backgroundColor: SwissTheme.backgroundWhite,
         foregroundColor: SwissTheme.textPrimary,
-        title: Text('AI INSTRUCTOR', style: titleStyle),
+        title: Text(
+          _appBarTitle,
+          style: titleStyle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         actions: [
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
+              if (value == 'chats') _openChatsList();
+              if (value == 'rename') unawaited(_renameThisChat());
               if (value == 'clear') _clearHistory();
             },
             itemBuilder: (context) => const [
-              PopupMenuItem<String>(
-                value: 'clear',
-                child: Text('Clear chat history'),
-              ),
+              PopupMenuItem<String>(value: 'chats', child: Text('Your chats')),
+              PopupMenuItem<String>(value: 'rename', child: Text('Rename this chat')),
+              PopupMenuItem<String>(value: 'clear', child: Text('Clear this chat')),
             ],
           ),
         ],
@@ -330,10 +441,22 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             ),
           if (_bootstrapping)
             const LinearProgressIndicator(minHeight: 2, color: SwissTheme.accentBlue),
+          if (_effectiveReport != null) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+              child: _AttachedReportBanner(report: _effectiveReport!),
+            ),
+            const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
+          ],
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                _effectiveReport != null ? 8 : 12,
+                16,
+                12,
+              ),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final m = _messages[index];
@@ -394,7 +517,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
               child: Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: _quickChips
+                children: _quickChipsForLaunch()
                     .map(
                       (c) => ActionChip(
                         label: Text(
@@ -532,6 +655,69 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Minimal “this chat is tied to a saved run” hint (full report stays in the model context).
+class _AttachedReportBanner extends StatelessWidget {
+  const _AttachedReportBanner({required this.report});
+
+  final LastDrivingReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: SwissTheme.backgroundLightGrey,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(Icons.attach_file, size: 22, color: SwissTheme.accentBlue),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Attached to this chat',
+                    style: AppFonts.pixelifySans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: SwissTheme.textSecondary,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    report.levelName,
+                    style: AppFonts.pixelifySans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: SwissTheme.textPrimary,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Practical session report',
+                    style: AppFonts.pixelifySans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: SwissTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

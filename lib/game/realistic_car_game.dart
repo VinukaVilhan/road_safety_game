@@ -34,6 +34,52 @@ double? _readNumericPropertyAsDouble(CustomProperties properties, String name) {
   }
 }
 
+void _collectObjectGroupsRecursive(List<Layer> layers, List<ObjectGroup> out) {
+  for (final layer in layers) {
+    if (layer is ObjectGroup) {
+      out.add(layer);
+    } else if (layer is Group) {
+      _collectObjectGroupsRecursive(layer.layers, out);
+    }
+  }
+}
+
+/// Axis-aligned bounds of a Tiled rectangle object, including [TiledObject.rotation] in degrees.
+Rect _aabbForTiledObjectRect(TiledObject obj) {
+  if (obj.rotation == 0 || obj.rotation % 360 == 0) {
+    return Rect.fromLTWH(obj.x, obj.y, obj.width, obj.height);
+  }
+  final rad = obj.rotation * math.pi / 180;
+  final c = math.cos(rad);
+  final s = math.sin(rad);
+  double rx(double lx, double ly) => lx * c - ly * s;
+  double ry(double lx, double ly) => lx * s + ly * c;
+  final corners = <Offset>[
+    Offset(rx(0, 0) + obj.x, ry(0, 0) + obj.y),
+    Offset(rx(obj.width, 0) + obj.x, ry(obj.width, 0) + obj.y),
+    Offset(rx(obj.width, obj.height) + obj.x, ry(obj.width, obj.height) + obj.y),
+    Offset(rx(0, obj.height) + obj.x, ry(0, obj.height) + obj.y),
+  ];
+  var minX = corners.first.dx;
+  var maxX = corners.first.dx;
+  var minY = corners.first.dy;
+  var maxY = corners.first.dy;
+  for (final p in corners.skip(1)) {
+    minX = math.min(minX, p.dx);
+    maxX = math.max(maxX, p.dx);
+    minY = math.min(minY, p.dy);
+    maxY = math.max(maxY, p.dy);
+  }
+  return Rect.fromLTRB(minX, minY, maxX, maxY);
+}
+
+Rect? _checkpointRectFromTiledObject(TiledObject obj) {
+  if (!obj.visible) return null;
+  if (obj.isPoint || obj.isPolygon || obj.isPolyline || obj.isEllipse) return null;
+  if (obj.width <= 0 || obj.height <= 0) return null;
+  return _aabbForTiledObjectRect(obj);
+}
+
 class _DrivingZone {
   final int objectId;
   final Rect rect;
@@ -51,6 +97,20 @@ class _DrivingZone {
     this.failMessage,
     this.maxSpeed,
     this.waitTimeSec,
+  });
+}
+
+/// [emergency_ambulance]: CP1–CP4 from Tiled (`class` CP1…CP4, including under [Group]).
+class _AmbulanceCheckpoint {
+  final String id;
+  final Rect rect;
+  /// Seconds allowed to reach this checkpoint after the previous timed one; 0 = no limit.
+  final double timeLimitSecs;
+
+  const _AmbulanceCheckpoint({
+    required this.id,
+    required this.rect,
+    this.timeLimitSecs = 0,
   });
 }
 
@@ -427,6 +487,26 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   /// Win trigger after the ambulance has cleared its route ([Success_Layer]).
   final List<Rect> _successLayerRects = [];
 
+  /// [emergency_ambulance]: correct indicator was broken while in a safe zone before parking.
+  bool _ambulancePullOverSignalViolated = false;
+
+  /// [emergency_ambulance]: parked once in the matching zone with correct signal (then signal may go off).
+  bool _ambulancePullOverComplete = false;
+
+  /// After [_ambulancePullOverComplete]: `true` = left safe zone, `false` = right.
+  bool? _ambulanceYieldCompletedLeftSide;
+
+  /// [emergency_ambulance]: CP1–CP4 rects from TMX (including nested under [Group]).
+  final List<_AmbulanceCheckpoint> _ambCheckpoints = [];
+  bool _ambCp1Cleared = false;
+  bool _ambCp2Cleared = false;
+  bool _ambCp3Cleared = false;
+  double _ambCpElapsed = 0.0;
+  double _ambTotalElapsed = 0.0;
+
+  static const double _ambCpDefaultTimeLimitSecs = 40.0;
+  static const double _ambLevelTimeoutSecs = 180.0;
+
   /// Preferred camera zoom level (> 1 = zoom in, < 1 = zoom out).
   /// Final zoom is clamped so camera never shows outside-map void.
   static const double preferredCameraZoom = 1.4;
@@ -587,6 +667,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   
   Future<void> _setupRoad() async {
     if (_roadInitialized) return;
+
+    _ambCheckpoints.clear();
     
     // Remove existing tiles if any
     for (var tile in roadTiles) {
@@ -892,6 +974,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
         'success=${_successLayerRects.length}',
       );
     }
+    _loadAmbulanceCheckpointsFromTiledMap(tiledMap.tileMap.map);
     await _setupAmbulanceDecorationFromTmx(objectGroupLayers);
     
     _roadInitialized = true;
@@ -1085,6 +1168,14 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     roadCrossingCountdown.value = null;
     roadCrossingApproachHint.value = null;
     _junctionBoxStoppedElapsedSec = 0.0;
+    _ambulancePullOverSignalViolated = false;
+    _ambulancePullOverComplete = false;
+    _ambulanceYieldCompletedLeftSide = null;
+    _ambCp1Cleared = false;
+    _ambCp2Cleared = false;
+    _ambCp3Cleared = false;
+    _ambCpElapsed = 0.0;
+    _ambTotalElapsed = 0.0;
     _ambulanceDecoration?.removeFromParent();
     _ambulanceDecoration = null;
     _ambulanceSirenRevealDone = false;
@@ -1133,6 +1224,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _updateMidTurnSignalValidation();
     _updateDrivingRuleZones();
     _updateJunctionBoxStopFail(dt);
+    _updateAmbulancePullOverState();
+    _updateAmbulanceCheckpoints(dt);
     _updateAmbulanceLevelSuccess();
   }
 
@@ -1305,8 +1398,9 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     return false;
   }
 
-  /// Ambulance tailgate → pass when the player is slow, signals, and (if zones exist)
-  /// is in **Park** with the car overlapping the pull-over rect for that signal side.
+  /// Ambulance may pass when the player is slow enough and has yielded: either a valid
+  /// pull-over (see [_updateAmbulancePullOverState]) with signal optional after parking,
+  /// or—if the map has no safe zones—the legacy rule (correct signal on only).
   bool playerYieldedForAmbulance() {
     final c = car;
     if (c == null || turnSignalLeft == null || turnSignalRight == null) {
@@ -1316,12 +1410,22 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     final leftOn = turnSignalLeft!.value;
     final rightOn = turnSignalRight!.value;
     final hasSignal = (leftOn && !rightOn) || (rightOn && !leftOn);
-    if (!hasSignal) return false;
     final hasZones =
         _safeZoneLeftRects.isNotEmpty || _safeZoneRightRects.isNotEmpty;
     if (!hasZones) {
-      return true;
+      return hasSignal;
     }
+    if (_ambulancePullOverComplete) {
+      if (!c.isInPark) return false;
+      if (_ambulanceYieldCompletedLeftSide == true) {
+        return _isCarAabbInsideAnyRect(_safeZoneLeftRects);
+      }
+      if (_ambulanceYieldCompletedLeftSide == false) {
+        return _isCarAabbInsideAnyRect(_safeZoneRightRects);
+      }
+      return false;
+    }
+    if (!hasSignal) return false;
     if (!c.isInPark) return false;
     if (leftOn && !rightOn) {
       return _isCarAabbInsideAnyRect(_safeZoneLeftRects);
@@ -1332,8 +1436,225 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     return false;
   }
 
-  /// When the ambulance overlaps [Success_Layer], pass if the player is still yielded
-  /// (parked, correct signal, car in matching safe zone).
+  /// Tracks safe-zone pull-over: indicator must stay correct until Park in the matching zone;
+  /// after that the player may cancel signals. Cleared on full exit from both zones (retry).
+  void _updateAmbulancePullOverState() {
+    if (scenarioId != 'emergency_ambulance' || _testFinished || car == null) {
+      return;
+    }
+    final hasZones =
+        _safeZoneLeftRects.isNotEmpty || _safeZoneRightRects.isNotEmpty;
+    if (!hasZones) return;
+    if (turnSignalLeft == null || turnSignalRight == null) return;
+
+    final c = car!;
+    final carRect = Rect.fromCenter(
+      center: Offset(c.position.x, c.position.y),
+      width: c.size.x,
+      height: c.size.y,
+    );
+    var inLeft = false;
+    for (final r in _safeZoneLeftRects) {
+      if (carRect.overlaps(r)) {
+        inLeft = true;
+        break;
+      }
+    }
+    var inRight = false;
+    for (final r in _safeZoneRightRects) {
+      if (carRect.overlaps(r)) {
+        inRight = true;
+        break;
+      }
+    }
+    final leftOn = turnSignalLeft!.value;
+    final rightOn = turnSignalRight!.value;
+    final exclusiveLeft = leftOn && !rightOn;
+    final exclusiveRight = rightOn && !leftOn;
+
+    // Fail fast: Park in a safe zone without a valid matching indicator / after a signal violation.
+    if (!_ambulancePullOverComplete &&
+        c.isInPark &&
+        (inLeft || inRight)) {
+      if (!leftOn && !rightOn) {
+        _failTest('You must signal before pulling over for an emergency vehicle.');
+        return;
+      }
+      if (leftOn && rightOn) {
+        _failTest('Use only one turn signal when pulling over.');
+        return;
+      }
+      if (inLeft && !leftOn) {
+        _failTest('You pulled over in the wrong lane — use the correct indicator.');
+        return;
+      }
+      if (inRight && !rightOn) {
+        _failTest('You pulled over in the wrong lane — use the correct indicator.');
+        return;
+      }
+      if (_ambulancePullOverSignalViolated) {
+        _failTest('You pulled over in the wrong lane — use the correct indicator.');
+        return;
+      }
+    }
+
+    if (!inLeft && !inRight) {
+      if (!_ambulancePullOverComplete) {
+        _ambulancePullOverSignalViolated = false;
+      }
+    }
+
+    if (_ambulancePullOverComplete) {
+      final wantLeft = _ambulanceYieldCompletedLeftSide == true;
+      final inOkZone = wantLeft ? inLeft : inRight;
+      if (!c.isInPark || !inOkZone) {
+        _ambulancePullOverComplete = false;
+        _ambulanceYieldCompletedLeftSide = null;
+      } else {
+        return;
+      }
+    }
+
+    if (!_ambulancePullOverSignalViolated) {
+      if (inLeft && !exclusiveLeft) {
+        _ambulancePullOverSignalViolated = true;
+      }
+      if (inRight && !exclusiveRight) {
+        _ambulancePullOverSignalViolated = true;
+      }
+    }
+
+    if (!_ambulancePullOverSignalViolated) {
+      if (c.isInPark && inLeft && exclusiveLeft) {
+        _ambulancePullOverComplete = true;
+        _ambulanceYieldCompletedLeftSide = true;
+      } else if (c.isInPark && inRight && exclusiveRight) {
+        _ambulancePullOverComplete = true;
+        _ambulanceYieldCompletedLeftSide = false;
+      }
+    }
+  }
+
+  void _loadAmbulanceCheckpointsFromTiledMap(TiledMap map) {
+    _ambCheckpoints.clear();
+    final ogs = <ObjectGroup>[];
+    _collectObjectGroupsRecursive(map.layers, ogs);
+    for (final og in ogs) {
+      final cls = (og.class_ ?? '').trim().toLowerCase();
+      final name = og.name.trim().toLowerCase();
+      final id = cls == 'cp1' || cls == 'cp2' || cls == 'cp3' || cls == 'cp4'
+          ? cls
+          : ((name == 'cp1' ||
+                  name == 'cp2' ||
+                  name == 'cp3' ||
+                  name == 'cp4')
+              ? name
+              : '');
+      if (id.isEmpty) continue;
+      Rect? rect;
+      double? timeFromProperty;
+      for (final obj in og.objects) {
+        final r = _checkpointRectFromTiledObject(obj);
+        if (r != null) {
+          rect = r;
+          timeFromProperty = _readNumericPropertyAsDouble(obj.properties, 'timeLimitSecs') ??
+              _readNumericPropertyAsDouble(og.properties, 'timeLimitSecs');
+          break;
+        }
+      }
+      if (rect == null) continue;
+      final limit = timeFromProperty ??
+          ((id == 'cp1' || id == 'cp2') ? _ambCpDefaultTimeLimitSecs : 0.0);
+      _ambCheckpoints.add(
+        _AmbulanceCheckpoint(id: id, rect: rect, timeLimitSecs: limit),
+      );
+    }
+    _ambCheckpoints.sort((a, b) => a.id.compareTo(b.id));
+    if (_ambCheckpoints.isNotEmpty) {
+      debugPrint(
+        '[DEBUG] _setupRoad() - Ambulance CP checkpoints: '
+        '${_ambCheckpoints.map((c) => '${c.id}(${c.timeLimitSecs}s)').join(', ')}',
+      );
+    }
+  }
+
+  void _updateAmbulanceCheckpoints(double dt) {
+    if (scenarioId != 'emergency_ambulance' || _testFinished || car == null) {
+      return;
+    }
+    if (_ambCheckpoints.isEmpty) return;
+
+    _AmbulanceCheckpoint? cp(String id) {
+      for (final c in _ambCheckpoints) {
+        if (c.id == id) return c;
+      }
+      return null;
+    }
+
+    final cp1 = cp('cp1');
+    final cp2 = cp('cp2');
+    final cp3 = cp('cp3');
+    final cp4 = cp('cp4');
+    if (cp1 == null) _ambCp1Cleared = true;
+    if (cp2 == null) _ambCp2Cleared = true;
+
+    _ambTotalElapsed += dt;
+    if (_ambTotalElapsed > _ambLevelTimeoutSecs) {
+      _failTest('Time limit exceeded.');
+      return;
+    }
+
+    final carRect = Rect.fromCenter(
+      center: Offset(car!.position.x, car!.position.y),
+      width: car!.size.x,
+      height: car!.size.y,
+    );
+    bool carOverlaps(Rect r) => carRect.overlaps(r);
+
+    if (!_ambCp1Cleared && cp1 != null) {
+      _ambCpElapsed += dt;
+      if (carOverlaps(cp1.rect)) {
+        _ambCp1Cleared = true;
+        _ambCpElapsed = 0;
+      } else if (cp1.timeLimitSecs > 0 && _ambCpElapsed > cp1.timeLimitSecs) {
+        _failTest('Too slow — missed Checkpoint 1.');
+      }
+      return;
+    }
+
+    if (!_ambCp2Cleared && cp2 != null) {
+      _ambCpElapsed += dt;
+      if (carOverlaps(cp2.rect)) {
+        _ambCp2Cleared = true;
+        _ambCpElapsed = 0;
+      } else if (cp2.timeLimitSecs > 0 && _ambCpElapsed > cp2.timeLimitSecs) {
+        _failTest('Too slow — missed Checkpoint 2.');
+      }
+      return;
+    }
+
+    if (!_ambulancePullOverComplete) {
+      if (cp3 != null && carOverlaps(cp3.rect)) {
+        _failTest(
+          'You failed to pull over before the ambulance — missed the safe zone.',
+        );
+        return;
+      }
+      if (cp4 != null && carOverlaps(cp4.rect) && !_ambCp3Cleared) {
+        _failTest(
+          'You drove past all pull-over opportunities without stopping for the ambulance.',
+        );
+        return;
+      }
+    }
+
+    if (_ambulancePullOverComplete && cp3 != null && carOverlaps(cp3.rect)) {
+      _ambCp3Cleared = true;
+    }
+  }
+
+  /// When the ambulance overlaps [Success_Layer], pass if the player has yielded correctly
+  /// (pull-over completed; may have cancelled indicators after parking).
   void _updateAmbulanceLevelSuccess() {
     if (_testFinished || car == null) return;
     if (scenarioId != 'emergency_ambulance') return;
@@ -1579,12 +1900,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       if (!zone.hitPath.contains(center)) continue;
       _enteredMidTurnZone = true;
       if (!_turnSignalsMatchExpected(zone.expectedSignal, leftOn, rightOn)) {
-        _testFinished = true;
-        car?.coast();
         final message = _midTurnFailMessage(zone, leftOn, rightOn);
-        _latestFailureMessage = message;
-        unawaited(_playRuleBreakWhistle());
-        onTestFailed?.call(message);
+        _failTest(message);
         return;
       }
       _midTurnSignalWasCorrect = true;
@@ -1617,13 +1934,17 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     return false;
   }
 
-  void _failStoppedInJunctionBox(String message) {
+  void _failTest(String message) {
     if (_testFinished) return;
     _testFinished = true;
     car?.coast();
     _latestFailureMessage = message;
     unawaited(_playRuleBreakWhistle());
     onTestFailed?.call(message);
+  }
+
+  void _failStoppedInJunctionBox(String message) {
+    _failTest(message);
   }
 
   /// UK-style junction box: stopping or parking on hatched tiles fails the level.
@@ -1718,27 +2039,17 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     }
 
     if (zoneKind == 'zone_fail_wt' || zoneKind == 'zone_fail_it') {
-      _testFinished = true;
-      car?.coast();
       final defaultMessage = zoneKind == 'zone_fail_it'
           ? 'Driving in oncoming traffic!'
           : 'Wrong Turn!';
       final message =
           zone.failMessage?.isNotEmpty == true ? zone.failMessage! : defaultMessage;
-      _latestFailureMessage = message;
-      unawaited(_playRuleBreakWhistle());
-      onTestFailed?.call(message);
+      _failTest(message);
     }
   }
 
   void _failFromHighSpeedWallCrash() {
-    if (_testFinished) return;
-    _testFinished = true;
-    car?.coast();
-    const message = 'High-speed crash! You hit an obstacle too fast.';
-    _latestFailureMessage = message;
-    unawaited(_playRuleBreakWhistle());
-    onTestFailed?.call(message);
+    _failTest('High-speed crash! You hit an obstacle too fast.');
   }
   
   @override

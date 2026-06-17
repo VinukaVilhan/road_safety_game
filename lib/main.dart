@@ -5,7 +5,7 @@ import 'config/cloudinary_config.dart';
 import 'firebase_options.dart';
 import 'data/local/local_db.dart';
 import 'data/sync/sync_service.dart';
-import 'screens/auth_wrapper.dart';
+import 'screens/auth/auth_wrapper.dart';
 import 'theme/swiss_theme.dart';
 import 'services/content/image_preloader.dart';
 import 'services/audio/music_service.dart';

@@ -1,4 +1,4 @@
-part of 'realistic_car_game.dart';
+part of '../realistic_car_game.dart';
 
 /// Named attachment points on the player car sprite in **local** coordinates.
 /// With [Car.anchor] center and default angle, `y = 0` is the **front** of the car.

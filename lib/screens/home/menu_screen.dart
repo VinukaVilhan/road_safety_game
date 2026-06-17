@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 
-import '../services/progress/level_progress_service.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
-import '../data/repositories/progress_repository.dart';
-import '../services/content/image_preloader.dart';
-import '../services/audio/ui_sound_service.dart';
-import 'test_selection_screen.dart';
+import '../../services/progress/level_progress_service.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
+import '../../data/repositories/progress_repository.dart';
+import '../../services/content/image_preloader.dart';
+import '../../services/audio/ui_sound_service.dart';
+import '../theory/test_selection_screen.dart';
 import 'profile_screen.dart';
-import 'driving_tutorial_screen.dart';
-import '../models/assistant_launch_context.dart';
-import '../widgets/assistant_button.dart';
+import '../driving/driving_tutorial_screen.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../widgets/assistant_button.dart';
 
 class MenuScreen extends StatefulWidget {
   @override

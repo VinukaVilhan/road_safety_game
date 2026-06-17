@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../models/assistant_launch_context.dart';
-import '../screens/assistant_chat_screen.dart';
+import '../models/assistant/assistant_launch_context.dart';
+import '../screens/assistant/assistant_chat_screen.dart';
 import '../services/audio/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';

@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
 import 'sign_up_screen.dart';
 
 class AuthScreen extends StatefulWidget {

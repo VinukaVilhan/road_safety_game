@@ -14,8 +14,8 @@ import '../../data/sync/sync_outbox.dart';
 import '../../data/sync/sync_service.dart';
 import '../../game/realistic_car_game.dart';
 import '../../config/cloudinary_config.dart';
-import '../../models/game_level.dart';
-import '../../models/last_driving_report.dart';
+import '../../models/driving/game_level.dart';
+import '../../models/driving/last_driving_report.dart';
 import '../integration/cloudinary_upload_service.dart';
 
 /// Persists the latest finished practical driving attempt per level (for level cards).

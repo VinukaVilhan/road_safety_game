@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
-import '../data/repositories/progress_repository.dart';
-import '../models/assistant_launch_context.dart';
-import '../models/road_signs_curriculum.dart';
-import '../services/content/road_signs_curriculum_service.dart';
-import '../services/audio/ui_sound_service.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
-import '../widgets/assistant_button.dart';
-import 'level_selection_screen.dart' show HatchingPainter;
+import '../../data/repositories/progress_repository.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../models/theory/road_signs_curriculum.dart';
+import '../../services/content/road_signs_curriculum_service.dart';
+import '../../services/audio/ui_sound_service.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
+import '../../widgets/assistant_button.dart';
+import '../driving/level_selection_screen.dart' show HatchingPainter;
 import 'road_signs_learn_screen.dart';
 import 'roadsign_mcq_screen.dart';
-import 'traffic_color_lights_intro_screen.dart';
-import 'traffic_color_lights_minigame_screen.dart';
+import '../minigames/traffic_color_lights_intro_screen.dart';
+import '../minigames/traffic_color_lights_minigame_screen.dart';
 
 /// Lists curriculum modules (study, MCQ, …) for a warning group or a control subgroup.
 class RoadSignsModulesScreen extends StatefulWidget {

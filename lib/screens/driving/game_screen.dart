@@ -6,19 +6,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flame/game.dart';
-import '../models/game_level.dart';
-import '../game/realistic_car_game.dart';
-import '../utils/app_fonts.dart';
-import '../widgets/gearbox.dart';
-import '../widgets/steeringWheel.dart';
-import '../widgets/pedals.dart';
-import '../widgets/radio_tuner_sheet.dart';
-import '../services/progress/level_progress_service.dart';
-import '../services/progress/last_driving_report_service.dart';
-import '../services/progress/odometer_service.dart';
-import '../services/audio/ui_sound_service.dart';
-import '../models/assistant_launch_context.dart';
-import '../widgets/assistant_button.dart';
+import '../../models/driving/game_level.dart';
+import '../../game/realistic_car_game.dart';
+import '../../utils/app_fonts.dart';
+import '../../widgets/gearbox.dart';
+import '../../widgets/steeringWheel.dart';
+import '../../widgets/pedals.dart';
+import '../../widgets/radio_tuner_sheet.dart';
+import '../../services/progress/level_progress_service.dart';
+import '../../services/progress/last_driving_report_service.dart';
+import '../../services/progress/odometer_service.dart';
+import '../../services/audio/ui_sound_service.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../widgets/assistant_button.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLevel level;
@@ -124,7 +124,7 @@ class GameScreenState extends State<GameScreen> {
             'Practice stopping before the crossing and yielding correctly.\n\n'
             '- Enter the yellow approach zone at a safe speed.\n'
             '- Slow to 60 or below in the yellow approach zone.\n'
-            '- Stop fully in gear inside the grey zig-zag zone (no Park, no overtaking).\n'
+            '- Stop fully in gear inside the grey zig-zag zone (no Park).\n'
             '- Do not drive past the stop line into the red wrong-turn zone — that fails the level.';
       default:
         return null;

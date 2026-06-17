@@ -1,4 +1,4 @@
-import 'last_driving_report.dart';
+import '../driving/last_driving_report.dart';
 
 /// Metadata for one persisted instructor transcript (see [InstructorChatSessionsService]).
 class InstructorChatSession {

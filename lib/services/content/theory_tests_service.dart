@@ -1,4 +1,4 @@
-import '../../models/theory_test.dart';
+import '../../models/theory/theory_test.dart';
 
 /// Service to provide MCQ theory tests organized by category
 class TheoryTestsService {

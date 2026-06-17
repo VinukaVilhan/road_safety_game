@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
-import '../data/repositories/progress_repository.dart';
-import '../models/theory_test.dart';
-import '../models/mcq_question.dart';
-import '../services/content/road_signs_questions_service.dart';
-import '../services/audio/ui_sound_service.dart';
-import '../models/assistant_launch_context.dart';
-import '../widgets/assistant_button.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
+import '../../data/repositories/progress_repository.dart';
+import '../../models/theory/theory_test.dart';
+import '../../models/theory/mcq_question.dart';
+import '../../services/content/road_signs_questions_service.dart';
+import '../../services/audio/ui_sound_service.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../widgets/assistant_button.dart';
 
 /// Full-screen MCQ test for road signs. Shows one question at a time with optional image.
 class RoadSignMcqScreen extends StatefulWidget {

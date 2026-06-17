@@ -1,7 +1,7 @@
-import '../../models/assistant_launch_context.dart';
-import '../../models/game_level.dart';
-import '../../models/last_driving_report.dart';
-import '../../models/mcq_question.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../models/driving/game_level.dart';
+import '../../models/driving/last_driving_report.dart';
+import '../../models/theory/mcq_question.dart';
 import '../progress/last_driving_report_service.dart';
 import '../content/road_signs_questions_service.dart';
 
@@ -24,7 +24,7 @@ Standard driving-level checklist (junction / turn maps):
   static const String roadCrossingRubric = '''
 Road-crossing (zebra-style) level checklist:
 1) Approach control — Enter the yellow speed-limit zone at **60 or below** (TMX `max_speed` / `speed_limit`).
-2) Zebra crossing — Full stop **in gear** (no Park) and completed wait within the grey zig-zag zone; no overtaking (gears 3–4) in zig-zags.
+2) Zebra crossing — Full stop **in gear** (no Park) within **one** grey zig-zag on your side; do not touch **both** zig-zags on the same row.
 3) Correct route — Cross straight via the zebra; entering the red Zone_Fail_WT (wrong-turn / past stop line) immediately fails the level.
 4) Route completion — Reach the green finish zone.
 5) Obstacle discipline — Avoid minor non-crash contacts; a clean run requires zero.

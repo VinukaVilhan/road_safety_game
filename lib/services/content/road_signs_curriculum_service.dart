@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
-import '../../models/road_signs_curriculum.dart';
-import '../../models/theory_test.dart';
+import '../../models/theory/road_signs_curriculum.dart';
+import '../../models/theory/theory_test.dart';
 
 /// Loads hierarchical road-signs curriculum from bundled JSON.
 class RoadSignsCurriculumService {

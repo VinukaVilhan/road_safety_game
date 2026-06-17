@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-import '../data/repositories/progress_repository.dart';
-import '../models/assistant_launch_context.dart';
-import '../models/road_signs_curriculum.dart';
-import '../services/audio/ui_sound_service.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
-import '../widgets/assistant_button.dart';
+import '../../data/repositories/progress_repository.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../models/theory/road_signs_curriculum.dart';
+import '../../services/audio/ui_sound_service.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
+import '../../widgets/assistant_button.dart';
 
 /// Document-style introduction to the three-color traffic signal ([signal_light.png]).
 class TrafficColorLightsIntroScreen extends StatelessWidget {

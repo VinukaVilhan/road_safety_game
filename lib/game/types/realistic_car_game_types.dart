@@ -1,4 +1,4 @@
-part of 'realistic_car_game.dart';
+part of '../realistic_car_game.dart';
 
 class _DrivingZone {
   final int objectId;

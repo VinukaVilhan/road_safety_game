@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../models/assistant_launch_context.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
-import '../widgets/assistant_button.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
+import '../../widgets/assistant_button.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});

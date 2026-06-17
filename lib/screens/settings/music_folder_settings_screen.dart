@@ -3,12 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../models/assistant_launch_context.dart';
-import '../services/audio/music_service.dart';
-import '../services/audio/ui_sound_service.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
-import '../widgets/assistant_button.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../services/audio/music_service.dart';
+import '../../services/audio/ui_sound_service.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
+import '../../widgets/assistant_button.dart';
 
 /// Set the folder scanned for local music (Menu → Options → Music folder).
 class MusicFolderSettingsScreen extends StatefulWidget {

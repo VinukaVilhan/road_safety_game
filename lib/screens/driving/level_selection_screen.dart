@@ -2,18 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
-import '../models/game_level.dart';
-import '../services/content/driving_levels_service.dart';
-import '../services/progress/level_progress_service.dart';
-import '../services/audio/ui_sound_service.dart';
-import '../services/progress/last_driving_report_service.dart';
-import '../widgets/last_driving_report_dialog.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
+import '../../models/driving/game_level.dart';
+import '../../services/content/driving_levels_service.dart';
+import '../../services/progress/level_progress_service.dart';
+import '../../services/audio/ui_sound_service.dart';
+import '../../services/progress/last_driving_report_service.dart';
+import '../../widgets/last_driving_report_dialog.dart';
 import 'game_screen.dart';
 import 'emergency_vehicles_category_screen.dart';
-import '../models/assistant_launch_context.dart';
-import '../widgets/assistant_button.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../widgets/assistant_button.dart';
 
 class LevelSelectionScreen extends StatefulWidget {
   final DrivingTopic? topic; // Optional: if null, shows all levels (backward compatible)

@@ -4,10 +4,10 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../models/assistant_launch_context.dart';
-import '../../models/assistant_message.dart';
-import '../../models/instructor_chat_session.dart';
-import '../../models/last_driving_report.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../models/assistant/assistant_message.dart';
+import '../../models/assistant/instructor_chat_session.dart';
+import '../../models/driving/last_driving_report.dart';
 import 'assistant_chat_history_service.dart';
 
 /// Multi-thread local storage for instructor chats (general + per level report).

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../models/assistant_launch_context.dart';
-import '../services/audio/ui_sound_service.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
-import '../widgets/assistant_button.dart';
-import 'driving_topic_selection_screen.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../services/audio/ui_sound_service.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
+import '../../widgets/assistant_button.dart';
+import '../driving/driving_topic_selection_screen.dart';
 import 'theory_test_categories_screen.dart';
 
 class TestSelectionScreen extends StatefulWidget {

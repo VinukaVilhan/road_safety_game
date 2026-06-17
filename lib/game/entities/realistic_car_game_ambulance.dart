@@ -1,4 +1,4 @@
-part of 'realistic_car_game.dart';
+part of '../realistic_car_game.dart';
 
 /// Waypoint catch-up, heading-aligned tailgate behind the player, then Tiled route for pass.
 class Ambulance extends SpriteComponent {

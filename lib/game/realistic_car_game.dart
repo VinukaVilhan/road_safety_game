@@ -12,12 +12,12 @@ import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import '../models/last_driving_report.dart';
-part 'realistic_car_game_types.dart';
-part 'realistic_car_game_map_helpers.dart';
-part 'realistic_car_game_car.dart';
-part 'realistic_car_game_ambulance.dart';
-part 'realistic_car_game_vehicle_sfx.dart';
+import '../models/driving/last_driving_report.dart';
+part 'types/realistic_car_game_types.dart';
+part 'map/realistic_car_game_map_helpers.dart';
+part 'entities/realistic_car_game_car.dart';
+part 'entities/realistic_car_game_ambulance.dart';
+part 'audio/realistic_car_game_vehicle_sfx.dart';
 
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   Car? car; // Make car accessible - nullable to handle initialization order
@@ -104,6 +104,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   final ValueNotifier<bool>? turnSignalRight;
 
   final List<_DrivingZone> _drivingZones = [];
+  /// Pairs of zig-zag zone object ids on the same horizontal row (road-crossing).
+  List<List<int>> _zigZagRowZoneIds = [];
   final Set<int> _zonesInsidePreviousFrame = <int>{};
   final List<_MidTurnZone> _midTurnZones = [];
   int _lastCompletedStepId = 0;
@@ -495,6 +497,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       }
     }
     print('[DEBUG] _setupRoad() - Loaded driving zones: ${_drivingZones.length}');
+    _rebuildZigZagRows();
 
     // Junction_Validation_Layer / Zone_MidTurn + expected_signal (polygon or rect).
     _midTurnZones.clear();
@@ -853,6 +856,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _updateAmbulanceSirenTrigger();
     _updateRoadCrossingApproachHint();
     _updateRoadCrossingParkCountdown(dt);
+    _updateZigZagStraddleFail();
     _updateZigZagRoadCrossingRules();
     _enforceSpeedLimitZones();
     _updateMarkingsDashedYellowZoneRules();
@@ -948,16 +952,12 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     return false;
   }
 
-  /// Blocks gear changes while any wheel is in a zig-zag (road-crossing maps).
+  /// Blocks Park while any wheel is in a zig-zag (road-crossing maps).
   String? roadCrossingGearBlockReason(String gearLabel) {
     if (!_isRoadCrossingMap() || _testFinished || car == null) return null;
     if (!_anyWheelInZigZagZone()) return null;
     if (gearLabel == 'P') {
       return 'No parking in the zig-zag zone — stay in gear and stop fully.';
-    }
-    final gearNum = int.tryParse(gearLabel);
-    if (gearNum != null && gearNum >= 3) {
-      return 'No overtaking in the zig-zag zone — use 1st or 2nd gear only.';
     }
     return null;
   }
@@ -967,10 +967,61 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     if (!_anyWheelInZigZagZone()) return;
     if (car!.isInPark) {
       _failTest('No parking in the zig-zag zone.');
-      return;
     }
-    if (car!.currentGear >= 3) {
-      _failTest('No overtaking in the zig-zag zone — use a lower gear.');
+  }
+
+  /// Zig-zag rects on the same horizontal row share overlapping Y ranges (Tiled pairs).
+  bool _zigZagRowOverlapsY(Rect a, Rect b) {
+    return a.top < b.bottom && b.top < a.bottom;
+  }
+
+  void _rebuildZigZagRows() {
+    _zigZagRowZoneIds = [];
+    if (!_isRoadCrossingMap()) return;
+
+    final zigZags = _drivingZones
+        .where((z) => _zoneKindForScenario(z.zoneClass) == 'zig_zag')
+        .toList();
+    final used = <int>{};
+    for (var i = 0; i < zigZags.length; i++) {
+      final a = zigZags[i];
+      if (used.contains(a.objectId)) continue;
+      final rowIds = <int>[a.objectId];
+      used.add(a.objectId);
+      for (var j = i + 1; j < zigZags.length; j++) {
+        final b = zigZags[j];
+        if (used.contains(b.objectId)) continue;
+        if (_zigZagRowOverlapsY(a.rect, b.rect)) {
+          rowIds.add(b.objectId);
+          used.add(b.objectId);
+        }
+      }
+      if (rowIds.length >= 2) {
+        _zigZagRowZoneIds.add(rowIds);
+      }
+    }
+    print('[DEBUG] _setupRoad() - Zig-zag horizontal rows: $_zigZagRowZoneIds');
+  }
+
+  /// Fail when any wheel touches two zig-zag zones on the same row (straddling lanes).
+  void _updateZigZagStraddleFail() {
+    if (!_isRoadCrossingMap() || _testFinished || car == null) return;
+    if (_zigZagRowZoneIds.isEmpty) return;
+
+    final byId = {for (final z in _drivingZones) z.objectId: z};
+    for (final rowIds in _zigZagRowZoneIds) {
+      var touched = 0;
+      for (final id in rowIds) {
+        final zone = byId[id];
+        if (zone == null) continue;
+        if (_anyWheelInsideRect(zone.rect)) touched++;
+      }
+      if (touched >= 2) {
+        _failTest(
+          'Stay in one lane — do not touch both zig-zag zones on the same side of the crossing.',
+        );
+        return;
+      }
     }
   }
 

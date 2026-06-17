@@ -6,17 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../models/assistant_launch_context.dart';
-import '../models/assistant_message.dart';
-import '../models/instructor_chat_session.dart';
-import '../models/last_driving_report.dart';
-import '../services/assistant/assistant_context_builder.dart';
-import '../services/assistant/assistant_image_prepare.dart';
-import '../services/assistant/assistant_service.dart';
-import '../services/assistant/instructor_chat_sessions_service.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
-import '../services/audio/ui_sound_service.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../models/assistant/assistant_message.dart';
+import '../../models/assistant/instructor_chat_session.dart';
+import '../../models/driving/last_driving_report.dart';
+import '../../services/assistant/assistant_context_builder.dart';
+import '../../services/assistant/assistant_image_prepare.dart';
+import '../../services/assistant/assistant_service.dart';
+import '../../services/assistant/instructor_chat_sessions_service.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
+import '../../services/audio/ui_sound_service.dart';
 import 'instructor_chats_list_screen.dart';
 
 /// Full-screen chat with the Gemini-backed virtual instructor.

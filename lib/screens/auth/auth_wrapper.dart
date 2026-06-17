@@ -1,9 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
 import 'auth_screen.dart';
-import 'menu_screen.dart';
+import '../home/menu_screen.dart';
 
 /// Decides whether to show [AuthScreen] or [MenuScreen] based on auth state.
 class AuthWrapper extends StatelessWidget {

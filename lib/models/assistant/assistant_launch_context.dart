@@ -1,6 +1,6 @@
-import 'game_level.dart';
-import 'last_driving_report.dart';
-import 'mcq_question.dart';
+import '../driving/game_level.dart';
+import '../driving/last_driving_report.dart';
+import '../theory/mcq_question.dart';
 
 /// Optional context passed when opening the assistant so answers stay relevant.
 class AssistantLaunchContext {

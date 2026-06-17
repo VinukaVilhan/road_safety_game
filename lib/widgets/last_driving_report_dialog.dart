@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../models/assistant_launch_context.dart';
-import '../models/last_driving_report.dart';
-import '../screens/assistant_chat_screen.dart';
+import '../models/assistant/assistant_launch_context.dart';
+import '../models/driving/last_driving_report.dart';
+import '../screens/assistant/assistant_chat_screen.dart';
 import '../services/assistant/instructor_chat_sessions_service.dart';
 import '../services/audio/ui_sound_service.dart';
 

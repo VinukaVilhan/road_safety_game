@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../models/assistant_launch_context.dart';
-import '../models/game_level.dart';
-import '../services/content/driving_levels_service.dart';
-import '../services/audio/ui_sound_service.dart';
-import '../theme/swiss_theme.dart';
-import '../utils/app_fonts.dart';
-import '../widgets/assistant_button.dart';
+import '../../models/assistant/assistant_launch_context.dart';
+import '../../models/driving/game_level.dart';
+import '../../services/content/driving_levels_service.dart';
+import '../../services/audio/ui_sound_service.dart';
+import '../../theme/swiss_theme.dart';
+import '../../utils/app_fonts.dart';
+import '../../widgets/assistant_button.dart';
 import 'level_selection_screen.dart';
 
 /// First step under Junctions: pick T-junctions (left/right), cross junctions, or roundabouts.

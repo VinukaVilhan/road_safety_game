@@ -15,12 +15,17 @@ import 'package:flutter/services.dart';
 import '../models/driving/last_driving_report.dart';
 part 'types/realistic_car_game_types.dart';
 part 'map/realistic_car_game_map_helpers.dart';
+part 'map/realistic_car_game_ambulance_map_loaders.dart';
+part 'scenarios/realistic_car_game_ambulance_decoration.dart';
+part 'scenarios/realistic_car_game_emergency_ambulance.dart';
 part 'entities/realistic_car_game_car.dart';
 part 'entities/realistic_car_game_ambulance.dart';
 part 'audio/realistic_car_game_vehicle_sfx.dart';
 
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   Car? car; // Make car accessible - nullable to handle initialization order
+
+  // --- Ambulance decoration (maps with Ambulance_Spawn / Ambulance_Route) ---
   /// Ambulance AI from `Ambulance_Spawn` + [Ambulance_Route] on [ambulance-reaction.tmx].
   Ambulance? _ambulanceDecoration;
   /// When the map has [Siren_Layer] rects, the ambulance is hidden until the car overlaps one.
@@ -28,12 +33,14 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   ({Vector2 position, double angle, double sirenVolume})? _ambulanceSpawnConfig;
   bool _ambulanceSirenRevealDone = false;
   AudioPlayer? _ambulanceSirenPlayer;
-
-  /// Looping `assets/audio/Ambulance_Sound.m4a` while the ambulance is active (spawn or Siren_Layer reveal).
   static const String _ambulanceLoopAsset = 'Ambulance_Sound.m4a';
-
-  /// Applied after TMX `sirenVolume` / spawn config so the siren sits under engine/UI in the mix.
   static const double _ambulanceSirenMasterGain = 0.05;
+  final List<Vector2> _ambulanceRouteWaypoints = [];
+  final List<Rect> _safeZoneLeftRects = [];
+  final List<Rect> _safeZoneRightRects = [];
+  final List<Rect> _successLayerRects = [];
+
+  // --- Emergency ambulance scenario (`scenarioId: emergency_ambulance`) ---
 
   /// One-shot police whistle when a driving rule is broken (see [_playRuleBreakWhistle]).
   static const String _ruleBreakWhistleAsset = 'Whistle_Sound.m4a';
@@ -49,23 +56,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   final List<Rect> _wallRects = [];
   Vector2? _spawnPoint;
 
-  /// World waypoints from Tiled `Ambulance_Route` / class `AmbulanceRoute` (polygon or polyline).
-  final List<Vector2> _ambulanceRouteWaypoints = [];
-
-  /// [ambulance-reaction.tmx]: pull over zones (`Safe_Zone_Left` / `Safe_Zone_Right`).
-  final List<Rect> _safeZoneLeftRects = [];
-  final List<Rect> _safeZoneRightRects = [];
-  /// Win trigger after the ambulance has cleared its route ([Success_Layer]).
-  final List<Rect> _successLayerRects = [];
-
-  /// [emergency_ambulance]: parked in matching safe zone with correct signal; ambulance may pass
-  /// once true (then signal may be cancelled while staying in P in that zone).
   bool _ambulancePullOverComplete = false;
-
-  /// Locked when stage 1 completes: `true` = left safe zone sequence, `false` = right.
   bool? _ambulanceYieldCompletedLeftSide;
-
-  /// [emergency_ambulance]: CP1–CP4 and CPF rects from TMX (including nested under [Group]).
   final List<_AmbulanceCheckpoint> _ambCheckpoints = [];
   bool _ambCp1Cleared = false;
   bool _ambCp2Cleared = false;
@@ -106,6 +98,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   final List<_DrivingZone> _drivingZones = [];
   /// Pairs of zig-zag zone object ids on the same horizontal row (road-crossing).
   List<List<int>> _zigZagRowZoneIds = [];
+  final List<Rect> _spawnSignRects = [];
+  String _spawnSignAssetPath = 'assets/roadsigns/pedestrian_crossing.png';
   final Set<int> _zonesInsidePreviousFrame = <int>{};
   final List<_MidTurnZone> _midTurnZones = [];
   int _lastCompletedStepId = 0;
@@ -132,6 +126,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   final ValueNotifier<int?> roadCrossingCountdown = ValueNotifier<int?>(null);
   final ValueNotifier<String?> roadCrossingApproachHint =
       ValueNotifier<String?>(null);
+  final ValueNotifier<bool> pedestrianCrossingSignVisible =
+      ValueNotifier<bool>(false);
   bool _roadCrossingStopActive = false;
   bool _roadCrossingStopSatisfied = false;
   int? _roadCrossingStopStepId;
@@ -161,9 +157,6 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     this.turnSignalLeft,
     this.turnSignalRight,
   });
-
-  bool get _isEmergencyAmbulanceScenario =>
-      (scenarioId ?? '').trim().toLowerCase() == 'emergency_ambulance';
 
   /// Dashed lane markings level: non-fatal penalties + Wrong_Layer fail.
   /// Never mixed with the ambulance scenario (even if the TMX was copied from a dashed map).
@@ -498,6 +491,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     }
     print('[DEBUG] _setupRoad() - Loaded driving zones: ${_drivingZones.length}');
     _rebuildZigZagRows();
+    _loadSpawnSignZones(tiledMap);
 
     // Junction_Validation_Layer / Zone_MidTurn + expected_signal (polygon or rect).
     _midTurnZones.clear();
@@ -523,37 +517,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     }
     print('[DEBUG] _setupRoad() - MidTurn validation zones: ${_midTurnZones.length}');
 
-    // Ambulance tether route: layer name `Ambulance_Route` and/or class `AmbulanceRoute`.
-    _ambulanceRouteWaypoints.clear();
-    for (final layer in tiledMap.tileMap.map.layers.whereType<ObjectGroup>()) {
-      final nameNorm = layer.name.replaceAll(' ', '_').toLowerCase();
-      final classNorm = (layer.class_ ?? '').replaceAll(' ', '_').toLowerCase();
-      if (nameNorm != 'ambulance_route' && classNorm != 'ambulanceroute') {
-        continue;
-      }
-      for (final obj in layer.objects) {
-        if (!obj.visible) continue;
-        final origin = Vector2(obj.x, obj.y);
-        if (obj.isPolygon && obj.polygon.isNotEmpty) {
-          final pts = obj.polygon;
-          // Closed polygon in TMX: first 5 vertices trace the forward drive path.
-          final n = pts.length >= 5 ? 5 : pts.length;
-          for (var i = 0; i < n; i++) {
-            final p = pts[i];
-            _ambulanceRouteWaypoints.add(origin + Vector2(p.x, p.y));
-          }
-        } else if (obj.isPolyline && obj.polyline.isNotEmpty) {
-          for (final p in obj.polyline) {
-            _ambulanceRouteWaypoints.add(origin + Vector2(p.x, p.y));
-          }
-        }
-      }
-    }
-    if (_ambulanceRouteWaypoints.isNotEmpty) {
-      print(
-        '[DEBUG] _setupRoad() - Ambulance route waypoints: ${_ambulanceRouteWaypoints.length}',
-      );
-    }
+    _loadAmbulanceRouteFromTmx(tiledMap);
 
     // Create a single static map instance at (0, 0) covering the entire world
     final mapInstance = await TiledComponent.load(
@@ -568,29 +532,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     roadTiles.add(mapInstance);
     world.add(mapInstance);  // Add to world, not game
 
-    _collectSirenTriggerRects(objectGroupLayers, _sirenTriggerRects);
-    if (_sirenTriggerRects.isNotEmpty) {
-      print(
-        '[DEBUG] _setupRoad() - Siren_Layer: ${_sirenTriggerRects.length} trigger rect(s); '
-        'ambulance will appear when the player enters one.',
-      );
-    }
-    _collectEmergencyScenarioRects(
-      objectGroupLayers,
-      outLeft: _safeZoneLeftRects,
-      outRight: _safeZoneRightRects,
-      outSuccess: _successLayerRects,
-    );
-    if (_safeZoneLeftRects.isNotEmpty ||
-        _safeZoneRightRects.isNotEmpty ||
-        _successLayerRects.isNotEmpty) {
-      print(
-        '[DEBUG] _setupRoad() - Emergency pull-over / success rects: '
-        'left=${_safeZoneLeftRects.length} right=${_safeZoneRightRects.length} '
-        'success=${_successLayerRects.length}',
-      );
-    }
-    _loadAmbulanceCheckpointsFromTiledMap(tiledMap.tileMap.map);
+    _loadAmbulanceDecorationMapData(objectGroupLayers);
+    _loadEmergencyAmbulanceCheckpointsFromTiledMap(tiledMap.tileMap.map);
     await _setupAmbulanceDecorationFromTmx(objectGroupLayers);
     
     _roadInitialized = true;
@@ -627,101 +570,6 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     camera.viewfinder.zoom = finalZoom;
   }
 
-  /// Draws an ambulance at `Ambulance_Spawn`. If the map has [Siren_Layer] trigger rects,
-  /// the sprite (and siren) appear only after the player's car overlaps a trigger.
-  Future<void> _setupAmbulanceDecorationFromTmx(
-    Iterable<ObjectGroup> objectLayers,
-  ) async {
-    _ambulanceSpawnConfig = _readAmbulanceSpawnConfig(objectLayers);
-    if (_ambulanceSpawnConfig == null) return;
-
-    if (_sirenTriggerRects.isNotEmpty) {
-      print(
-        '[DEBUG] _setupRoad() - Ambulance spawn deferred until Siren_Layer overlap '
-        'at ${_ambulanceSpawnConfig!.position}',
-      );
-      return;
-    }
-
-    // No siren triggers: place once [car] exists (see [_maybePlaceDeferredAmbulanceDecoration]).
-    print(
-      '[DEBUG] _setupRoad() - Ambulance will spawn when player car is ready '
-      '(no Siren_Layer).',
-    );
-  }
-
-  Future<void> _placeAmbulanceDecoration(
-    ({Vector2 position, double angle, double sirenVolume}) cfg,
-  ) async {
-    if (_ambulanceDecoration != null) return;
-    final player = car;
-    if (player == null) return;
-
-    final sprite = await _loadAmbulanceSpriteForLevel();
-
-    _ambulanceDecoration?.removeFromParent();
-    final deco = Ambulance(
-      sprite: sprite,
-      player: player,
-      routeWaypoints: List<Vector2>.from(_ambulanceRouteWaypoints),
-      position: cfg.position,
-      size: Vector2(52, 78),
-      anchor: Anchor.center,
-      angle: cfg.angle,
-      priority: 0,
-    );
-    if (_ambulanceRouteWaypoints.isNotEmpty) {
-      final toFirstWP = _ambulanceRouteWaypoints.first - cfg.position;
-      if (toFirstWP.length > 1) {
-        deco.angle = math.atan2(toFirstWP.y, toFirstWP.x) + math.pi / 2;
-      }
-    }
-    _ambulanceDecoration = deco;
-    world.add(deco);
-    print(
-      '[DEBUG] Ambulance AI at ${cfg.position} '
-      'angle=${deco.angle * 180 / math.pi}° waypoints=${_ambulanceRouteWaypoints.length}',
-    );
-    await _startAmbulanceSiren(cfg.sirenVolume);
-  }
-
-  /// [_setupRoad] runs before [car] exists on first load; place ambulance when both are ready.
-  void _maybePlaceDeferredAmbulanceDecoration() {
-    if (_testFinished) return;
-    if (_ambulanceDecoration != null || _ambulanceSpawnConfig == null || car == null) {
-      return;
-    }
-    if (_sirenTriggerRects.isNotEmpty) return;
-    unawaited(_placeAmbulanceDecoration(_ambulanceSpawnConfig!));
-  }
-
-  Future<void> _stopAmbulanceSiren() async {
-    final p = _ambulanceSirenPlayer;
-    _ambulanceSirenPlayer = null;
-    if (p == null) return;
-    try {
-      await p.stop();
-    } catch (_) {}
-    try {
-      await p.dispose();
-    } catch (_) {}
-  }
-
-  Future<void> _startAmbulanceSiren(double volume) async {
-    await _stopAmbulanceSiren();
-    try {
-      final v = (volume * _ambulanceSirenMasterGain).clamp(0.0, 1.0);
-      _ambulanceSirenPlayer = await FlameAudio.loop(
-        _ambulanceLoopAsset,
-        volume: v,
-      );
-    } catch (e, st) {
-      debugPrint(
-        'Ambulance loop failed (add assets/audio/$_ambulanceLoopAsset): $e\n$st',
-      );
-    }
-  }
-
   Future<void> _playRuleBreakWhistle() async {
     try {
       await FlameAudio.play(
@@ -733,31 +581,6 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
         'Rule-break whistle failed (add assets/audio/$_ruleBreakWhistleAsset): $e\n$st',
       );
     }
-  }
-
-  void _updateAmbulanceSirenTrigger() {
-    if (_testFinished || car == null) return;
-    if (_ambulanceSirenRevealDone) return;
-    if (_ambulanceSpawnConfig == null || _sirenTriggerRects.isEmpty) return;
-    if (_ambulanceDecoration != null) return;
-
-    final carRect = Rect.fromCenter(
-      center: Offset(car!.position.x, car!.position.y),
-      width: car!.size.x,
-      height: car!.size.y,
-    );
-    for (final r in _sirenTriggerRects) {
-      if (!carRect.overlaps(r)) continue;
-      _ambulanceSirenRevealDone = true;
-      unawaited(_revealAmbulanceAndPlaySiren(_ambulanceSpawnConfig!));
-      break;
-    }
-  }
-
-  Future<void> _revealAmbulanceAndPlaySiren(
-    ({Vector2 position, double angle, double sirenVolume}) cfg,
-  ) async {
-    await _placeAmbulanceDecoration(cfg);
   }
 
   /// Reset scenario after failure so the player can retry without replacing [GameScreen]
@@ -788,20 +611,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _activeRoadCrossingWaitZone = null;
     roadCrossingCountdown.value = null;
     roadCrossingApproachHint.value = null;
+    pedestrianCrossingSignVisible.value = false;
     _junctionBoxStoppedElapsedSec = 0.0;
-    _ambulancePullOverComplete = false;
-    _ambulanceYieldCompletedLeftSide = null;
-    _ambCp1Cleared = false;
-    _ambCp2Cleared = false;
-    _ambCpElapsed = 0.0;
-    _ambTotalElapsed = 0.0;
-    _ambulanceDecoration?.removeFromParent();
-    _ambulanceDecoration = null;
-    _ambulanceSirenRevealDone = false;
-    unawaited(_stopAmbulanceSiren());
-    if (_ambulanceSpawnConfig != null && _sirenTriggerRects.isEmpty) {
-      unawaited(_placeAmbulanceDecoration(_ambulanceSpawnConfig!));
-    }
+    _resetEmergencyAmbulanceForRestart();
+    _resetAmbulanceDecorationForRestart();
     final c = car;
     if (c == null) return;
     c.velocity = Vector2.zero();
@@ -827,10 +640,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   /// while state still expects them to run. Safe to call from UI when dialogs close.
   void resumeAmbientAudioAfterUiOverlay() {
     _vehicleSfx.resumePausedOutputs();
-    final siren = _ambulanceSirenPlayer;
-    if (siren != null && siren.state == PlayerState.paused) {
-      unawaited(siren.resume());
-    }
+    _resumeAmbulanceSirenIfPaused();
   }
 
   @override
@@ -842,9 +652,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   @override
   void onRemove() {
     _vehicleSfx.dispose();
-    _ambulanceDecoration?.removeFromParent();
-    _ambulanceDecoration = null;
-    unawaited(_stopAmbulanceSiren());
+    _disposeAmbulanceDecoration();
     super.onRemove();
   }
 
@@ -855,6 +663,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _maybePlaceDeferredAmbulanceDecoration();
     _updateAmbulanceSirenTrigger();
     _updateRoadCrossingApproachHint();
+    _updateSpawnSignReveal();
     _updateRoadCrossingParkCountdown(dt);
     _updateZigZagStraddleFail();
     _updateZigZagRoadCrossingRules();
@@ -943,6 +752,73 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     final asset = mapAsset?.toLowerCase() ?? '';
     return asset.contains('road-crossing');
   }
+
+  bool _isSpawnSignLabel(String raw) {
+    final v = raw.trim().toLowerCase().replaceAll(' ', '_');
+    return v == 'spawn_sign' || v.contains('spawn_sign');
+  }
+
+  void _loadSpawnSignZones(TiledComponent tiledMap) {
+    _spawnSignRects.clear();
+    _spawnSignAssetPath = 'assets/roadsigns/pedestrian_crossing.png';
+
+    for (final layer in tiledMap.tileMap.map.layers.whereType<ObjectGroup>()) {
+      final layerClassLower = (layer.class_ ?? '').trim().toLowerCase();
+      final layerNameLower = layer.name.trim().toLowerCase();
+      final layerIsSpawnSign = _isSpawnSignLabel(layerClassLower) ||
+          _isSpawnSignLabel(layerNameLower);
+
+      final customAsset = layer.properties.getValue<String>('sign_asset') ??
+          layer.properties.getValue<String>('sign_image');
+      if (customAsset != null && customAsset.trim().isNotEmpty) {
+        _spawnSignAssetPath = customAsset.trim();
+      }
+
+      for (final obj in layer.objects) {
+        if (!obj.visible || obj.width <= 0 || obj.height <= 0) continue;
+        if (obj.isPoint || obj.isPolygon || obj.isPolyline || obj.isEllipse) {
+          continue;
+        }
+        if (obj.rotation != 0) continue;
+
+        final objectClass = obj.class_.trim().toLowerCase();
+        final objectType = obj.type.trim().toLowerCase();
+        final objectName = obj.name.trim().toLowerCase();
+        if (!layerIsSpawnSign &&
+            !_isSpawnSignLabel(objectClass) &&
+            !_isSpawnSignLabel(objectType) &&
+            !_isSpawnSignLabel(objectName)) {
+          continue;
+        }
+
+        _spawnSignRects.add(
+          Rect.fromLTWH(obj.x, obj.y, obj.width, obj.height),
+        );
+      }
+    }
+    print(
+      '[DEBUG] _setupRoad() - Spawn sign rects: ${_spawnSignRects.length} asset=$_spawnSignAssetPath',
+    );
+  }
+
+  void _updateSpawnSignReveal() {
+    if (_testFinished || car == null || _spawnSignRects.isEmpty) return;
+    if (pedestrianCrossingSignVisible.value) return;
+
+    final carRect = Rect.fromCenter(
+      center: Offset(car!.position.x, car!.position.y),
+      width: car!.size.x,
+      height: car!.size.y,
+    );
+    for (final rect in _spawnSignRects) {
+      if (!carRect.overlaps(rect)) continue;
+      pedestrianCrossingSignVisible.value = true;
+      return;
+    }
+  }
+
+  /// Asset path for the HUD sign shown after [Spawn_Sign] zone entry.
+  String get spawnSignAssetPath => _spawnSignAssetPath;
 
   bool _anyWheelInZigZagZone() {
     for (final zone in _drivingZones) {
@@ -1127,232 +1003,6 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     return carRect.overlaps(zone.rect);
   }
 
-  /// True when the car's axis-aligned bounds overlap any of [rects] (ignores rotation).
-  bool _isCarAabbInsideAnyRect(Iterable<Rect> rects) {
-    final c = car;
-    if (c == null) return false;
-    final carRect = Rect.fromCenter(
-      center: Offset(c.position.x, c.position.y),
-      width: c.size.x,
-      height: c.size.y,
-    );
-    for (final r in rects) {
-      if (carRect.overlaps(r)) return true;
-    }
-    return false;
-  }
-
-  /// Ambulance may pass when the player is slow enough and has yielded: either a valid
-  /// pull-over (see [_updateAmbulancePullOverState]) with signal optional after parking,
-  /// or—if the map has no safe zones—the legacy rule (correct signal on only).
-  bool playerYieldedForAmbulance() {
-    final c = car;
-    if (c == null || turnSignalLeft == null || turnSignalRight == null) {
-      return false;
-    }
-    if (c.velocity.length >= 10) return false;
-    final hasZones =
-        _safeZoneLeftRects.isNotEmpty || _safeZoneRightRects.isNotEmpty;
-    if (!hasZones) {
-      final leftOn = turnSignalLeft!.value;
-      final rightOn = turnSignalRight!.value;
-      return (leftOn && !rightOn) || (rightOn && !leftOn);
-    }
-    // With safe zones, pull-over must be completed ([_updateAmbulancePullOverState]).
-    if (!_ambulancePullOverComplete) return false;
-    if (!c.isInPark) return false;
-    if (_ambulanceYieldCompletedLeftSide == true) {
-      return _isCarAabbInsideAnyRect(_safeZoneLeftRects);
-    }
-    if (_ambulanceYieldCompletedLeftSide == false) {
-      return _isCarAabbInsideAnyRect(_safeZoneRightRects);
-    }
-    return false;
-  }
-
-  /// Safe-zone pull-over: complete when Park + overlap matching zone + correct exclusive
-  /// signal. After that, signal may be cancelled while the car stays in P in that zone.
-  void _updateAmbulancePullOverState() {
-    if (scenarioId != 'emergency_ambulance' || _testFinished || car == null) {
-      return;
-    }
-    final hasZones =
-        _safeZoneLeftRects.isNotEmpty || _safeZoneRightRects.isNotEmpty;
-    if (!hasZones) return;
-    if (turnSignalLeft == null || turnSignalRight == null) return;
-
-    final c = car!;
-    final carRect = Rect.fromCenter(
-      center: Offset(c.position.x, c.position.y),
-      width: c.size.x,
-      height: c.size.y,
-    );
-    final inLeft = _safeZoneLeftRects.any((r) => carRect.overlaps(r));
-    final inRight = _safeZoneRightRects.any((r) => carRect.overlaps(r));
-    final exclusiveLeft = turnSignalLeft!.value && !turnSignalRight!.value;
-    final exclusiveRight = turnSignalRight!.value && !turnSignalLeft!.value;
-
-    if (_ambulancePullOverComplete) {
-      final wantLeft = _ambulanceYieldCompletedLeftSide == true;
-      final inOkZone = wantLeft ? inLeft : inRight;
-      if (!c.isInPark || !inOkZone) {
-        _ambulancePullOverComplete = false;
-        _ambulanceYieldCompletedLeftSide = null;
-      }
-      return;
-    }
-
-    if (c.isInPark && inLeft && exclusiveLeft) {
-      _ambulancePullOverComplete = true;
-      _ambulanceYieldCompletedLeftSide = true;
-    } else if (c.isInPark && inRight && exclusiveRight) {
-      _ambulancePullOverComplete = true;
-      _ambulanceYieldCompletedLeftSide = false;
-    }
-  }
-
-  void _loadAmbulanceCheckpointsFromTiledMap(TiledMap map) {
-    _ambCheckpoints.clear();
-    final ogs = <ObjectGroup>[];
-    _collectObjectGroupsRecursive(map.layers, ogs);
-    for (final og in ogs) {
-      final cls = (og.class_ ?? '').trim().toLowerCase();
-      final name = og.name.trim().toLowerCase();
-      final id = cls == 'cp1' ||
-              cls == 'cp2' ||
-              cls == 'cp3' ||
-              cls == 'cp4' ||
-              cls == 'cpf'
-          ? cls
-          : ((name == 'cp1' ||
-                  name == 'cp2' ||
-                  name == 'cp3' ||
-                  name == 'cp4' ||
-                  name == 'cpf')
-              ? name
-              : '');
-      if (id.isEmpty) continue;
-      Rect? rect;
-      double? timeFromProperty;
-      for (final obj in og.objects) {
-        final r = _checkpointRectFromTiledObject(obj);
-        if (r != null) {
-          rect = r;
-          timeFromProperty = _readNumericPropertyAsDouble(obj.properties, 'timeLimitSecs') ??
-              _readNumericPropertyAsDouble(og.properties, 'timeLimitSecs');
-          break;
-        }
-      }
-      if (rect == null) continue;
-      final limit = timeFromProperty ??
-          ((id == 'cp1' || id == 'cp2')
-              ? _ambCpDefaultTimeLimitSecs
-              : 0.0);
-      _ambCheckpoints.add(
-        _AmbulanceCheckpoint(id: id, rect: rect, timeLimitSecs: limit),
-      );
-    }
-    _ambCheckpoints.sort((a, b) => a.id.compareTo(b.id));
-    if (_ambCheckpoints.isNotEmpty) {
-      debugPrint(
-        '[DEBUG] _setupRoad() - Ambulance CP checkpoints: '
-        '${_ambCheckpoints.map((c) => '${c.id}(${c.timeLimitSecs}s)').join(', ')}',
-      );
-    }
-  }
-
-  void _updateAmbulanceCheckpoints(double dt) {
-    if (scenarioId != 'emergency_ambulance' || _testFinished || car == null) {
-      return;
-    }
-    if (_ambCheckpoints.isEmpty) return;
-
-    _AmbulanceCheckpoint? cp(String id) {
-      for (final c in _ambCheckpoints) {
-        if (c.id == id) return c;
-      }
-      return null;
-    }
-
-    final cp1 = cp('cp1');
-    final cp2 = cp('cp2');
-    final cpf = cp('cpf');
-    if (cp1 == null) _ambCp1Cleared = true;
-    if (cp2 == null) _ambCp2Cleared = true;
-
-    _ambTotalElapsed += dt;
-    if (_ambTotalElapsed > _ambLevelTimeoutSecs) {
-      _failTest('Time limit exceeded.');
-      return;
-    }
-
-    final carRect = Rect.fromCenter(
-      center: Offset(car!.position.x, car!.position.y),
-      width: car!.size.x,
-      height: car!.size.y,
-    );
-    bool carOverlaps(Rect r) => carRect.overlaps(r);
-
-    if (!_ambCp1Cleared && cp1 != null) {
-      _ambCpElapsed += dt;
-      if (carOverlaps(cp1.rect)) {
-        _ambCp1Cleared = true;
-        _ambCpElapsed = 0;
-      } else if (cp1.timeLimitSecs > 0 && _ambCpElapsed > cp1.timeLimitSecs) {
-        _failTest('Too slow — missed Checkpoint 1.');
-      }
-      return;
-    }
-
-    if (!_ambCp2Cleared && cp2 != null) {
-      _ambCpElapsed += dt;
-      if (carOverlaps(cp2.rect)) {
-        _ambCp2Cleared = true;
-        _ambCpElapsed = 0;
-      } else if (cp2.timeLimitSecs > 0 && _ambCpElapsed > cp2.timeLimitSecs) {
-        _failTest('Too slow — missed Checkpoint 2.');
-      }
-      return;
-    }
-
-    // After CP2, the player must complete pull-over before crossing CPF (Tiled final gate).
-    if (_ambCp2Cleared &&
-        !_ambulancePullOverComplete &&
-        cpf != null &&
-        carOverlaps(cpf.rect)) {
-      _failTest(
-        'You must park in a safe zone with the correct signal between Checkpoint 2 and the final checkpoint.',
-      );
-      return;
-    }
-  }
-
-  /// When the ambulance overlaps [Success_Layer], pass if the player has yielded correctly
-  /// (pull-over completed; may have cancelled indicators after parking).
-  void _updateAmbulanceLevelSuccess() {
-    if (_testFinished || car == null) return;
-    if (scenarioId != 'emergency_ambulance') return;
-    if (_successLayerRects.isEmpty) return;
-    final deco = _ambulanceDecoration;
-    if (deco == null) return;
-
-    if (!playerYieldedForAmbulance()) return;
-
-    final ambRect = Rect.fromCenter(
-      center: Offset(deco.position.x, deco.position.y),
-      width: deco.size.x,
-      height: deco.size.y,
-    );
-    for (final r in _successLayerRects) {
-      if (!ambRect.overlaps(r)) continue;
-      _reachedFinishZone = true;
-      _testFinished = true;
-      car!.coast();
-      onTestPassed?.call();
-      return;
-    }
-  }
-
   void _enforceSpeedLimitZones() {
     if (_testFinished || car == null || _drivingZones.isEmpty) return;
 
@@ -1524,35 +1174,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       failureOut =
           'You reached the finish but had driving rule penalties — attempt did not pass.';
     }
-    AmbulanceAttemptSnapshot? ambSnap;
-    if (_isEmergencyAmbulanceScenario) {
-      _AmbulanceCheckpoint? acp(String id) {
-        for (final c in _ambCheckpoints) {
-          if (c.id == id) return c;
-        }
-        return null;
-      }
-
-      final cp1 = acp('cp1');
-      final cp2 = acp('cp2');
-      final cpf = acp('cpf');
-      final deco = _ambulanceDecoration;
-      ambSnap = AmbulanceAttemptSnapshot(
-        mapHasCp1: cp1 != null,
-        mapHasCp2: cp2 != null,
-        mapHasCpf: cpf != null,
-        cp1Cleared: _ambCp1Cleared,
-        cp2Cleared: _ambCp2Cleared,
-        pullOverCompleted: _ambulancePullOverComplete,
-        yieldLeftSide: _ambulanceYieldCompletedLeftSide,
-        elapsedSecs: _ambTotalElapsed,
-        levelTimeoutSecs: _ambLevelTimeoutSecs,
-        cp1TimeLimitSecs: cp1?.timeLimitSecs ?? 0,
-        cp2TimeLimitSecs: cp2?.timeLimitSecs ?? 0,
-        ambulanceRouteCompleted: deco?.routeCompleted ?? false,
-        ambulanceAiState: deco == null ? 'none' : deco.state.name,
-      );
-    }
+    AmbulanceAttemptSnapshot? ambSnap = _buildAmbulanceAttemptSnapshot();
 
     return DrivingAttemptSummary(
       passed: effectivePassed,

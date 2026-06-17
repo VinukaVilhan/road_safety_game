@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <!-- Local music folder playback (just_audio / ExoPlayer reads files) -->
@@ -10,7 +11,9 @@
     <application
         android:label="Rodrick"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -49,17 +52,5 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
-        <!-- So getLaunchIntentForPackage works for FM apps on API 30+ -->
-        <package android:name="com.sec.android.app.fm" />
-        <package android:name="com.samsung.android.app.radio" />
-        <package android:name="com.motorola.fmplayer" />
-        <package android:name="com.motorola.fmradio" />
-        <package android:name="com.caf.fmradio" />
-        <package android:name="com.miui.fm" />
-        <package android:name="com.huawei.android.FMRadio" />
-        <package android:name="com.sonyericsson.fmradio" />
-        <package android:name="com.lge.fmradio" />
-        <package android:name="com.mediatek.fmradio" />
-        <package android:name="com.android.fmradio" />
     </queries>
 </manifest>

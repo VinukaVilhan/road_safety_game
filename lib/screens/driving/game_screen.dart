@@ -16,6 +16,7 @@ import '../../widgets/radio_tuner_sheet.dart';
 import '../../services/progress/level_progress_service.dart';
 import '../../services/progress/last_driving_report_service.dart';
 import '../../services/progress/odometer_service.dart';
+import '../../services/audio/music_service.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../widgets/assistant_button.dart';
@@ -54,6 +55,48 @@ class GameScreenState extends State<GameScreen> {
         Icons.radio,
         color: fallbackColor,
         size: size,
+      ),
+    );
+  }
+
+  Widget _buildPedestrianCrossingSignHud() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOutBack,
+      builder: (context, t, child) {
+        final clamped = t.clamp(0.0, 1.0);
+        return Transform.scale(
+          scale: clamped,
+          alignment: Alignment.bottomLeft,
+          child: Opacity(opacity: clamped, child: child),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.45),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Image.asset(
+          game.spawnSignAssetPath,
+          width: 88,
+          height: 88,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => const Icon(
+            Icons.directions_walk,
+            color: Colors.white,
+            size: 72,
+          ),
+        ),
       ),
     );
   }
@@ -99,6 +142,8 @@ class GameScreenState extends State<GameScreen> {
     _configureGameForLevel();
     if (_willShowLevelBriefing()) {
       game.pauseEngine();
+    } else {
+      MusicService().beginDrivingLesson();
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showLevelStoryIfAvailable();
@@ -140,6 +185,7 @@ class GameScreenState extends State<GameScreen> {
   void _resumeGameAfterBriefing() {
     if (!mounted) return;
     game.resumeEngine();
+    MusicService().beginDrivingLesson();
     UiSoundService().playLevelEngineStart();
   }
 
@@ -203,6 +249,7 @@ class GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
+    unawaited(MusicService().endDrivingLesson());
     if (game.paused) {
       game.resumeEngine();
     }
@@ -555,6 +602,19 @@ class GameScreenState extends State<GameScreen> {
                     );
                   },
                 ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: game.pedestrianCrossingSignVisible,
+                  builder: (context, visible, _) {
+                    if (!visible) return const SizedBox.shrink();
+                    return Positioned(
+                      left: 20,
+                      bottom: 20,
+                      child: IgnorePointer(
+                        child: _buildPedestrianCrossingSignHud(),
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -830,6 +890,7 @@ class GameScreenState extends State<GameScreen> {
   void _handleTestPassed() {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
+    unawaited(MusicService().endDrivingLesson());
     final summary = game.getAttemptSummary();
     final penaltyPayload =
         List<({String description, Uint8List bytes})>.from(_penaltyCaptures);
@@ -886,6 +947,7 @@ class GameScreenState extends State<GameScreen> {
   Future<void> _handleTestFailed(String message) async {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
+    await MusicService().endDrivingLesson();
     final screenshotBytes = await _captureGameScreenshot();
     UiSoundService().playLevelFailed();
     final summary = game.getAttemptSummary(passed: false, failureMessage: message);
@@ -920,6 +982,7 @@ class GameScreenState extends State<GameScreen> {
                 _steeringRotation.value = 0.0;
                 setState(() => _currentGear = 1);
                 _applyGearChange();
+                MusicService().beginDrivingLesson();
               },
               child: const Text('Retry'),
             ),
@@ -975,7 +1038,7 @@ class GameScreenState extends State<GameScreen> {
                   ),
                   title: Text('Radio', style: theme.bodyLarge!.copyWith(color: Colors.white)),
                   subtitle: Text(
-                    'Open phone FM via API',
+                    'Stream stations in-app via API',
                     style: theme.bodySmall!.copyWith(color: Colors.white54),
                   ),
                   onTap: () {

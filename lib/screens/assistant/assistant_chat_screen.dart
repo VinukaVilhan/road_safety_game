@@ -279,6 +279,20 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     );
   }
 
+  Future<void> _newChat() async {
+    if (_bootstrapping || _sending) return;
+    UiSoundService().playMenuTap();
+    final id = await InstructorChatSessionsService.instance.createGeneralSession();
+    if (!mounted) return;
+    await Navigator.of(context).pushReplacement<void, void>(
+      MaterialPageRoute<void>(
+        builder: (_) => AssistantChatScreen(
+          launchContext: AssistantLaunchContext(assistantSessionId: id),
+        ),
+      ),
+    );
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
@@ -438,11 +452,13 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
+              if (value == 'new_chat') unawaited(_newChat());
               if (value == 'chats') _openChatsList();
               if (value == 'rename') unawaited(_renameThisChat());
               if (value == 'clear') _clearHistory();
             },
             itemBuilder: (context) => const [
+              PopupMenuItem<String>(value: 'new_chat', child: Text('New chat')),
               PopupMenuItem<String>(value: 'chats', child: Text('Your chats')),
               PopupMenuItem<String>(value: 'rename', child: Text('Rename this chat')),
               PopupMenuItem<String>(value: 'clear', child: Text('Clear this chat')),

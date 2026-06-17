@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -19,8 +20,28 @@ class MusicService {
 
   final AudioPlayer _player = AudioPlayer();
 
+  /// True while an active driving lesson is in progress (not briefing / result).
+  final ValueNotifier<bool> drivingLessonActive = ValueNotifier<bool>(false);
+
   /// Current music folder (absolute path). Persisted via SharedPreferences.
   static String? musicFolderPath;
+
+  bool get isDrivingLessonActive => drivingLessonActive.value;
+
+  /// Call when the player is actively driving (after briefing, or immediately if none).
+  void beginDrivingLesson() {
+    drivingLessonActive.value = true;
+  }
+
+  /// Call when the lesson ends or the player leaves [GameScreen]. Stops radio playback.
+  Future<void> endDrivingLesson() async {
+    if (!drivingLessonActive.value) {
+      await stop();
+      return;
+    }
+    drivingLessonActive.value = false;
+    await stop();
+  }
 
   /// Android: request read access so playback works later (no-op on other platforms).
   static Future<bool> requestMusicAccessIfNeeded() async {
@@ -105,11 +126,26 @@ class MusicService {
     }
   }
 
-  /// Play from a URL (e.g. radio stream).
-  Future<void> playUrl(String url) async {
+  /// Play from a URL (e.g. internet radio stream). Returns `null` on success.
+  /// Only allowed during an active driving lesson.
+  Future<String?> playUrl(String url) async {
+    if (!isDrivingLessonActive) {
+      return 'Radio is only available while a driving lesson is in progress.';
+    }
     await _player.stop();
-    await _player.setUrl(url);
-    await _player.play();
+    try {
+      await _player.setUrl(url);
+      await _player.play();
+      return null;
+    } catch (e) {
+      final message = e.toString();
+      if (message.contains('Cleartext HTTP') ||
+          message.contains('cleartext') ||
+          message.contains('cleartext-not-permitted')) {
+        return 'This station uses an insecure HTTP stream that could not be played. Try another station.';
+      }
+      return 'Could not play stream: $e';
+    }
   }
 
   /// Pause playback
@@ -123,6 +159,10 @@ class MusicService {
 
   /// Toggle play/pause
   Future<void> togglePlayPause() async {
+    if (!isDrivingLessonActive) {
+      await stop();
+      return;
+    }
     if (_player.playing) {
       await _player.pause();
     } else {

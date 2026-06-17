@@ -20,20 +20,6 @@ class _DrivingZone {
   });
 }
 
-/// [emergency_ambulance]: CP1–CP4 and CPF from Tiled (`class` CP1…CP4 / CPF, including under [Group]).
-class _AmbulanceCheckpoint {
-  final String id;
-  final Rect rect;
-  /// Seconds allowed to reach this checkpoint after the previous timed one; 0 = no limit.
-  final double timeLimitSecs;
-
-  const _AmbulanceCheckpoint({
-    required this.id,
-    required this.rect,
-    this.timeLimitSecs = 0,
-  });
-}
-
 /// Junction "brown" validation: [expectedSignal] is `left`, `right`, or `none`.
 class _MidTurnZone {
   final int objectId;

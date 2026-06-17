@@ -27,10 +27,29 @@ class RadioStation {
 
     return RadioStation(
       name: (json['name'] as String?)?.trim() ?? 'Unknown station',
-      streamUrl: (resolved != null && resolved.isNotEmpty) ? resolved : (url ?? ''),
+      streamUrl: _pickStreamUrl(resolved, url),
       country: (json['country'] as String?)?.trim(),
       tags: tags,
       faviconUrl: (json['favicon'] as String?)?.trim(),
     );
   }
+
+  /// Prefer HTTPS when both schemes are available.
+  static String _pickStreamUrl(String? resolved, String? url) {
+    String? https;
+    String? http;
+    for (final candidate in [resolved, url]) {
+      final value = candidate?.trim();
+      if (value == null || value.isEmpty) continue;
+      final lower = value.toLowerCase();
+      if (lower.startsWith('https://')) {
+        https ??= value;
+      } else if (lower.startsWith('http://')) {
+        http ??= value;
+      }
+    }
+    return https ?? http ?? '';
+  }
+
+  bool get usesHttps => streamUrl.toLowerCase().startsWith('https://');
 }

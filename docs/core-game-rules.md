@@ -15,7 +15,7 @@ Per-feature work: copy [`specs/_template.md`](./specs/_template.md) and cite aff
 | **Spawn** | Layer `Spawn_Layer` / class `Spawn_Point` — point object |
 | **Zone classes** | Object `class`, `type`, or `name` (fallback order) — see §2 |
 
-**Code:** `lib/game/realistic_car_game.dart` (`_setupRoad`)
+**Code:** `lib/game/driving_game.dart` (`_setupRoad`)
 
 ---
 

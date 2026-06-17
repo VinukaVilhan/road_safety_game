@@ -68,7 +68,7 @@ lib/
 ├── main.dart                   # App entry point, Firebase init
 ├── firebase_options.dart       # Firebase platform configuration
 ├── game/
-│   └── realistic_car_game.dart # Flame game: car physics & rendering
+│   └── driving_game.dart # Flame game: car physics & rendering
 ├── game.dart                   # Car and RealisticCarGame classes
 ├── models/
 │   ├── game_level.dart         # Level, DrivingTopic, LevelDifficulty

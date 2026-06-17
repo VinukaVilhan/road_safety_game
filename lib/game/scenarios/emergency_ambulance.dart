@@ -1,4 +1,4 @@
-part of '../realistic_car_game.dart';
+part of '../driving_game.dart';
 
 /// [emergency_ambulance]: CP1–CP4 and CPF from Tiled (`class` CP1…CP4 / CPF, including under [Group]).
 class _AmbulanceCheckpoint {

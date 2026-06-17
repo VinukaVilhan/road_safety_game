@@ -53,7 +53,7 @@ One paragraph: what gameplay problem this solves.
 
 | Item | Detail |
 |------|--------|
-| Primary file(s) | `lib/game/realistic_car_game.dart`, … |
+| Primary file(s) | `lib/game/driving_game.dart`, … |
 | TMX changes | layer / object / properties |
 | UI | `lib/screens/game_screen.dart`, reports |
 

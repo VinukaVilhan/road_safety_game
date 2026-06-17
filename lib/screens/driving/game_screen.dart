@@ -7,7 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flame/game.dart';
 import '../../models/driving/game_level.dart';
-import '../../game/realistic_car_game.dart';
+import '../../game/driving_game.dart';
 import '../../utils/app_fonts.dart';
 import '../../widgets/gearbox.dart';
 import '../../widgets/steeringWheel.dart';

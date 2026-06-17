@@ -13,14 +13,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../models/driving/last_driving_report.dart';
-part 'types/realistic_car_game_types.dart';
-part 'map/realistic_car_game_map_helpers.dart';
-part 'map/realistic_car_game_ambulance_map_loaders.dart';
-part 'scenarios/realistic_car_game_ambulance_decoration.dart';
-part 'scenarios/realistic_car_game_emergency_ambulance.dart';
-part 'entities/realistic_car_game_car.dart';
-part 'entities/realistic_car_game_ambulance.dart';
-part 'audio/realistic_car_game_vehicle_sfx.dart';
+part 'types/types.dart';
+part 'map/map_helpers.dart';
+part 'map/ambulance_map_loaders.dart';
+part 'scenarios/ambulance_decoration.dart';
+part 'scenarios/emergency_ambulance.dart';
+part 'entities/car.dart';
+part 'entities/ambulance.dart';
+part 'audio/vehicle_sfx.dart';
 
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   Car? car; // Make car accessible - nullable to handle initialization order

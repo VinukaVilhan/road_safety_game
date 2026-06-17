@@ -1,4 +1,4 @@
-part of '../realistic_car_game.dart';
+part of '../driving_game.dart';
 
 /// Engine audio: Car_Start.m4a (one-shot) → Car_Idle.m4a (seamless loop with
 /// dynamic pitch + volume). Uses [AudioPlayer] in [PlayerMode.mediaPlayer]

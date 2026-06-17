@@ -12,7 +12,7 @@ import 'package:uuid/uuid.dart';
 import '../../data/local/local_db.dart';
 import '../../data/sync/sync_outbox.dart';
 import '../../data/sync/sync_service.dart';
-import '../../game/realistic_car_game.dart';
+import '../../game/driving_game.dart';
 import '../../config/cloudinary_config.dart';
 import '../../models/driving/game_level.dart';
 import '../../models/driving/last_driving_report.dart';

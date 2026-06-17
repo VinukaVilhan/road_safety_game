@@ -1,4 +1,4 @@
-part of '../realistic_car_game.dart';
+part of '../driving_game.dart';
 
 /// True if this object layer should supply axis-aligned collision rectangles.
 bool _isTiledCollisionObjectLayer(ObjectGroup layer) {

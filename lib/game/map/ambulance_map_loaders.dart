@@ -1,4 +1,4 @@
-part of '../realistic_car_game.dart';
+part of '../driving_game.dart';
 
 /// Tries bundled ambulance art (same folder convention as [BlackCar.png]), then a fallback sprite.
 Future<Sprite> _loadAmbulanceSpriteForLevel() async {

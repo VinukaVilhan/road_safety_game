@@ -37,7 +37,7 @@ If the user starts a non-trivial feature without a spec, **offer** to copy `docs
 ## New spec workflow
 
 1. Copy `docs/specs/_template.md` → `docs/specs/YYYY-MM-DD-short-feature-name.md`.
-2. Fill goal, scope, acceptance criteria, affected surfaces (TMX, `realistic_car_game.dart`, UI).
+2. Fill goal, scope, acceptance criteria, affected surfaces (TMX, `driving_game.dart`, UI).
 3. User prompt: *Implement per `docs/specs/<filename>.md`. Do not edit the spec file.*
 
 See `docs/specs/README.md` for the full checklist.

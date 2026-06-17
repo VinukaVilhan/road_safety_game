@@ -1,4 +1,4 @@
-part of '../realistic_car_game.dart';
+part of '../driving_game.dart';
 
 /// Maps with `Ambulance_Spawn` / `Ambulance_Route` (e.g. [ambulance-reaction.tmx]):
 /// decoration AI, siren audio, and yield rules for the [Ambulance] entity.

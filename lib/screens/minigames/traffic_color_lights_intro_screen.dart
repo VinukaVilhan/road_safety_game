@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../data/repositories/progress_repository.dart';
-import '../../models/assistant/assistant_launch_context.dart';
 import '../../models/theory/road_signs_curriculum.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
 
 /// Document-style introduction to the three-color traffic signal ([signal_light.png]).
 class TrafficColorLightsIntroScreen extends StatelessWidget {
@@ -28,16 +26,6 @@ class TrafficColorLightsIntroScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: AssistantButton(
-        mini: true,
-        heroTag: 'assistant_traffic_color_intro_${module.id}',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Color lights — intro',
-          theoryTestName: module.title,
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

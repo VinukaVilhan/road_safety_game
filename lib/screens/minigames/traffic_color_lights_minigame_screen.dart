@@ -3,12 +3,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../data/repositories/progress_repository.dart';
-import '../../models/assistant/assistant_launch_context.dart';
 import '../../models/theory/road_signs_curriculum.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
 
 enum _LightPhase { red, amber, green }
 
@@ -99,16 +97,6 @@ class _TrafficColorLightsMinigameScreenState extends State<TrafficColorLightsMin
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: AssistantButton(
-        mini: true,
-        heroTag: 'assistant_traffic_color_minigame_${widget.module.id}',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Traffic lights — mini game',
-          theoryTestName: widget.module.title,
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

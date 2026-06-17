@@ -23,10 +23,11 @@ Standard driving-level checklist (junction / turn maps):
   /// Checklist for road-crossing (zebra-style) maps.
   static const String roadCrossingRubric = '''
 Road-crossing (zebra-style) level checklist:
-1) Approach control — Enter the yellow speed-limit / approach zone before the attempt ends.
-2) Zebra crossing — Full stop in Park and completed wait within the grey zig-zag zone.
-3) Route completion — Reach the green finish zone.
-4) Obstacle discipline — Avoid minor non-crash contacts; a clean run requires zero.
+1) Approach control — Enter the yellow speed-limit zone at **60 or below** (TMX `max_speed` / `speed_limit`).
+2) Zebra crossing — Full stop **in gear** (no Park) and completed wait within the grey zig-zag zone; no overtaking (gears 3–4) in zig-zags.
+3) Correct route — Cross straight via the zebra; entering the red Zone_Fail_WT (wrong-turn / past stop line) immediately fails the level.
+4) Route completion — Reach the green finish zone.
+5) Obstacle discipline — Avoid minor non-crash contacts; a clean run requires zero.
 ''';
 
   static String _formatReport(LastDrivingReport r) {

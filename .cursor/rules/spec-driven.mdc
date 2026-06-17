@@ -1,0 +1,69 @@
+---
+description: Spec kit workflow — read specs/core rules before building; update docs in the same task when gameplay changes
+alwaysApply: true
+---
+
+# Spec-driven development (Road Safety Game)
+
+| Doc | Role |
+|-----|------|
+| `docs/core-game-rules.md` | **Canonical gameplay rules** — TMX zones, levels, scoring |
+| `docs/specs/*.md` | **One change** — requirements and acceptance criteria |
+| `AGENTS.md` (workspace root) | Preferences + stable facts |
+
+Do not implement level or zone behaviour that contradicts `docs/core-game-rules.md` unless the user's spec explicitly changes a rule.
+
+Per-feature specs live in `docs/specs/`; **one spec = one change**.
+
+## When the user references a spec
+
+If the task mentions `docs/specs/<file>.md`, `@docs/specs/`, or *"implement per spec"*:
+
+1. **Read the spec first** — goal, non-goals, requirements, acceptance criteria. Cross-check `docs/core-game-rules.md`.
+2. **Implement against it** — do not edit the spec file unless the user explicitly changes requirements.
+3. **Before finishing** — verify every acceptance-criteria checkbox you can; note manual-only items for the user.
+4. **Update the spec kit** — same task as code (see **Keep the spec kit in sync** below).
+
+## When to create a spec (suggest if missing)
+
+| Write a spec first | Chat + `AGENTS.md` is enough |
+|--------------------|------------------------------|
+| New/changed zone types or level pass/fail rules | Typo / copy fix |
+| New TMX conventions across multiple maps | One-line bug in a single file |
+| Scoring / rubric / report behaviour | Dependency bump |
+
+If the user starts a non-trivial feature without a spec, **offer** to copy `docs/specs/_template.md` → `docs/specs/YYYY-MM-DD-short-name.md` before coding. Do not block tiny fixes.
+
+## New spec workflow
+
+1. Copy `docs/specs/_template.md` → `docs/specs/YYYY-MM-DD-short-feature-name.md`.
+2. Fill goal, scope, acceptance criteria, affected surfaces (TMX, `realistic_car_game.dart`, UI).
+3. User prompt: *Implement per `docs/specs/<filename>.md`. Do not edit the spec file.*
+
+See `docs/specs/README.md` for the full checklist.
+
+## Keep the spec kit in sync (required)
+
+When you **build or change** gameplay, zones, levels, scoring, or player-facing rules — **update documentation in the same task**.
+
+### What to update
+
+| You changed… | Update |
+|--------------|--------|
+| **Gameplay / zone / level logic** | [`docs/core-game-rules.md`](../../docs/core-game-rules.md) — matching § section(s) |
+| **Feature from a spec** | That `docs/specs/YYYY-MM-DD-….md` — check acceptance criteria; set **Status** Done; fill **Implementation log** |
+| **Non-trivial feature without a spec** | Create `docs/specs/YYYY-MM-DD-….md` after shipping (or before if greenfield) |
+| **Stable preference** agents should always know | workspace [`AGENTS.md`](../../../AGENTS.md) — one bullet only |
+
+### When implementing (even without a spec)
+
+1. **Before coding** — skim `docs/core-game-rules.md` for sections you might affect.
+2. **After coding** — if behaviour differs from core rules, **update that file** or fix the code.
+3. **Tell the user** — list which spec-kit files you updated (or "no doc change — refactor only").
+
+### Skip doc updates only when
+
+- Pure refactor with **zero** player-visible behaviour change
+- Typo, styling, or dependency bump with no rule change
+
+If unsure whether gameplay changed, **update `core-game-rules.md`**.

@@ -135,6 +135,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   int? _roadCrossingStopStepId;
   double _roadCrossingStopElapsed = 0.0;
   static const double _roadCrossingStopDurationSec = 3.0;
+  static const double _zigZagStoppedSpeedThreshold = 18.0;
   _DrivingZone? _activeRoadCrossingWaitZone;
 
   /// Filled from a tile layer (class [Zone_JunctionBox] or name `Junction_Box`).
@@ -177,7 +178,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     onOdometerDeltaMeters?.call(deltaMeters);
   }
 
-  /// True while the zebra-crossing wait countdown is running (car in zone + Park).
+  /// True while the zebra-crossing wait countdown is running (stopped in zig-zag).
   bool get isRoadCrossingStopActive => _roadCrossingStopActive;
   
   @override
@@ -466,13 +467,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
           continue;
         }
 
-        final effectiveZoneClass =
-            zoneClassLower.isNotEmpty ? zoneClass : layerClass;
+        final layerIsZoneCheck = layerClassLower == 'zone_check' ||
+            layerClassLower.startsWith('zone_check');
+        final effectiveZoneClass = layerIsZoneCheck
+            ? (layerClass.isNotEmpty ? layerClass : 'Zone_Check')
+            : (zoneClassLower.isNotEmpty ? zoneClass : layerClass);
         final stepId = obj.properties.getValue<int>('step_id') ?? layerStepId;
         final failMessage =
             obj.properties.getValue<String>('fail_message') ?? layerFailMessage;
-        final maxSpeed = _readNumericPropertyAsDouble(obj.properties, 'max_speed') ??
-            _readNumericPropertyAsDouble(layer.properties, 'max_speed');
+        final maxSpeed =
+            _readZoneSpeedLimit(obj.properties, layer.properties);
         final waitTimeSec =
             _readNumericPropertyAsDouble(obj.properties, 'wait_time') ??
                 _readNumericPropertyAsDouble(layer.properties, 'wait_time');
@@ -849,6 +853,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _updateAmbulanceSirenTrigger();
     _updateRoadCrossingApproachHint();
     _updateRoadCrossingParkCountdown(dt);
+    _updateZigZagRoadCrossingRules();
     _enforceSpeedLimitZones();
     _updateMarkingsDashedYellowZoneRules();
     _updateMidTurnSignalValidation();
@@ -861,8 +866,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   }
 
   /// [road-crossing.tmx]: countdown runs only inside a Zig_Zag (grey) wait zone
-  /// while the car is in **Park (P)**. Leaving the zone or shifting out of P pauses
-  /// and resets the timer.
+  /// while the car is **fully stopped** (stay in gear — no Park in zig-zags).
+  /// Leaving the zone or moving again pauses and resets the timer.
   void _updateRoadCrossingParkCountdown(double dt) {
     if (!_isRoadCrossingMap() || _testFinished || car == null) return;
 
@@ -878,11 +883,13 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       stepFromZone ??= zone.stepId;
     }
 
-    final parkedInZone = allWheelsInWaitZone && car!.isInPark;
+    final stoppedInZone = allWheelsInWaitZone &&
+        !car!.isInPark &&
+        car!.velocity.length < _zigZagStoppedSpeedThreshold;
     final waitDurationSec =
         activeWaitZone?.waitTimeSec ?? _roadCrossingStopDurationSec;
 
-    if (parkedInZone && !_roadCrossingStopSatisfied) {
+    if (stoppedInZone && !_roadCrossingStopSatisfied) {
       if (!_roadCrossingStopActive) {
         _roadCrossingStopActive = true;
         _roadCrossingStopElapsed = 0.0;
@@ -931,6 +938,40 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   bool _isRoadCrossingMap() {
     final asset = mapAsset?.toLowerCase() ?? '';
     return asset.contains('road-crossing');
+  }
+
+  bool _anyWheelInZigZagZone() {
+    for (final zone in _drivingZones) {
+      if (_zoneKindForScenario(zone.zoneClass) != 'zig_zag') continue;
+      if (_anyWheelInsideRect(zone.rect)) return true;
+    }
+    return false;
+  }
+
+  /// Blocks gear changes while any wheel is in a zig-zag (road-crossing maps).
+  String? roadCrossingGearBlockReason(String gearLabel) {
+    if (!_isRoadCrossingMap() || _testFinished || car == null) return null;
+    if (!_anyWheelInZigZagZone()) return null;
+    if (gearLabel == 'P') {
+      return 'No parking in the zig-zag zone — stay in gear and stop fully.';
+    }
+    final gearNum = int.tryParse(gearLabel);
+    if (gearNum != null && gearNum >= 3) {
+      return 'No overtaking in the zig-zag zone — use 1st or 2nd gear only.';
+    }
+    return null;
+  }
+
+  void _updateZigZagRoadCrossingRules() {
+    if (!_isRoadCrossingMap() || _testFinished || car == null) return;
+    if (!_anyWheelInZigZagZone()) return;
+    if (car!.isInPark) {
+      _failTest('No parking in the zig-zag zone.');
+      return;
+    }
+    if (car!.currentGear >= 3) {
+      _failTest('No overtaking in the zig-zag zone — use a lower gear.');
+    }
   }
 
   void _updateRoadCrossingApproachHint() {
@@ -986,16 +1027,16 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     return math.sqrt((dx * dx) + (dy * dy));
   }
 
-  bool _areAllWheelsInsideRect(Rect zoneRect) {
+  /// Approximate wheel contact points in world space (used for zig-zag wait + fail zones).
+  List<Offset> _carWheelWorldPoints() {
     final c = car;
-    if (c == null) return false;
+    if (c == null) return const [];
     final center = c.position;
     final halfW = c.size.x / 2;
     final halfH = c.size.y / 2;
     final cosA = math.cos(c.angle);
     final sinA = math.sin(c.angle);
 
-    // Approximate 4 wheel contact points near each corner.
     final wheelOffsets = <Offset>[
       Offset(-halfW * 0.7, -halfH * 0.7),
       Offset(halfW * 0.7, -halfH * 0.7),
@@ -1003,15 +1044,36 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       Offset(halfW * 0.7, halfH * 0.7),
     ];
 
+    final points = <Offset>[];
     for (final o in wheelOffsets) {
       final rx = (o.dx * cosA) - (o.dy * sinA);
       final ry = (o.dx * sinA) + (o.dy * cosA);
-      final wheelPoint = Offset(center.x + rx, center.y + ry);
-      if (!zoneRect.contains(wheelPoint)) {
-        return false;
-      }
+      points.add(Offset(center.x + rx, center.y + ry));
     }
-    return true;
+    return points;
+  }
+
+  bool _areAllWheelsInsideRect(Rect zoneRect) {
+    for (final wheelPoint in _carWheelWorldPoints()) {
+      if (!zoneRect.contains(wheelPoint)) return false;
+    }
+    return _carWheelWorldPoints().isNotEmpty;
+  }
+
+  bool _anyWheelInsideRect(Rect zoneRect) {
+    for (final wheelPoint in _carWheelWorldPoints()) {
+      if (zoneRect.contains(wheelPoint)) return true;
+    }
+    return false;
+  }
+
+  bool _carContactsDrivingZone(_DrivingZone zone, Rect carRect) {
+    final zoneKind = _zoneKindForScenario(zone.zoneClass);
+    // Thin fail strips (e.g. road-crossing wrong-turn) can be shorter than the car.
+    if (zoneKind == 'zone_fail_wt' || zoneKind == 'zone_fail_it') {
+      return _anyWheelInsideRect(zone.rect);
+    }
+    return carRect.overlaps(zone.rect);
   }
 
   /// True when the car's axis-aligned bounds overlap any of [rects] (ignores rotation).
@@ -1255,7 +1317,10 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
       final zoneKind = _zoneKindForScenario(zone.zoneClass);
       final defaultZigZagLimit = zoneKind == 'zig_zag' ? 30.0 : null;
       final zoneLimit = zone.maxSpeed ?? defaultZigZagLimit;
-      if (zoneKind != 'zone_speedlimit' && zoneKind != 'zig_zag' && zoneLimit == null) {
+      if (zoneKind != 'zone_speedlimit' &&
+          zoneKind != 'zig_zag' &&
+          zoneKind != 'zone_check' &&
+          zoneLimit == null) {
         continue;
       }
       if (zoneLimit == null || zoneLimit <= 0) continue;
@@ -1312,6 +1377,9 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     if (normalized == 'wrong_layer' || normalized.startsWith('wrong_layer')) {
       return 'wrong_layer';
     }
+    if (normalized == 'wrong_turn_layer' || normalized.startsWith('wrong_turn_layer')) {
+      return 'zone_fail_wt';
+    }
     return normalized;
   }
 
@@ -1332,7 +1400,9 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
         v == 'zig_zag' ||
         v.startsWith('zig_zag') ||
         v == 'wrong_layer' ||
-        v.startsWith('wrong_layer');
+        v.startsWith('wrong_layer') ||
+        v == 'wrong_turn_layer' ||
+        v.startsWith('wrong_turn_layer');
   }
 
   String _expectedSignalForSummary() {
@@ -1750,7 +1820,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     );
 
     for (final zone in _drivingZones) {
-      if (!carRect.overlaps(zone.rect)) continue;
+      if (!_carContactsDrivingZone(zone, carRect)) continue;
       currentInside.add(zone.objectId);
       if (_zonesInsidePreviousFrame.contains(zone.objectId)) continue;
       _handleZoneEntry(zone);
@@ -1811,10 +1881,13 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     if (zoneKind == 'zone_fail_wt' || zoneKind == 'zone_fail_it') {
       final defaultMessage = zoneKind == 'zone_fail_it'
           ? 'Driving in oncoming traffic!'
-          : 'Wrong Turn!';
+          : (_isRoadCrossingMap()
+              ? 'Wrong route — cross via the zebra markings; do not continue past the stop line.'
+              : 'Wrong Turn!');
       final message =
           zone.failMessage?.isNotEmpty == true ? zone.failMessage! : defaultMessage;
       _failTest(message);
+      return;
     }
   }
 

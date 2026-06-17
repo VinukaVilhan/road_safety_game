@@ -22,6 +22,14 @@ double? _readNumericPropertyAsDouble(CustomProperties properties, String name) {
   }
 }
 
+/// TMX may use `max_speed` or `speed_limit` on the object or parent layer.
+double? _readZoneSpeedLimit(CustomProperties objProps, CustomProperties layerProps) {
+  return _readNumericPropertyAsDouble(objProps, 'max_speed') ??
+      _readNumericPropertyAsDouble(objProps, 'speed_limit') ??
+      _readNumericPropertyAsDouble(layerProps, 'max_speed') ??
+      _readNumericPropertyAsDouble(layerProps, 'speed_limit');
+}
+
 void _collectObjectGroupsRecursive(List<Layer> layers, List<ObjectGroup> out) {
   for (final layer in layers) {
     if (layer is ObjectGroup) {

@@ -106,7 +106,7 @@ class LastDrivingReportService {
       }
       if (!s.waitedAtRoadCrossing) {
         lines.add(
-          'Zebra crossing — full stop in Park and the completed wait within the grey zig-zag zone were not satisfied.',
+          'Zebra crossing — full stop in gear (no Park) and the completed wait within the grey zig-zag zone were not satisfied.',
         );
       }
       if (!s.reachedFinishZone) {

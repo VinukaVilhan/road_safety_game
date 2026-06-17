@@ -116,8 +116,16 @@ class GameScreenState extends State<GameScreen> {
             'A pedestrian may step onto the zebra crossing at any moment.\n\n'
             'Your mission:\n'
             '- Slow down and enter the approach zone safely.\n'
-            '- Stop fully and wait before the crossing.\n'
-            '- Continue only when it is safe and finish the route.';
+            '- Stop fully in gear (no Park) and wait in the grey zig-zag zone.\n'
+            '- Cross straight ahead through the zebra — do not continue past the stop line.\n'
+            '- Finish in the green zone. Entering the red wrong-turn area ends the level.';
+      case 'markings_stop_yield':
+        return 'Stop & Yield Lines\n\n'
+            'Practice stopping before the crossing and yielding correctly.\n\n'
+            '- Enter the yellow approach zone at a safe speed.\n'
+            '- Slow to 60 or below in the yellow approach zone.\n'
+            '- Stop fully in gear inside the grey zig-zag zone (no Park, no overtaking).\n'
+            '- Do not drive past the stop line into the red wrong-turn zone — that fails the level.';
       default:
         return null;
     }
@@ -655,6 +663,17 @@ class GameScreenState extends State<GameScreen> {
 
   // Gear selection handler
   void _onGearSelected(int gearIndex) {
+    final gearLabel = _gears[gearIndex];
+    final blockReason = game.roadCrossingGearBlockReason(gearLabel);
+    if (blockReason != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(blockReason),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
     setState(() {
       _currentGear = gearIndex;
       _applyGearChange();
@@ -1058,7 +1077,7 @@ class GameScreenState extends State<GameScreen> {
             _buildCheckRow('Entered speed limit zone (yellow).', summary.enteredApproachZone),
             const SizedBox(height: 6),
             _buildCheckRow(
-              'Stopped in Park and completed zebra crossing wait (grey zig-zag zone).',
+              'Stopped in gear and completed zebra crossing wait (grey zig-zag zone).',
               summary.waitedAtRoadCrossing,
             ),
             const SizedBox(height: 6),

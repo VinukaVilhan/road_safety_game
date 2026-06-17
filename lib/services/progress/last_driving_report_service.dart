@@ -9,14 +9,14 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-import '../data/local/local_db.dart';
-import '../data/sync/sync_outbox.dart';
-import '../data/sync/sync_service.dart';
-import '../game/realistic_car_game.dart';
-import '../config/cloudinary_config.dart';
-import '../models/game_level.dart';
-import '../models/last_driving_report.dart';
-import 'cloudinary_upload_service.dart';
+import '../../data/local/local_db.dart';
+import '../../data/sync/sync_outbox.dart';
+import '../../data/sync/sync_service.dart';
+import '../../game/realistic_car_game.dart';
+import '../../config/cloudinary_config.dart';
+import '../../models/game_level.dart';
+import '../../models/last_driving_report.dart';
+import '../integration/cloudinary_upload_service.dart';
 
 /// Persists the latest finished practical driving attempt per level (for level cards).
 class LastDrivingReportService {

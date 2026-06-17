@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="80" height="100" tilewidth="16" tileheight="16" infinite="0" nextlayerid="23" nextobjectid="41">
+<map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="80" height="100" tilewidth="16" tileheight="16" infinite="0" nextlayerid="23" nextobjectid="49">
  <tileset firstgid="1" name="Road" tilewidth="16" tileheight="16" tilecount="144" columns="12">
   <image source="../images/new-map.png" width="192" height="192"/>
  </tileset>
@@ -242,11 +242,15 @@
  <objectgroup id="8" name="Safe_Zone_Left" class="Safe_Zone_Left">
   <object id="6" x="950" y="-7" width="32" height="592"/>
   <object id="7" x="959" y="604" width="32" height="277" rotation="90"/>
+  <object id="48" x="970.945" y="570.854" width="16.1262" height="46.5041" rotation="47.9801"/>
  </objectgroup>
  <objectgroup id="12" name="Safe_Zone_Right" class="Safe_Zone_Right">
   <object id="25" x="1069.33" y="4" width="28" height="586.667"/>
   <object id="26" x="698.667" y="710.667" width="265.333" height="32"/>
-  <object id="27" x="970.684" y="708.9" width="147.77" height="29.3333" rotation="311.497"/>
+  <object id="27" x="988.57" y="705.579" width="73.0111" height="29.3333" rotation="324.933"/>
+  <object id="42" x="947.2" y="717" width="61.5995" height="29.3333" rotation="341.267"/>
+  <object id="43" x="1040.96" y="674.126" width="73.0111" height="29.3333" rotation="295.249"/>
+  <object id="44" x="1064.44" y="636.416" width="73.0111" height="29.3333" rotation="276.802"/>
  </objectgroup>
  <objectgroup color="#000000" id="9" name="Obstacles_Layer">
   <object id="11" x="18" y="16" width="916" height="563"/>
@@ -263,7 +267,7 @@
  </objectgroup>
  <objectgroup id="11" name="Rules_Layer"/>
  <objectgroup color="#00aa7f" id="13" name="Success_Layer">
-  <object id="23" x="970.667" y="16" width="122.667" height="72"/>
+  <object id="23" x="952.667" y="16" width="140.667" height="72"/>
  </objectgroup>
  <group id="17" name="Checkpoints">
   <objectgroup id="22" name="CPF" class="CPF">

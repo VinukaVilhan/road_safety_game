@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/assistant_message.dart';
+import '../../models/assistant_message.dart';
 import 'assistant_service.dart';
 
 /// Persists the AI instructor transcript locally and rebuilds Gemini history.

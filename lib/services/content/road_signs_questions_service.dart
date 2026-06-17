@@ -1,4 +1,4 @@
-import '../models/mcq_question.dart';
+import '../../models/mcq_question.dart';
 
 /// Provides MCQ questions for road sign theory tests.
 /// Questions reference assets in assets/roadsigns/ (see download script in scripts/).

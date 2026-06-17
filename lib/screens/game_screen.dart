@@ -13,11 +13,10 @@ import '../widgets/gearbox.dart';
 import '../widgets/steeringWheel.dart';
 import '../widgets/pedals.dart';
 import '../widgets/radio_tuner_sheet.dart';
-import '../services/music_service.dart';
-import '../services/level_progress_service.dart';
-import '../services/last_driving_report_service.dart';
-import '../services/odometer_service.dart';
-import '../services/ui_sound_service.dart';
+import '../services/progress/level_progress_service.dart';
+import '../services/progress/last_driving_report_service.dart';
+import '../services/progress/odometer_service.dart';
+import '../services/audio/ui_sound_service.dart';
 import '../models/assistant_launch_context.dart';
 import '../widgets/assistant_button.dart';
 
@@ -38,7 +37,6 @@ class GameScreenState extends State<GameScreen> {
   final List<String> _gears = ['P', '1', '2', '3', '4', 'R'];
   final ValueNotifier<double> _steeringRotation = ValueNotifier<double>(0.0);
   DateTime? _lastSteeringUpdate;
-  final MusicService _musicService = MusicService();
   bool _resultDialogVisible = false;
   bool _levelStoryShown = false;
   /// Screenshot bytes captured when the game reports a non-fatal penalty.
@@ -922,7 +920,6 @@ class GameScreenState extends State<GameScreen> {
 
   void _showMusicSheet() {
     final theme = Theme.of(context).textTheme;
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
@@ -959,55 +956,13 @@ class GameScreenState extends State<GameScreen> {
                   ),
                   title: Text('Radio', style: theme.bodyLarge!.copyWith(color: Colors.white)),
                   subtitle: Text(
-                    'Phone FM + tune dial to match',
+                    'Open phone FM via API',
                     style: theme.bodySmall!.copyWith(color: Colors.white54),
                   ),
                   onTap: () {
                     UiSoundService().playMenuTap();
                     Navigator.pop(sheetContext);
                     RadioTunerSheet.show(context);
-                  },
-                ),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.library_music, color: Colors.white70),
-                  title: Text('Phone music folder', style: theme.bodyLarge!.copyWith(color: Colors.white)),
-                  subtitle: Text(
-                    MusicService.musicFolderPath != null && MusicService.musicFolderPath!.isNotEmpty
-                        ? 'Play from: ${MusicService.musicFolderPath}'
-                        : 'Menu → Options → Music folder',
-                    style: theme.bodySmall!.copyWith(color: Colors.white54),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  onTap: () async {
-                    UiSoundService().playMenuTap();
-                    Navigator.pop(sheetContext);
-                    if (MusicService.musicFolderPath == null || MusicService.musicFolderPath!.isEmpty) {
-                      if (!mounted) return;
-                      scaffoldMessenger.showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Set your music folder: pause, go to Menu → Options → Music folder.',
-                          ),
-                          backgroundColor: Color(0xFF1a1a2e),
-                          duration: Duration(seconds: 4),
-                        ),
-                      );
-                      return;
-                    }
-                    final err = await _musicService.playLocal();
-                    if (!mounted) return;
-                    scaffoldMessenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          err ??
-                              'Playing from phone music folder (first track found)',
-                        ),
-                        backgroundColor: const Color(0xFF1a1a2e),
-                        duration: Duration(seconds: err != null ? 5 : 2),
-                      ),
-                    );
                   },
                 ),
               ],

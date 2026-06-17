@@ -1,9 +1,9 @@
-import '../models/assistant_launch_context.dart';
-import '../models/game_level.dart';
-import '../models/last_driving_report.dart';
-import '../models/mcq_question.dart';
-import 'last_driving_report_service.dart';
-import 'road_signs_questions_service.dart';
+import '../../models/assistant_launch_context.dart';
+import '../../models/game_level.dart';
+import '../../models/last_driving_report.dart';
+import '../../models/mcq_question.dart';
+import '../progress/last_driving_report_service.dart';
+import '../content/road_signs_questions_service.dart';
 
 /// Builds extra text injected into the assistant system prompt (game-aligned).
 class AssistantContextBuilder {

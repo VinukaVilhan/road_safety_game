@@ -3,9 +3,9 @@ import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import '../data/repositories/progress_repository.dart';
-import '../data/sync/sync_service.dart';
-import 'driving_levels_service.dart';
+import '../../data/repositories/progress_repository.dart';
+import '../../data/sync/sync_service.dart';
+import '../content/driving_levels_service.dart';
 
 class LevelProgressService {
   static const String _logName = 'LevelProgressService';

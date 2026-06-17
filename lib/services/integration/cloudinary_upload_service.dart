@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
-import '../config/cloudinary_config.dart';
+import '../../config/cloudinary_config.dart';
 
 /// Uploads raw image bytes to Cloudinary using an unsigned upload preset.
 class CloudinaryUploadService {

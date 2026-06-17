@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/repositories/progress_repository.dart';
 import '../models/assistant_launch_context.dart';
 import '../models/road_signs_curriculum.dart';
-import '../services/ui_sound_service.dart';
+import '../services/audio/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../widgets/assistant_button.dart';

@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/assistant_launch_context.dart';
-import '../services/music_service.dart';
-import '../services/ui_sound_service.dart';
+import '../services/audio/music_service.dart';
+import '../services/audio/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../widgets/assistant_button.dart';

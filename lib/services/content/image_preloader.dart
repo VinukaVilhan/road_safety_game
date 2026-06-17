@@ -1,5 +1,4 @@
 import 'package:flutter/widgets.dart';
-import 'package:flutter/services.dart';
 
 /// Service to preload images used in the app to avoid loading delays during navigation
 class ImagePreloader {

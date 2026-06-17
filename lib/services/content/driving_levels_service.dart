@@ -1,4 +1,4 @@
-import '../models/game_level.dart';
+import '../../models/game_level.dart';
 
 /// Service to provide driving levels organized by topic
 class DrivingLevelsService {

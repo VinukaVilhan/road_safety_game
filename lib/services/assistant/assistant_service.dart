@@ -2,7 +2,7 @@ import 'dart:typed_data';
 
 import 'package:google_generative_ai/google_generative_ai.dart';
 
-import '../config/assistant_config.dart';
+import '../../config/assistant_config.dart';
 import 'assistant_image_prepare.dart';
 
 /// Gemini-backed chat for the virtual instructor.

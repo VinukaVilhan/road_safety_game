@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Road Rules — Presentation</title>
+  <style>
+    :root {
+      --bg: #f5f5f0;
+      --ink: #1a1a1a;
+      --accent: #e63946;
+      --muted: #6b6b6b;
+      --card: #ffffff;
+      --border: #d4d4cc;
+      --green: #2a9d8f;
+      --amber: #e9c46a;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--ink);
+      color: var(--ink);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    .deck {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      padding: 3rem 4.5rem;
+      background: var(--bg);
+      opacity: 0;
+      transform: translateX(24px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .slide.title-slide {
+      background: var(--ink);
+      color: var(--bg);
+      justify-content: flex-end;
+      padding-bottom: 5rem;
+    }
+
+    .slide.title-slide .tag {
+      color: var(--accent);
+      font-size: 0.85rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+    }
+
+    .slide.title-slide h1 {
+      font-size: clamp(2.8rem, 6vw, 4.5rem);
+      font-weight: 700;
+      line-height: 1.05;
+      max-width: 14ch;
+    }
+
+    .slide.title-slide p {
+      margin-top: 1.5rem;
+      font-size: 1.25rem;
+      color: #b0b0a8;
+      max-width: 36ch;
+    }
+
+    .slide-header {
+      margin-bottom: 2rem;
+      border-bottom: 3px solid var(--ink);
+      padding-bottom: 0.75rem;
+    }
+
+    .slide-header h2 {
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .slide-header .subtitle {
+      margin-top: 0.35rem;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      flex: 1;
+      align-content: start;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      align-content: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 2px solid var(--border);
+      padding: 1.25rem 1.4rem;
+    }
+
+    .card h3 {
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.6rem;
+      color: var(--accent);
+    }
+
+    .card p, .card li {
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: var(--ink);
+    }
+
+    .card ul {
+      padding-left: 1.1rem;
+    }
+
+    .card li { margin-bottom: 0.35rem; }
+
+    .pill {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.5rem;
+      margin-left: 0.4rem;
+      vertical-align: middle;
+    }
+
+    .pill.live { background: #d4edda; color: #155724; }
+    .pill.wip { background: #fff3cd; color: #856404; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      background: var(--card);
+      border: 2px solid var(--border);
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      background: var(--ink);
+      color: var(--bg);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .status-yes { color: var(--green); font-weight: 600; }
+    .status-no { color: var(--muted); }
+
+    .big-stat {
+      display: flex;
+      gap: 2rem;
+      margin-top: 1rem;
+    }
+
+    .stat {
+      flex: 1;
+      background: var(--card);
+      border: 2px solid var(--border);
+      padding: 1.5rem;
+      text-align: center;
+    }
+
+    .stat .num {
+      font-size: 2.8rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .stat .label {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .footer {
+      position: fixed;
+      bottom: 1.25rem;
+      left: 4.5rem;
+      right: 4.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .footer .progress {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .nav-hint {
+      position: fixed;
+      bottom: 1.25rem;
+      right: 1.5rem;
+      font-size: 0.75rem;
+      color: #888;
+      z-index: 10;
+    }
+
+    .two-col-list {
+      columns: 2;
+      column-gap: 2rem;
+      font-size: 0.92rem;
+      line-height: 1.65;
+    }
+
+    .two-col-list li { margin-bottom: 0.4rem; break-inside: avoid; }
+
+    @media print {
+      .slide {
+        display: flex !important;
+        position: relative;
+        page-break-after: always;
+        height: auto;
+        min-height: 100vh;
+        opacity: 1;
+        transform: none;
+      }
+      .nav-hint, .footer { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck" id="deck">
+
+    <!-- 1 Title -->
+    <section class="slide title-slide active" data-slide="1">
+      <div class="tag">Road Safety Education App</div>
+      <h1>Road Rules</h1>
+      <p>Learn theory. Practice driving. Build safe habits — with AI guidance and real-time feedback.</p>
+    </section>
+
+    <!-- 2 Overview -->
+    <section class="slide" data-slide="2">
+      <div class="slide-header">
+        <h2>What is Road Rules?</h2>
+        <p class="subtitle">A Flutter road-safety education app — not an arcade racer</p>
+      </div>
+      <div class="big-stat">
+        <div class="stat"><div class="num">2</div><div class="label">Main modes</div></div>
+        <div class="stat"><div class="num">6</div><div class="label">Theory categories</div></div>
+        <div class="stat"><div class="num">6</div><div class="label">Driving topics</div></div>
+        <div class="stat"><div class="num">28</div><div class="label">Driving levels defined</div></div>
+      </div>
+      <div class="grid-2" style="margin-top: 1.5rem;">
+        <div class="card">
+          <h3>Theory Test</h3>
+          <p>Multiple-choice quizzes and a structured Road Signs curriculum (study → quiz → minigame).</p>
+        </div>
+        <div class="card">
+          <h3>Driving Test</h3>
+          <p>Top-down simulation on Tiled maps — signals, zones, scoring, and rule-based pass/fail.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 Two modes -->
+    <section class="slide" data-slide="3">
+      <div class="slide-header">
+        <h2>Two Learning Modes</h2>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Theory Test <span class="pill live">MCQ</span></h3>
+          <ul>
+            <li>6 knowledge categories</li>
+            <li>70% pass threshold</li>
+            <li>Attempts, best score, unlock chains</li>
+            <li>Road Signs: intro → learn → MCQ → minigame</li>
+            <li>Image-based sign questions</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Driving Test <span class="pill live">Simulation</span></h3>
+          <ul>
+            <li>Flame 2D engine + Tiled maps</li>
+            <li>Steering, pedals, gearbox (P, 1–4, R)</li>
+            <li>Turn signals (double/triple tap)</li>
+            <li>Zone-based rules & scoring (0–100)</li>
+            <li>Driving reports with violation screenshots</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 Key features -->
+    <section class="slide" data-slide="4">
+      <div class="slide-header">
+        <h2>Key Features</h2>
+      </div>
+      <ul class="two-col-list">
+        <li>Firebase auth (email, Google, Facebook)</li>
+        <li>Cloud progress sync (Firestore + local Isar DB)</li>
+        <li>AI Virtual Instructor (Gemini) on every screen</li>
+        <li>Photo upload for sign identification</li>
+        <li>Odometer — total miles driven on profile</li>
+        <li>In-game radio tuner & phone music playback</li>
+        <li>Level briefings & story dialogs</li>
+        <li>Controls tutorial (4 lessons, no progress tracking)</li>
+        <li>Sound, vibration, and rule-break feedback</li>
+        <li>Swiss-style UI across all platforms</li>
+        <li>Android, iOS, Web, Windows, macOS, Linux</li>
+      </ul>
+    </section>
+
+    <!-- 5 Theory categories -->
+    <section class="slide" data-slide="5">
+      <div class="slide-header">
+        <h2>Theory Categories</h2>
+        <p class="subtitle">Difficulty: Easy · Medium · Hard</p>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Category</th><th>Tests / modules</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Road Signs</td><td>Curriculum: traffic lights, warning, control signs</td><td class="status-yes">Playable</td></tr>
+          <tr><td>Best Practices</td><td>3 tests (essential rules → advanced)</td><td class="status-no">Under development</td></tr>
+          <tr><td>Traffic Rules</td><td>4 tests (Sri Lankan laws)</td><td class="status-no">Under development</td></tr>
+          <tr><td>Parking</td><td>3 tests</td><td class="status-no">Under development</td></tr>
+          <tr><td>Vehicle Control</td><td>3 tests</td><td class="status-no">Under development</td></tr>
+          <tr><td>Safety Procedures</td><td>3 tests</td><td class="status-no">Under development</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 6 Road signs curriculum -->
+    <section class="slide" data-slide="6">
+      <div class="slide-header">
+        <h2>Road Signs Curriculum</h2>
+        <p class="subtitle">Module types: Intro · Learn · MCQ · Minigame</p>
+      </div>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Traffic & signals <span class="pill live">Live</span></h3>
+          <ul>
+            <li>Intro — traffic light reference</li>
+            <li>MCQ — 6 questions</li>
+            <li>Minigame — 6 rounds (Stop / Slow / Go)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Warning signs <span class="pill wip">WIP</span></h3>
+          <ul>
+            <li>Study module</li>
+            <li>MCQ — 10 questions</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Control signs <span class="pill wip">WIP</span></h3>
+          <ul>
+            <li>5 subgroups: restrictive, boundary, additional, command, priority</li>
+            <li>Each: Learn → MCQ</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7 Driving topics -->
+    <section class="slide" data-slide="7">
+      <div class="slide-header">
+        <h2>Driving Topics</h2>
+        <p class="subtitle">Difficulty: Easy · Medium · Hard · Extreme</p>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Topic</th><th>Levels</th><th>Focus</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Junctions</td><td>6</td><td>T-junction, cross, roundabout</td><td class="status-yes">4 playable</td></tr>
+          <tr><td>Road Markings</td><td>7</td><td>Lane lines, zebra, junction box</td><td class="status-yes">4 playable</td></tr>
+          <tr><td>Road Signs</td><td>5</td><td>Warning, regulatory, priority</td><td class="status-no">All WIP</td></tr>
+          <tr><td>Emergency</td><td>5</td><td>Braking, breakdown, ambulance</td><td class="status-yes">Ambulance live</td></tr>
+          <tr><td>Parking</td><td>5</td><td>Parallel, perpendicular, angle</td><td class="status-no">All WIP</td></tr>
+          <tr><td>Controls</td><td>—</td><td>Gearbox, steering, signals, pedals</td><td class="status-yes">Tutorial</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 8 Junctions & markings detail -->
+    <section class="slide" data-slide="8">
+      <div class="slide-header">
+        <h2>Playable Driving Levels</h2>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Junctions (4 live)</h3>
+          <ul>
+            <li>Left Turn · Right Turn</li>
+            <li>Cross Junction Basics</li>
+            <li>Roundabout Basics</li>
+            <li><em>Advanced cross & roundabout — planned</em></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Road Markings (4 live)</h3>
+          <ul>
+            <li>Solid lines · Dashed lines</li>
+            <li>Zebra crossings (pedestrian wait)</li>
+            <li>Junction box (no stopping in hatched area)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Emergency (1 live)</h3>
+          <ul>
+            <li>Ambulance — NPC, sirens, pull over, checkpoints</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Scoring & rules</h3>
+          <ul>
+            <li>Approach / mid-turn / finish zones</li>
+            <li>Turn signals, speed limits, time bonus</li>
+            <li>Penalty screenshots on violations</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9 Progression -->
+    <section class="slide" data-slide="9">
+      <div class="slide-header">
+        <h2>Progression & Feedback</h2>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Unlock system</h3>
+          <ul>
+            <li>Linear chains — complete A to unlock B</li>
+            <li>Theory: pass at 70%+</li>
+            <li>Driving: rule checklist pass/fail</li>
+            <li>Lock icons & difficulty colors on level cards</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>After each drive</h3>
+          <ul>
+            <li>Score 0–100 with breakdown</li>
+            <li>Checklist of rules followed / broken</li>
+            <li>Optional screenshot upload (Cloudinary)</li>
+            <li>Retry or return to level list</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card" style="margin-top: 1rem;">
+        <h3>Not included (future scope)</h3>
+        <p>Shop · achievements · leaderboards · multiplayer · power-ups · car customization</p>
+      </div>
+    </section>
+
+    <!-- 10 Summary -->
+    <section class="slide title-slide" data-slide="10">
+      <div class="tag">Summary</div>
+      <h1>Theory + practice, with AI support</h1>
+      <p>Road Rules turns road-safety education into structured quizzes and realistic driving scenarios — with progress sync, detailed reports, and an instructor that explains every mistake.</p>
+    </section>
+
+  </div>
+
+  <div class="footer">
+    <span>Road Rules</span>
+    <span class="progress" id="progress">1 / 10</span>
+  </div>
+  <div class="nav-hint">← → or click to navigate</div>
+
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    let current = 0;
+
+    function show(i) {
+      current = Math.max(0, Math.min(i, slides.length - 1));
+      slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+      document.getElementById('progress').textContent = `${current + 1} / ${slides.length}`;
+    }
+
+    function next() { show(current + 1); }
+    function prev() { show(current - 1); }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+      if (e.key === 'Home') { e.preventDefault(); show(0); }
+      if (e.key === 'End') { e.preventDefault(); show(slides.length - 1); }
+    });
+
+    document.body.addEventListener('click', (e) => {
+      if (e.clientX > window.innerWidth / 2) next();
+      else prev();
+    });
+
+    show(0);
+  </script>
+</body>
+</html>

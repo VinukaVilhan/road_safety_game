@@ -7,9 +7,9 @@ import 'data/local/local_db.dart';
 import 'data/sync/sync_service.dart';
 import 'screens/auth_wrapper.dart';
 import 'theme/swiss_theme.dart';
-import 'services/image_preloader.dart';
-import 'services/music_service.dart';
-import 'services/ui_sound_service.dart';
+import 'services/content/image_preloader.dart';
+import 'services/audio/music_service.dart';
+import 'services/audio/ui_sound_service.dart';
 
 /// Industry-standard app initialization using MaterialApp.builder pattern
 /// This ensures UI shows immediately while resources load in background

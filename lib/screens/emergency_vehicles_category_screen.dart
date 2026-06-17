@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 
 import '../models/assistant_launch_context.dart';
 import '../models/game_level.dart';
-import '../services/driving_levels_service.dart';
-import '../services/ui_sound_service.dart';
+import '../services/content/driving_levels_service.dart';
+import '../services/audio/ui_sound_service.dart';
 import '../theme/swiss_theme.dart';
 import '../utils/app_fonts.dart';
 import '../widgets/assistant_button.dart';

@@ -6,9 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
-import '../data/local/local_db.dart';
-import '../data/sync/sync_outbox.dart';
-import '../data/sync/sync_service.dart';
+import '../../data/local/local_db.dart';
+import '../../data/sync/sync_outbox.dart';
+import '../../data/sync/sync_service.dart';
 
 /// Tracks cumulative driving distance (approximate miles), persisted locally and
 /// synced to Firestore via the outbox (`users/{uid}/stats/driving.totalMeters`).

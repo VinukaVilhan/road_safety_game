@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import '../models/assistant_launch_context.dart';
 import '../models/last_driving_report.dart';
 import '../screens/assistant_chat_screen.dart';
-import '../services/instructor_chat_sessions_service.dart';
-import '../services/ui_sound_service.dart';
+import '../services/assistant/instructor_chat_sessions_service.dart';
+import '../services/audio/ui_sound_service.dart';
 
 /// Paper-like colours and typography for the session report (distinct from game HUD).
 class _DocTheme {

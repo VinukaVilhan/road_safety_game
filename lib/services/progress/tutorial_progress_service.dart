@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import '../data/repositories/progress_repository.dart';
-import '../models/tutorial_progress.dart';
+import '../../data/repositories/progress_repository.dart';
+import '../../models/tutorial_progress.dart';
 
 /// Loads and persists [TutorialProgress] for the signed-in user (Isar + sync outbox).
 class TutorialProgressService {

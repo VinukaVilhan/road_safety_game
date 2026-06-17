@@ -5,8 +5,8 @@ import '../utils/app_fonts.dart';
 import '../data/repositories/progress_repository.dart';
 import '../models/theory_test.dart';
 import '../models/mcq_question.dart';
-import '../services/road_signs_questions_service.dart';
-import '../services/ui_sound_service.dart';
+import '../services/content/road_signs_questions_service.dart';
+import '../services/audio/ui_sound_service.dart';
 import '../models/assistant_launch_context.dart';
 import '../widgets/assistant_button.dart';
 

@@ -455,6 +455,9 @@
   <object id="25" name="Wrong_Turn_Layer" type="Zone_Fail_WT" x="422.667" y="913.333" width="124" height="34.6667"/>
  </objectgroup>
  <objectgroup color="#55ffff" id="17" name="Spawn_Sign" class="Spawn_Sign">
+  <properties>
+   <property name="sign_asset" value="assets/roadsigns/Pedestrian_Crossing.jpeg"/>
+  </properties>
   <object id="27" name="Spawn_Sign" type="Spawn_Sign" x="420" y="728" width="118.667" height="17.3333"/>
  </objectgroup>
 </map>

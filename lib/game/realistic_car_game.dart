@@ -99,7 +99,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   /// Pairs of zig-zag zone object ids on the same horizontal row (road-crossing).
   List<List<int>> _zigZagRowZoneIds = [];
   final List<Rect> _spawnSignRects = [];
-  String _spawnSignAssetPath = 'assets/roadsigns/pedestrian_crossing.png';
+  String _spawnSignAssetPath = 'assets/roadsigns/Pedestrian_Crossing.jpeg';
   final Set<int> _zonesInsidePreviousFrame = <int>{};
   final List<_MidTurnZone> _midTurnZones = [];
   int _lastCompletedStepId = 0;
@@ -124,10 +124,11 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
   int _nonCrashBumpCount = 0;
   DateTime? _lastNonCrashBumpAt;
   final ValueNotifier<int?> roadCrossingCountdown = ValueNotifier<int?>(null);
-  final ValueNotifier<String?> roadCrossingApproachHint =
-      ValueNotifier<String?>(null);
   final ValueNotifier<bool> pedestrianCrossingSignVisible =
       ValueNotifier<bool>(false);
+  /// Metres to the nearest zebra [Zig_Zag] zone while the spawn sign HUD is shown.
+  final ValueNotifier<int?> pedestrianCrossingDistanceMeters =
+      ValueNotifier<int?>(null);
   bool _roadCrossingStopActive = false;
   bool _roadCrossingStopSatisfied = false;
   int? _roadCrossingStopStepId;
@@ -610,8 +611,8 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _roadCrossingStopElapsed = 0.0;
     _activeRoadCrossingWaitZone = null;
     roadCrossingCountdown.value = null;
-    roadCrossingApproachHint.value = null;
     pedestrianCrossingSignVisible.value = false;
+    pedestrianCrossingDistanceMeters.value = null;
     _junctionBoxStoppedElapsedSec = 0.0;
     _resetEmergencyAmbulanceForRestart();
     _resetAmbulanceDecorationForRestart();
@@ -662,8 +663,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     _vehicleSfx.tick(dt, car);
     _maybePlaceDeferredAmbulanceDecoration();
     _updateAmbulanceSirenTrigger();
-    _updateRoadCrossingApproachHint();
-    _updateSpawnSignReveal();
+    _updatePedestrianCrossingSignHud();
     _updateRoadCrossingParkCountdown(dt);
     _updateZigZagStraddleFail();
     _updateZigZagRoadCrossingRules();
@@ -760,7 +760,7 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
 
   void _loadSpawnSignZones(TiledComponent tiledMap) {
     _spawnSignRects.clear();
-    _spawnSignAssetPath = 'assets/roadsigns/pedestrian_crossing.png';
+    _spawnSignAssetPath = 'assets/roadsigns/Pedestrian_Crossing.jpeg';
 
     for (final layer in tiledMap.tileMap.map.layers.whereType<ObjectGroup>()) {
       final layerClassLower = (layer.class_ ?? '').trim().toLowerCase();
@@ -801,20 +801,57 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
     );
   }
 
-  void _updateSpawnSignReveal() {
-    if (_testFinished || car == null || _spawnSignRects.isEmpty) return;
-    if (pedestrianCrossingSignVisible.value) return;
-
-    final carRect = Rect.fromCenter(
-      center: Offset(car!.position.x, car!.position.y),
-      width: car!.size.x,
-      height: car!.size.y,
-    );
-    for (final rect in _spawnSignRects) {
-      if (!carRect.overlaps(rect)) continue;
-      pedestrianCrossingSignVisible.value = true;
+  void _updatePedestrianCrossingSignHud() {
+    if (!_isRoadCrossingMap() || _testFinished || car == null) {
+      if (pedestrianCrossingDistanceMeters.value != null) {
+        pedestrianCrossingDistanceMeters.value = null;
+      }
       return;
     }
+
+    if (!pedestrianCrossingSignVisible.value && _spawnSignRects.isNotEmpty) {
+      final carRect = Rect.fromCenter(
+        center: Offset(car!.position.x, car!.position.y),
+        width: car!.size.x,
+        height: car!.size.y,
+      );
+      for (final rect in _spawnSignRects) {
+        if (!carRect.overlaps(rect)) continue;
+        pedestrianCrossingSignVisible.value = true;
+        break;
+      }
+    }
+
+    if (!pedestrianCrossingSignVisible.value) return;
+
+    if (_anyWheelInZigZagZone()) {
+      if (pedestrianCrossingDistanceMeters.value != null) {
+        pedestrianCrossingDistanceMeters.value = null;
+      }
+      return;
+    }
+
+    final meters = _distanceToPedestrianCrossingMeters();
+    if (pedestrianCrossingDistanceMeters.value != meters) {
+      pedestrianCrossingDistanceMeters.value = meters;
+    }
+  }
+
+  int? _distanceToPedestrianCrossingMeters() {
+    final c = car;
+    if (c == null) return null;
+
+    final carCenter = Offset(c.position.x, c.position.y);
+    double? nearestDistance;
+    for (final zone in _drivingZones) {
+      if (_zoneKindForScenario(zone.zoneClass) != 'zig_zag') continue;
+      final d = _distancePointToRect(carCenter, zone.rect);
+      if (nearestDistance == null || d < nearestDistance) {
+        nearestDistance = d;
+      }
+    }
+    if (nearestDistance == null) return null;
+    return (nearestDistance / 10).clamp(1, 999).toInt();
   }
 
   /// Asset path for the HUD sign shown after [Spawn_Sign] zone entry.
@@ -898,49 +935,6 @@ class RealisticCarGame extends FlameGame with KeyboardHandler {
         );
         return;
       }
-    }
-  }
-
-  void _updateRoadCrossingApproachHint() {
-    if (!_isRoadCrossingMap() || _testFinished || car == null) {
-      if (roadCrossingApproachHint.value != null) {
-        roadCrossingApproachHint.value = null;
-      }
-      return;
-    }
-
-    // Once inside the yellow approach zone, remove pre-approach guidance.
-    if (_enteredApproachZone) {
-      if (roadCrossingApproachHint.value != null) {
-        roadCrossingApproachHint.value = null;
-      }
-      return;
-    }
-
-    final carCenter = Offset(car!.position.x, car!.position.y);
-    double? nearestDistance;
-    for (final zone in _drivingZones) {
-      final zoneKind = _zoneKindForScenario(zone.zoneClass);
-      if (zoneKind != 'zone_check') continue; // yellow approach zone
-      final d = _distancePointToRect(carCenter, zone.rect);
-      if (nearestDistance == null || d < nearestDistance) {
-        nearestDistance = d;
-      }
-    }
-
-    // Strict requirement: warning is shown only from Zone_Check class areas.
-    // If no Zone_Check exists, hide the hint.
-    if (nearestDistance == null) {
-      if (roadCrossingApproachHint.value != null) {
-        roadCrossingApproachHint.value = null;
-      }
-      return;
-    }
-
-    final meters = (nearestDistance / 10).clamp(1, 999).toInt();
-    final hint = 'Slow down: zebra crossing ahead (${meters}m)';
-    if (roadCrossingApproachHint.value != hint) {
-      roadCrossingApproachHint.value = hint;
     }
   }
 

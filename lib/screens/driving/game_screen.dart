@@ -59,7 +59,7 @@ class GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildPedestrianCrossingSignHud() {
+  Widget _buildPedestrianCrossingSignHud({int? distanceMeters}) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
       duration: const Duration(milliseconds: 380),
@@ -73,7 +73,7 @@ class GameScreenState extends State<GameScreen> {
         );
       },
       child: Container(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(10),
@@ -86,16 +86,33 @@ class GameScreenState extends State<GameScreen> {
             ),
           ],
         ),
-        child: Image.asset(
-          game.spawnSignAssetPath,
-          width: 88,
-          height: 88,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) => const Icon(
-            Icons.directions_walk,
-            color: Colors.white,
-            size: 72,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              game.spawnSignAssetPath,
+              width: 88,
+              height: 88,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.directions_walk,
+                color: Colors.white,
+                size: 72,
+              ),
+            ),
+            if (distanceMeters != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${distanceMeters}m',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -564,54 +581,23 @@ class GameScreenState extends State<GameScreen> {
                     );
                   },
                 ),
-                ValueListenableBuilder<String?>(
-                  valueListenable: game.roadCrossingApproachHint,
-                  builder: (context, hint, _) {
-                    if (hint == null || hint.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
-                    return Positioned(
-                      top: 72,
-                      left: 0,
-                      right: 0,
-                      child: IgnorePointer(
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.68),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.amber.withValues(alpha: 0.6),
-                              ),
-                            ),
-                            child: Text(
-                              hint,
-                              style: const TextStyle(
-                                color: Colors.amberAccent,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
                 ValueListenableBuilder<bool>(
                   valueListenable: game.pedestrianCrossingSignVisible,
                   builder: (context, visible, _) {
                     if (!visible) return const SizedBox.shrink();
-                    return Positioned(
-                      left: 20,
-                      bottom: 20,
-                      child: IgnorePointer(
-                        child: _buildPedestrianCrossingSignHud(),
-                      ),
+                    return ValueListenableBuilder<int?>(
+                      valueListenable: game.pedestrianCrossingDistanceMeters,
+                      builder: (context, distanceMeters, _) {
+                        return Positioned(
+                          left: 20,
+                          bottom: 20,
+                          child: IgnorePointer(
+                            child: _buildPedestrianCrossingSignHud(
+                              distanceMeters: distanceMeters,
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),

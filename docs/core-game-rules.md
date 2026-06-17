@@ -42,7 +42,7 @@ Optional object/layer property: `fail_message` (custom fail text).
 |------|--------|
 | **Maps** | `road-crossing.tmx` — scenarios `markings_zebra_crossing`, `markings_stop_yield` |
 | **Approach** | Enter yellow `Zone_Check` — speed capped at `max_speed` / `speed_limit` (60 on `road-crossing.tmx`) |
-| **Spawn sign** | Entering `Spawn_Sign` layer shows pedestrian-crossing road sign HUD (bottom-left) |
+| **Spawn sign** | Entering `Spawn_Sign` layer shows pedestrian-crossing sign HUD (bottom-left, `Pedestrian_Crossing.jpeg`) with live distance (metres) to the nearest `Zig_Zag` zone |
 | **Zebra wait** | All wheels inside **one** grey `Zig_Zag` on your side + full stop in gear; **must not touch both zig-zags on the same horizontal row** (lane straddle) |
 | **Wrong turn** | `Zone_Fail_WT` past the stop line — **ends level immediately** with fail dialog |
 | **Finish** | Green `Zone_Finish` after step 1 (zebra wait) satisfied |
@@ -56,6 +56,7 @@ Optional object/layer property: `fail_message` (custom fail text).
 
 | Rule | Detail |
 |------|--------|
+| **Maps** | `T-junction-*.tmx`, `cross-junction.tmx`, `junction-box.tmx`, `roundabout-junction.tmx` |
 | **Approach** | Yellow zone + correct turn signal |
 | **Turn** | Purple mid-turn validation (`Zone_MidTurn` / `expected_signal`) |
 | **Finish** | Green zone after steps completed |
@@ -86,4 +87,4 @@ Optional object/layer property: `fail_message` (custom fail text).
 
 ---
 
-*Last updated: 2026-06-17 — road-crossing `Zone_Fail_WT` wheel contact + spec kit.*
+*Last updated: 2026-06-17 — `roundabout-junction.tmx` wired to Roundabout Basics level.*

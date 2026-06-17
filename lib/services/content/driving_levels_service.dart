@@ -143,7 +143,7 @@ class DrivingLevelsService {
       moduleId: junctionModuleRoundabout,
       topicLevel: 4,
       unlockRequirementIds: ["junctions_t_right"],
-      mapAsset: 'roundabout.tmx',
+      mapAsset: 'roundabout-junction.tmx',
       scenarioId: 'roundabout_basics',
     ),
     GameLevel(

@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../game/driving_game.dart';
+import '../../services/audio/music_service.dart';
 import '../../services/audio/ui_sound_service.dart';
 
 /// Pause menu for the practical driving test.
@@ -30,6 +33,7 @@ Future<void> showDrivingPauseDialog({
             onPressed: () {
               UiSoundService().playMenuTap();
               Navigator.of(dialogContext).pop();
+              game.resumeAmbientAudioAfterUiOverlay();
             },
             child: Text(
               'Resume',
@@ -39,6 +43,8 @@ Future<void> showDrivingPauseDialog({
           TextButton(
             onPressed: () {
               UiSoundService().playMenuTap();
+              game.endLessonAudio();
+              unawaited(MusicService().endDrivingLesson());
               Navigator.of(dialogContext).pop();
               Navigator.of(context).pop();
             },
@@ -50,5 +56,5 @@ Future<void> showDrivingPauseDialog({
         ],
       );
     },
-  ).then((_) => game.resumeAmbientAudioAfterUiOverlay());
+  );
 }

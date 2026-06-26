@@ -507,7 +507,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.86),
+                    constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.55),
                     decoration: BoxDecoration(
                       color: isUser ? SwissTheme.accentBlue.withValues(alpha: 0.12) : SwissTheme.backgroundLightGrey,
                       border: Border.all(color: SwissTheme.borderBlack, width: 1),

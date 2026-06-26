@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
 import 'sign_up_screen.dart';
 
@@ -184,20 +185,42 @@ class _AuthScreenState extends State<AuthScreen> {
       backgroundColor: SwissTheme.backgroundWhite,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(32, 64, 32, 64),
-          child: Form(
-            key: _formKey,
-            child: Column(
+          padding: LandscapeLayout.authPadding(context),
+          child: LandscapeLayout.bodyMaxWidth(
+            maxWidth: 960,
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('SIGN IN', style: titleStyle),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  height: 5,
-                  color: SwissTheme.accentRed,
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8, right: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('SIGN IN', style: titleStyle),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          height: 5,
+                          color: SwissTheme.accentRed,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Use your account to save progress across devices.',
+                          style: bodyStyle.copyWith(color: SwissTheme.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 48),
+                Expanded(
+                  flex: 3,
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                 Text('EMAIL', style: labelStyle),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -410,6 +433,10 @@ class _AuthScreenState extends State<AuthScreen> {
                             );
                           },
                     child: Text('Create account', style: buttonStyle),
+                  ),
+                ),
+                      ],
+                    ),
                   ),
                 ),
               ],

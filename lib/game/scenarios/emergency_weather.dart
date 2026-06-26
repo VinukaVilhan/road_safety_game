@@ -72,6 +72,9 @@ extension _EmergencyWeatherScenario on RealisticCarGameBase {
     if (_weatherComponentsHealthy()) {
       _weatherEffectsMounted = true;
       WeatherEffectsLog.info('SETUP skipped — components already healthy');
+      if (_lessonAudioActive) {
+        unawaited(_weatherSfx.ensureRainLoop());
+      }
       return;
     }
 
@@ -120,7 +123,9 @@ extension _EmergencyWeatherScenario on RealisticCarGameBase {
           'drops=${rain.activeDropCount} '
           'nextThunder=${_thunderCountdownSec.toStringAsFixed(1)}s',
         );
-        unawaited(_weatherSfx.startRainLoop());
+        if (_lessonAudioActive) {
+          unawaited(_weatherSfx.ensureRainLoop());
+        }
       } else {
         WeatherEffectsLog.error(
           'SETUP FAILED after add — dimMounted=${dim.isMounted} '
@@ -185,6 +190,9 @@ extension _EmergencyWeatherScenario on RealisticCarGameBase {
 
     if (_weatherComponentsHealthy()) {
       _weatherEffectsMounted = true;
+      if (_lessonAudioActive) {
+        unawaited(_weatherSfx.ensureRainLoop());
+      }
       return;
     }
 

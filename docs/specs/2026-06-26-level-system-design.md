@@ -109,7 +109,7 @@ Junctions — cross_junction
   junctions_cross_advanced ← junctions_cross_basics (no map yet)
 
 Weather Conditions
-  emergency_weather ← junctions_cross_basics (rain on cross-junction.tmx)
+  emergency_weather (open; rain on cross-junction.tmx)
 
 Junctions — roundabout
   junctions_roundabout_basics ← junctions_t_right (rules disabled)
@@ -295,4 +295,5 @@ Run the **agent completion gate** in [`.cursor/rules/spec-driven.mdc`](../../.cu
 | 2026-06-26 | Spec kit normalized to LMS-style completion gate template |
 | 2026-06-26 | Unlock graph + playable table: `emergency_weather` shippable (see adverse-weather spec) |
 | 2026-06-26 | `emergency_weather` moved to Driving test topic **Weather Conditions**; unlock after `junctions_cross_basics` |
+| 2026-06-26 | `emergency_weather` open by default — removed cross-junction prerequisite (standalone topic) |
 | 2026-06-26 | Unified level briefing carousel — registry + default slides (see level-briefing spec) |

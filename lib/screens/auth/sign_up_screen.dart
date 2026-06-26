@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
 import '../../widgets/assistant_button.dart';
 
@@ -116,14 +117,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: const AssistantButton(
-        heroTag: 'assistant_sign_up',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Create account',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       appBar: AppBar(
         backgroundColor: SwissTheme.backgroundWhite,
         foregroundColor: SwissTheme.textPrimary,
@@ -132,11 +125,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: AssistantButton(
+              inAppBar: true,
+              heroTag: 'assistant_sign_up',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Create account',
+                includeFullRoadSignCatalog: true,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(32, 0, 32, 64),
-          child: Form(
+          padding: LandscapeLayout.authPadding(context),
+          child: LandscapeLayout.bodyMaxWidth(
+            maxWidth: 720,
+            child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,7 +156,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   height: 5,
                   color: SwissTheme.accentRed,
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 24),
                 Text('EMAIL', style: labelStyle),
                 const SizedBox(height: 8),
                 TextFormField(
@@ -273,6 +281,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

@@ -157,6 +157,9 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
   /// Metres to the nearest zebra [Zig_Zag] zone while the spawn sign HUD is shown.
   final ValueNotifier<int?> pedestrianCrossingDistanceMeters =
       ValueNotifier<int?>(null);
+
+  /// False after [endLessonAudio] — blocks engine / rain / siren from starting again.
+  bool _lessonAudioActive = true;
   bool _roadCrossingStopActive = false;
   bool _roadCrossingStopSatisfied = false;
   int? _roadCrossingStopStepId;
@@ -669,6 +672,7 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
   /// Reset scenario after failure so the player can retry without replacing [GameScreen]
   /// (avoids dispose/orientation races with `Navigator.pushReplacement`).
   void restartLevel() {
+    _lessonAudioActive = true;
     _vehicleSfx.resetForLevelRestart();
     _testFinished = false;
     _zonesInsidePreviousFrame.clear();
@@ -711,27 +715,43 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     c.pathHistory.clear();
     _applyPlayerSpawnToWorld();
     _seedDrivingZonesAtSpawn();
+    resumeEngine();
     resumeAmbientAudioAfterUiOverlay();
+  }
+
+  /// Stops all in-lesson loops (engine, rain, ambulance siren). Safe to call multiple times.
+  void endLessonAudio() {
+    if (!_lessonAudioActive) return;
+    _lessonAudioActive = false;
+    pauseEngine();
+    _vehicleSfx.dispose();
+    _weatherSfx.invalidate();
+    unawaited(_stopAmbulanceSiren());
   }
 
   /// After route overlays or OS audio ducking, [audioplayers] loops can stay paused
   /// while state still expects them to run. Safe to call from UI when dialogs close.
   void resumeAmbientAudioAfterUiOverlay() {
+    if (!_lessonAudioActive) return;
     _vehicleSfx.resumePausedOutputs();
     _resumeAmbulanceSirenIfPaused();
-    _weatherSfx.resumePausedRain();
+    if (_isEmergencyWeatherScenario) {
+      unawaited(_weatherSfx.ensureRainLoop());
+    } else {
+      _weatherSfx.resumePausedRain();
+    }
   }
 
   @override
   void resumeEngine() {
+    if (!_lessonAudioActive) return;
     super.resumeEngine();
     resumeAmbientAudioAfterUiOverlay();
   }
 
   @override
   void onRemove() {
-    _vehicleSfx.dispose();
-    unawaited(_weatherSfx.dispose());
+    endLessonAudio();
     _disposeAmbulanceDecoration();
     super.onRemove();
   }
@@ -739,7 +759,9 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
   @override
   void update(double dt) {
     super.update(dt);
-    _vehicleSfx.tick(dt, car);
+    if (_lessonAudioActive) {
+      _vehicleSfx.tick(dt, car);
+    }
     _maybePlaceDeferredAmbulanceDecoration();
     _updateAmbulanceSirenTrigger();
     _updatePedestrianCrossingSignHud();

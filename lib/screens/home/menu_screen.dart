@@ -4,6 +4,7 @@ import 'dart:async';
 
 import '../../services/progress/level_progress_service.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
 import '../../data/repositories/progress_repository.dart';
 import '../../services/content/image_preloader.dart';
@@ -11,8 +12,6 @@ import '../../services/audio/ui_sound_service.dart';
 import '../theory/test_selection_screen.dart';
 import 'profile_screen.dart';
 import '../driving/driving_tutorial_screen.dart';
-import '../../models/assistant/assistant_launch_context.dart';
-import '../../widgets/assistant_button.dart';
 
 class MenuScreen extends StatefulWidget {
   @override
@@ -38,7 +37,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
     
     // Cache font styles once during initialization
     _titleStyle = AppFonts.pixelifySans(
-      fontSize: 80,
+      fontSize: 56,
       fontWeight: FontWeight.w900,
       height: 0.9,
       letterSpacing: -1.0,
@@ -111,38 +110,23 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: const AssistantButton(
-        heroTag: 'assistant_menu',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Main menu',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header Section (Top 40%) - Wrap in RepaintBoundary for performance
-              Expanded(
-                flex: 4,
-                child: RepaintBoundary(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(32, 64, 32, 0),
+          child: Padding(
+            padding: LandscapeLayout.screenPadding(context),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: RepaintBoundary(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Typographic Logo
-                        Text(
-                          'ROAD\nRULES',
-                          style: _titleStyle,
-                        ),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // Thick horizontal red line
+                        Text('ROAD\nRULES', style: _titleStyle),
+                        const SizedBox(height: 12),
                         Container(
                           width: double.infinity,
                           height: 5,
@@ -152,80 +136,65 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                     ),
                   ),
                 ),
-              ),
-              
-              // Menu Actions Section (Bottom 60%) - Wrap in RepaintBoundary for performance
-              Expanded(
-                flex: 6,
-                child: RepaintBoundary(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(32, 0, 32, 64),
+                const SizedBox(width: 32),
+                Expanded(
+                  flex: 3,
+                  child: RepaintBoundary(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const SizedBox(height: 32),
-                        
-                        // Menu Item 01 - PLAY
-                        _buildMenuButton(
-                          '01',
-                          'PLAY',
-                          () => _startGame(context),
-                        ),
-                        
-                        const SizedBox(height: 24),
-                        
-                        _buildMenuButton(
-                          '02',
-                          'CONTROLS',
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DrivingTutorialScreen(),
+                        _buildMenuRow(
+                          _buildMenuButton('01', 'PLAY', () => _startGame(context)),
+                          _buildMenuButton(
+                            '02',
+                            'CONTROLS',
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const DrivingTutorialScreen(),
+                              ),
                             ),
                           ),
                         ),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Menu Item 03 - OPTIONS
-                        _buildMenuButton(
-                          '03',
-                          'OPTIONS',
-                          () => _showOptions(context),
-                        ),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Menu Item 04 - PROFILE
-                        _buildMenuButton(
-                          '04',
-                          'PROFILE',
-                          () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const ProfileScreen(),
+                        const SizedBox(height: LandscapeLayout.menuItemGap),
+                        _buildMenuRow(
+                          _buildMenuButton('03', 'OPTIONS', () => _showOptions(context)),
+                          _buildMenuButton(
+                            '04',
+                            'PROFILE',
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ProfileScreen(),
+                              ),
                             ),
                           ),
                         ),
-                        
-                        const SizedBox(height: 24),
-                        
-                        // Menu Item 05 - QUIT
-                        _buildMenuButton(
-                          '05',
-                          'QUIT',
-                          () => _quitGame(context),
+                        const SizedBox(height: LandscapeLayout.menuItemGap),
+                        Center(
+                          child: _buildMenuButton('05', 'QUIT', () => _quitGame(context)),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMenuRow(Widget left, Widget? right) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: left),
+        const SizedBox(width: 24),
+        Expanded(child: right ?? const SizedBox.shrink()),
+      ],
     );
   }
 

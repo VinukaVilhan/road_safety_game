@@ -18,8 +18,6 @@ import '../../services/progress/last_driving_report_service.dart';
 import '../../services/progress/odometer_service.dart';
 import '../../services/audio/music_service.dart';
 import '../../services/audio/ui_sound_service.dart';
-import '../../models/assistant/assistant_launch_context.dart';
-import '../../widgets/assistant_button.dart';
 import '../../widgets/driving/driving_attempt_summary_content.dart';
 import '../../widgets/driving/driving_pause_dialog.dart';
 import '../../widgets/driving/driving_radio_icon.dart';
@@ -44,6 +42,10 @@ class GameScreenState extends State<GameScreen> {
   final ValueNotifier<double> _steeringRotation = ValueNotifier<double>(0.0);
   bool _resultDialogVisible = false;
   bool _levelStoryShown = false;
+  /// Gearbox and accelerator stay locked for [_startupControlsLockDuration] after level start.
+  bool _gearboxEnabled = false;
+  bool _acceleratorEnabled = false;
+  static const Duration _startupControlsLockDuration = Duration(seconds: 4);
   /// Screenshot bytes captured when the game reports a non-fatal penalty.
   final List<({String description, Uint8List bytes})> _penaltyCaptures = [];
 
@@ -105,13 +107,29 @@ class GameScreenState extends State<GameScreen> {
     if (!mounted) return;
     game.resumeEngine();
     MusicService().beginDrivingLesson();
-    UiSoundService().playLevelEngineStart();
+    unawaited(_beginLevelStart());
+  }
+
+  Future<void> _beginLevelStart() async {
+    if (!mounted) return;
+    setState(() {
+      _gearboxEnabled = false;
+      _acceleratorEnabled = false;
+    });
+    game.car?.coast();
+    unawaited(UiSoundService().playLevelEngineStart());
+    await Future<void>.delayed(_startupControlsLockDuration);
+    if (!mounted) return;
+    setState(() {
+      _gearboxEnabled = true;
+      _acceleratorEnabled = true;
+    });
   }
 
   void _showLevelBriefingIfNeeded() {
     if (!mounted || _levelStoryShown) return;
     if (!willShowLevelBriefing(widget.level)) {
-      UiSoundService().playLevelEngineStart();
+      unawaited(_beginLevelStart());
       return;
     }
     _levelStoryShown = true;
@@ -127,12 +145,14 @@ class GameScreenState extends State<GameScreen> {
     _turnSignalRightNotifier.value = _rightTurnSignalOn;
   }
 
+  void _leaveDrivingLesson() {
+    game.endLessonAudio();
+    unawaited(MusicService().endDrivingLesson());
+  }
+
   @override
   void dispose() {
-    unawaited(MusicService().endDrivingLesson());
-    if (game.paused) {
-      game.resumeEngine();
-    }
+    _leaveDrivingLesson();
     _odometerFlushTimer?.cancel();
     unawaited(OdometerService.instance.flushPendingToPersistence());
     _turnSignalTapTimer?.cancel();
@@ -150,7 +170,14 @@ class GameScreenState extends State<GameScreen> {
     final drivingTheme = Theme.of(context).copyWith(
       textTheme: AppFonts.drivingGameTextTheme,
     );
-    return Theme(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _leaveDrivingLesson();
+        Navigator.of(context).pop();
+      },
+      child: Theme(
       data: drivingTheme,
       child: Scaffold(
       backgroundColor: Colors.black, // Match game background so letterboxing isn't jarring
@@ -219,6 +246,7 @@ class GameScreenState extends State<GameScreen> {
                       const SizedBox(height: 12),
                       // Pedals row
                       PedalsWidget(
+                        acceleratorEnabled: _acceleratorEnabled,
                         onAcceleratorDown: _startAccelerating,
                         onAcceleratorUp: _stopAccelerating,
                         onBrakeDown: _startBraking,
@@ -304,21 +332,6 @@ class GameScreenState extends State<GameScreen> {
                   ),
                 ),
 
-                // AI instructor (below speed readout)
-                Positioned(
-                  top: 78,
-                  right: 20,
-                  child: AssistantButton(
-                    mini: true,
-                    heroTag: 'assistant_game_${widget.level.id}',
-                    tooltip: 'AI instructor',
-                    launchContext: AssistantLaunchContext(
-                      screenTitle: 'Practical driving test',
-                      level: widget.level,
-                    ),
-                  ),
-                ),
-
                 // Bottom-right: Gearbox above Steering Wheel
                 Positioned(
                   bottom: 20,
@@ -333,6 +346,7 @@ class GameScreenState extends State<GameScreen> {
                       GearboxWidget(
                         currentGear: _currentGear,
                         gears: _gears,
+                        enabled: _gearboxEnabled,
                         onGearSelected: _onGearSelected,
                       ),
                       const SizedBox(height: 15),
@@ -448,6 +462,7 @@ class GameScreenState extends State<GameScreen> {
         ],
       ),
     ),
+    ),
     );
   }
 
@@ -550,6 +565,7 @@ class GameScreenState extends State<GameScreen> {
 
   // Gear selection handler
   void _onGearSelected(int gearIndex) {
+    if (!_gearboxEnabled) return;
     final gearLabel = _gears[gearIndex];
     final blockReason = game.roadCrossingGearBlockReason(gearLabel);
     if (blockReason != null) {
@@ -622,6 +638,7 @@ class GameScreenState extends State<GameScreen> {
 
   // Pedal control methods
   void _startAccelerating() {
+    if (!_acceleratorEnabled) return;
     game.car?.accelerate();
   }
 
@@ -661,6 +678,7 @@ class GameScreenState extends State<GameScreen> {
   void _handleTestPassed() {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
+    game.endLessonAudio();
     unawaited(MusicService().endDrivingLesson());
     final summary = game.getAttemptSummary();
     final penaltyPayload =
@@ -721,6 +739,7 @@ class GameScreenState extends State<GameScreen> {
   Future<void> _handleTestFailed(String message) async {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
+    game.endLessonAudio();
     await MusicService().endDrivingLesson();
     final screenshotBytes = await _captureGameScreenshot();
     UiSoundService().playLevelFailed();
@@ -760,6 +779,7 @@ class GameScreenState extends State<GameScreen> {
                 setState(() => _currentGear = 1);
                 _applyGearChange();
                 MusicService().beginDrivingLesson();
+                unawaited(_beginLevelStart());
               },
               child: const Text('Retry'),
             ),

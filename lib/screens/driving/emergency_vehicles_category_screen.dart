@@ -5,8 +5,9 @@ import '../../models/driving/game_level.dart';
 import '../../services/content/driving_levels_service.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 import 'level_selection_screen.dart';
 
 /// Under Emergency Situations: open from "Emergency Vehicles", then pick Ambulance (etc.).
@@ -48,67 +49,36 @@ class _EmergencyVehiclesCategoryScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: AssistantButton(
-        heroTag: 'assistant_emergency_vehicles_categories',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Emergency vehicles — choose scenario',
-          drivingTopic: DrivingTopic.EmergencySituations,
-          levelIdsForReportDigest: DrivingLevelsService
-              .getEmergencySituationsLevelsForModule(
-            DrivingLevelsService.emergencyModuleVehicles,
-          )
-              .map((e) => e.id)
-              .toList(),
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(
-                      Icons.arrow_back_sharp,
-                      color: SwissTheme.textPrimary,
-                      size: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      'EMERGENCY VEHICLES',
-                      style: _headerStyle,
-                      maxLines: 2,
-                    ),
-                  ),
-                ],
+            BrowseScreenHeader(
+              title: 'EMERGENCY VEHICLES',
+              titleStyle: _headerStyle,
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_emergency_vehicles_categories',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Emergency vehicles — choose scenario',
+                drivingTopic: DrivingTopic.EmergencySituations,
+                levelIdsForReportDigest: DrivingLevelsService
+                    .getEmergencySituationsLevelsForModule(
+                  DrivingLevelsService.emergencyModuleVehicles,
+                )
+                    .map((e) => e.id)
+                    .toList(),
+                includeFullRoadSignCatalog: true,
               ),
             ),
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: LandscapeLayout.bodyPadding(context),
                 child: GridView.builder(
                   cacheExtent: 200,
                   addAutomaticKeepAlives: false,
                   addRepaintBoundaries: true,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 1,
-                    mainAxisSpacing: 1,
-                    childAspectRatio: 0.70,
-                  ),
+                  gridDelegate: LandscapeLayout.selectionGridDelegate(context),
                   itemCount: 1,
                   itemBuilder: (context, index) {
                     return RepaintBoundary(

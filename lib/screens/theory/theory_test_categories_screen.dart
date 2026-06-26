@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 import '../driving/level_selection_screen.dart' show HatchingPainter;
 import '../road_signs/road_signs_hub_screen.dart';
 import 'theory_test_selection_screen.dart' hide HatchingPainter;
@@ -126,42 +127,18 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: const AssistantButton(
-        heroTag: 'assistant_theory_categories',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Theory test categories',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(
-                      Icons.arrow_back_sharp,
-                      color: SwissTheme.textPrimary,
-                      size: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    'THEORY TEST',
-                    style: _headerStyle,
-                  ),
-                ],
+            BrowseScreenHeader(
+              title: 'THEORY TEST',
+              titleStyle: _headerStyle,
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_theory_categories',
+              launchContext: const AssistantLaunchContext(
+                screenTitle: 'Theory test categories',
+                includeFullRoadSignCatalog: true,
               ),
             ),
 
@@ -170,17 +147,12 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
             // Category Grid - Optimized for performance
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16.0), // Outer padding
+                padding: LandscapeLayout.bodyPadding(context),
                 child: GridView.builder(
-                  cacheExtent: 200, // Cache only 200px outside viewport
-                  addAutomaticKeepAlives: false, // Don't keep off-screen items alive
-                  addRepaintBoundaries: true, // Isolate repaints per item
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 1, // Thin 1px spacing
-                    mainAxisSpacing: 1, // Thin 1px spacing
-                    childAspectRatio: 0.70, // Slightly taller to accommodate more text
-                  ),
+                  cacheExtent: 200,
+                  addAutomaticKeepAlives: false,
+                  addRepaintBoundaries: true,
+                  gridDelegate: LandscapeLayout.selectionGridDelegate(context),
                   itemCount: categories.length,
                   itemBuilder: (context, index) {
                     final category = categories[index];

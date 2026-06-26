@@ -7,6 +7,7 @@ import '../../models/driving/tutorial_progress.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../widgets/assistant_button.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
 import '../../widgets/control_gearbox.dart';
 import '../../widgets/pedals.dart';
@@ -44,14 +45,6 @@ class _DrivingTutorialScreenState extends State<DrivingTutorialScreen> {
 
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: const AssistantButton(
-        heroTag: 'assistant_driving_tutorial_menu',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Controls — driving tutorials',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       appBar: AppBar(
         backgroundColor: SwissTheme.backgroundWhite,
         foregroundColor: SwissTheme.textPrimary,
@@ -64,23 +57,47 @@ class _DrivingTutorialScreenState extends State<DrivingTutorialScreen> {
           },
         ),
         title: Text('Controls', style: titleStyle),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        children: [
-          Text(
-            'Use this page as a controls guide. Nothing here tracks progress.',
-            style: bodyStyle,
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: AssistantButton(
+              inAppBar: true,
+              heroTag: 'assistant_driving_tutorial_menu',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Controls — driving tutorials',
+                includeFullRoadSignCatalog: true,
+              ),
+            ),
           ),
-          const SizedBox(height: 24),
-          for (final lesson in DrivingTutorialLesson.values)
-            _LessonTile(
-              lesson: lesson,
-              onTap: () {
-                UiSoundService().playMenuTap();
-                _openLesson(lesson);
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: LandscapeLayout.headerPadding(context),
+            child: Text(
+              'Use this page as a controls guide. Nothing here tracks progress.',
+              style: bodyStyle,
+            ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              padding: LandscapeLayout.bodyPadding(context),
+              gridDelegate: LandscapeLayout.listCardGridDelegate(context),
+              itemCount: DrivingTutorialLesson.values.length,
+              itemBuilder: (context, index) {
+                final lesson = DrivingTutorialLesson.values[index];
+                return _LessonTile(
+                  lesson: lesson,
+                  onTap: () {
+                    UiSoundService().playMenuTap();
+                    _openLesson(lesson);
+                  },
+                );
               },
             ),
+          ),
         ],
       ),
     );

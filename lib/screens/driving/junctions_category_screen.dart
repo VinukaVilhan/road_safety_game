@@ -5,8 +5,9 @@ import '../../models/driving/game_level.dart';
 import '../../services/content/driving_levels_service.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 import 'level_selection_screen.dart';
 
 /// First step under Junctions: pick T-junctions (left/right), cross junctions, or roundabouts.
@@ -67,61 +68,30 @@ class _JunctionsCategoryScreenState extends State<JunctionsCategoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: AssistantButton(
-        heroTag: 'assistant_junctions_categories',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Junctions — choose category',
-          drivingTopic: DrivingTopic.Junctions,
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(
-                      Icons.arrow_back_sharp,
-                      color: SwissTheme.textPrimary,
-                      size: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      'JUNCTIONS',
-                      style: _headerStyle,
-                      maxLines: 2,
-                    ),
-                  ),
-                ],
+            BrowseScreenHeader(
+              title: 'JUNCTIONS',
+              titleStyle: _headerStyle,
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_junctions_categories',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Junctions — choose category',
+                drivingTopic: DrivingTopic.Junctions,
+                includeFullRoadSignCatalog: true,
               ),
             ),
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: LandscapeLayout.bodyPadding(context),
                 child: GridView.builder(
                   cacheExtent: 200,
                   addAutomaticKeepAlives: false,
                   addRepaintBoundaries: true,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 1,
-                    mainAxisSpacing: 1,
-                    childAspectRatio: 0.70,
-                  ),
+                  gridDelegate: LandscapeLayout.selectionGridDelegate(context),
                   itemCount: _categories.length,
                   itemBuilder: (context, index) {
                     final c = _categories[index];

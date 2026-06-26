@@ -7,7 +7,7 @@ import '../../services/content/road_signs_curriculum_service.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 import '../driving/level_selection_screen.dart' show HatchingPainter;
 import 'road_signs_learn_screen.dart';
 import 'roadsign_mcq_screen.dart';
@@ -106,45 +106,26 @@ class _RoadSignsModulesScreenState extends State<RoadSignsModulesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: AssistantButton(
-        heroTag: 'assistant_road_signs_modules_${widget.group.id}_${widget.subgroup?.id ?? 'root'}',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Road signs — modules',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 24, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.arrow_back_sharp, color: SwissTheme.textPrimary, size: 24),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _breadcrumb.toUpperCase(),
-                      style: AppFonts.pixelifySans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.4,
-                        color: SwissTheme.textSecondary,
-                      ),
-                      maxLines: 3,
-                    ),
-                  ),
-                ],
+            BrowseScreenHeader(
+              titleWidget: Text(
+                _breadcrumb.toUpperCase(),
+                style: AppFonts.pixelifySans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.4,
+                  color: SwissTheme.textSecondary,
+                ),
+                maxLines: 3,
+              ),
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_road_signs_modules_${widget.group.id}_${widget.subgroup?.id ?? 'root'}',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Road signs — modules',
+                includeFullRoadSignCatalog: true,
               ),
             ),
             Padding(

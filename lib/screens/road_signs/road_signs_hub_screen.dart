@@ -5,8 +5,9 @@ import '../../models/theory/road_signs_curriculum.dart';
 import '../../services/content/road_signs_curriculum_service.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 import '../driving/level_selection_screen.dart' show HatchingPainter;
 import 'road_signs_modules_screen.dart';
 import 'road_signs_subgroups_screen.dart';
@@ -48,43 +49,22 @@ class _RoadSignsHubScreenState extends State<RoadSignsHubScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: AssistantButton(
-        heroTag: 'assistant_road_signs_hub',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Road signs — categories',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 28, 24, 16),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.arrow_back_sharp, color: SwissTheme.textPrimary, size: 24),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'ROAD SIGNS',
-                      style: AppFonts.pixelifySans(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w900,
-                        color: SwissTheme.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
+            BrowseScreenHeader(
+              title: 'ROAD SIGNS',
+              titleStyle: AppFonts.pixelifySans(
+                fontSize: 30,
+                fontWeight: FontWeight.w900,
+                color: SwissTheme.textPrimary,
+              ),
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_road_signs_hub',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Road signs — categories',
+                includeFullRoadSignCatalog: true,
               ),
             ),
             Padding(
@@ -121,36 +101,46 @@ class _RoadSignsHubScreenState extends State<RoadSignsHubScreen> {
     if (c == null) {
       return const Center(child: CircularProgressIndicator(color: SwissTheme.textPrimary));
     }
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: c.groups.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, i) {
-        final g = c.groups[i];
-        return _GroupCard(
-          group: g,
-          leadingIcon: _groupLeadingIcon(g),
-          onTap: () {
-            UiSoundService().playMenuTap();
-            if (g.isUnderDevelopment) {
-              _showUnderDevelopmentDialog(context, g);
-              return;
-            }
-            if (g.hasSubgroups) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => RoadSignsSubgroupsScreen(group: g)),
-              );
-            } else {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => RoadSignsModulesScreen(group: g)),
-              );
-            }
-          },
-        );
-      },
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: LandscapeLayout.bodyPadding(context),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (var i = 0; i < c.groups.length; i++) ...[
+              if (i > 0) const SizedBox(width: 8),
+              Expanded(
+                child: _GroupCard(
+                  group: c.groups[i],
+                  leadingIcon: _groupLeadingIcon(c.groups[i]),
+                  onTap: () => _onGroupTap(context, c.groups[i]),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
+  }
+
+  void _onGroupTap(BuildContext context, RoadSignsGroup g) {
+    UiSoundService().playMenuTap();
+    if (g.isUnderDevelopment) {
+      _showUnderDevelopmentDialog(context, g);
+      return;
+    }
+    if (g.hasSubgroups) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => RoadSignsSubgroupsScreen(group: g)),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => RoadSignsModulesScreen(group: g)),
+      );
+    }
   }
 
   void _showUnderDevelopmentDialog(BuildContext context, RoadSignsGroup group) {
@@ -238,7 +228,6 @@ class _GroupCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Container(
-          width: double.infinity,
           decoration: BoxDecoration(
             border: Border.all(color: SwissTheme.borderBlack, width: 1),
           ),
@@ -252,74 +241,80 @@ class _GroupCard extends StatelessWidget {
                   ),
                 ),
               Padding(
-                padding: const EdgeInsets.all(22),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      leadingIcon,
-                      size: 36,
-                      color: unlocked
-                          ? SwissTheme.textPrimary
-                          : SwissTheme.textSecondary.withValues(alpha: 0.5),
+                    Row(
+                      children: [
+                        Icon(
+                          leadingIcon,
+                          size: 26,
+                          color: unlocked
+                              ? SwissTheme.textPrimary
+                              : SwissTheme.textSecondary.withValues(alpha: 0.5),
+                        ),
+                        const Spacer(),
+                        if (dev)
+                          const Icon(Icons.lock_outline, size: 20, color: SwissTheme.textPrimary)
+                        else
+                          const Icon(Icons.chevron_right, size: 20, color: SwissTheme.textPrimary),
+                      ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            group.title.toUpperCase(),
-                            style: AppFonts.pixelifySans(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                              color: unlocked
-                                  ? SwissTheme.textPrimary
-                                  : SwissTheme.textSecondary.withValues(alpha: 0.55),
-                            ),
-                          ),
-                          if (dev) ...[
-                            const SizedBox(height: 6),
-                            Text(
-                              'UNDER DEVELOPMENT',
-                              style: AppFonts.pixelifySans(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.6,
-                                color: SwissTheme.accentOrange,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 6),
-                          Text(
-                            group.description,
-                            style: SwissTheme.monospacedText.copyWith(
-                              fontSize: 11,
-                              color: unlocked
-                                  ? SwissTheme.textSecondary
-                                  : SwissTheme.textSecondary.withValues(alpha: 0.45),
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            subtitle,
-                            style: SwissTheme.monospacedText.copyWith(
-                              fontSize: 10,
-                              color: unlocked
-                                  ? SwissTheme.textSecondary
-                                  : SwissTheme.textSecondary.withValues(alpha: 0.4),
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 10),
+                    Text(
+                      group.title.toUpperCase(),
+                      style: AppFonts.pixelifySans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        height: 1.1,
+                        color: unlocked
+                            ? SwissTheme.textPrimary
+                            : SwissTheme.textSecondary.withValues(alpha: 0.55),
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (dev)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4, top: 2),
-                        child: Icon(Icons.lock_outline, size: 24, color: SwissTheme.textPrimary),
-                      )
-                    else
-                      const Icon(Icons.chevron_right, color: SwissTheme.textPrimary),
+                    if (dev) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'UNDER DEVELOPMENT',
+                        style: AppFonts.pixelifySans(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: SwissTheme.accentOrange,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      group.description,
+                      style: SwissTheme.monospacedText.copyWith(
+                        fontSize: 10,
+                        height: 1.25,
+                        color: unlocked
+                            ? SwissTheme.textSecondary
+                            : SwissTheme.textSecondary.withValues(alpha: 0.45),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      subtitle.toUpperCase(),
+                      style: SwissTheme.monospacedText.copyWith(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.4,
+                        color: unlocked
+                            ? SwissTheme.textSecondary
+                            : SwissTheme.textSecondary.withValues(alpha: 0.4),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),

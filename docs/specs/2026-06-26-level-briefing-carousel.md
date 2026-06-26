@@ -94,3 +94,5 @@ Give every practical driving level a **consistent pre-level briefing** — pagin
 | Date | Note |
 |------|------|
 | 2026-06-26 | Unified carousel + registry; removed ambulance-only dialog and text-wall briefings |
+| 2026-06-26 | Gear / accelerator / brake locked until `playLevelEngineStart` completes (`game_screen.dart`, `pedals.dart`, `gearbox.dart`) |
+| 2026-06-26 | Startup lock: gearbox + accelerator disabled 4s after level start (all levels); brake always enabled; rain `ensureRainLoop` on resume |

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 import '../../data/repositories/progress_repository.dart';
 import '../../models/theory/theory_test.dart';
 import '../../services/content/theory_tests_service.dart';
@@ -111,47 +112,18 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: AssistantButton(
-        heroTag: 'assistant_theory_tests_${widget.categoryId}',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Theory tests — $categoryDisplayName',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(
-                      Icons.arrow_back_sharp,
-                      color: SwissTheme.textPrimary,
-                      size: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      categoryDisplayName,
-                      style: _headerStyle,
-                      maxLines: 2,
-                      overflow: TextOverflow.clip,
-                      softWrap: true,
-                    ),
-                  ),
-                ],
+            BrowseScreenHeader(
+              title: categoryDisplayName,
+              titleStyle: _headerStyle,
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_theory_tests_${widget.categoryId}',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Theory tests — $categoryDisplayName',
+                includeFullRoadSignCatalog: true,
               ),
             ),
 
@@ -160,7 +132,7 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
             // Test Grid - Optimized for performance
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: LandscapeLayout.bodyPadding(context),
                 child: tests.isEmpty
                     ? Center(
                         child: Padding(
@@ -224,12 +196,7 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
                         cacheExtent: 200,
                         addAutomaticKeepAlives: false,
                         addRepaintBoundaries: true,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 1,
-                          mainAxisSpacing: 1,
-                          childAspectRatio: 0.70, // Slightly taller to accommodate text
-                        ),
+                        gridDelegate: LandscapeLayout.selectionGridDelegate(context),
                         itemCount: tests.length,
                         itemBuilder: (context, index) {
                           final test = tests[index];

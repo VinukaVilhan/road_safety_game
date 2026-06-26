@@ -7,48 +7,56 @@ class GearboxWidget extends StatelessWidget {
   final int currentGear;
   final List<String> gears;
   final Function(int) onGearSelected;
+  final bool enabled;
 
   const GearboxWidget({
     super.key,
     required this.currentGear,
     required this.gears,
     required this.onGearSelected,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
     const frameWidth = 140.0;
     const frameHeight = 200.0;
-    return Container(
-      width: frameWidth,
-      height: frameHeight,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Stack(
-        children: [
-          // Background gearbox image
-          ClipRRect(
+    return IgnorePointer(
+      ignoring: !enabled,
+      child: Opacity(
+        opacity: enabled ? 1.0 : 0.45,
+        child: Container(
+          width: frameWidth,
+          height: frameHeight,
+          decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Image.asset(
-                MediaAssets.gearboxCubicRescaled,
-                width: frameWidth,
-                height: frameHeight,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) {
-                  debugPrint('Failed to load gearbox image: ${MediaAssets.gearboxCubicRescaled}');
-                  debugPrint('Error: $error');
-                  return _buildFallbackGearbox(context);
-                },
-              ),
-            ),
           ),
-          
-          // Gear position overlays
-          _buildGearPositionOverlays(),
-        ],
+          child: Stack(
+            children: [
+              // Background gearbox image
+              ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Image.asset(
+                    MediaAssets.gearboxCubicRescaled,
+                    width: frameWidth,
+                    height: frameHeight,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      debugPrint('Failed to load gearbox image: ${MediaAssets.gearboxCubicRescaled}');
+                      debugPrint('Error: $error');
+                      return _buildFallbackGearbox(context);
+                    },
+                  ),
+                ),
+              ),
+
+              // Gear position overlays
+              _buildGearPositionOverlays(),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -277,6 +285,7 @@ class GearboxWidget extends StatelessWidget {
 
   // Method to handle gear selection
   void _selectGear(int gearIndex) {
+    if (!enabled) return;
     onGearSelected(gearIndex);
     
     // Add haptic feedback

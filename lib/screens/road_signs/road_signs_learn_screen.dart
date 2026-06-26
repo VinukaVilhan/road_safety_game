@@ -5,7 +5,7 @@ import '../../models/assistant/assistant_launch_context.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 
 /// Placeholder “study” flow: short guidance; marks curriculum module viewed on Done.
 class RoadSignsLearnScreen extends StatelessWidget {
@@ -22,48 +22,28 @@ class RoadSignsLearnScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: AssistantButton(
-        mini: true,
-        heroTag: 'assistant_road_signs_learn_${module.id}',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Road signs — study',
-          theoryTestName: module.title,
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.arrow_back_sharp, color: SwissTheme.textPrimary, size: 24),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      breadcrumb.toUpperCase(),
-                      style: AppFonts.pixelifySans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                        color: SwissTheme.textSecondary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+            BrowseScreenHeader(
+              titleWidget: Text(
+                breadcrumb.toUpperCase(),
+                style: AppFonts.pixelifySans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                  color: SwissTheme.textSecondary,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_road_signs_learn_${module.id}',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Road signs — study',
+                theoryTestName: module.title,
+                includeFullRoadSignCatalog: true,
               ),
             ),
             Padding(

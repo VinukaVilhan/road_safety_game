@@ -5,7 +5,7 @@ import '../../models/theory/road_signs_curriculum.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 import 'road_signs_modules_screen.dart';
 
 /// Lists control-sign subcategories (restrictive, boundary, etc.).
@@ -20,43 +20,22 @@ class RoadSignsSubgroupsScreen extends StatelessWidget {
       ..sort((a, b) => a.order.compareTo(b.order));
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: AssistantButton(
-        heroTag: 'assistant_road_signs_subgroups',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Road signs — ${group.title}',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 24, 16),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(Icons.arrow_back_sharp, color: SwissTheme.textPrimary, size: 24),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      group.title.toUpperCase(),
-                      style: AppFonts.pixelifySans(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: SwissTheme.textPrimary,
-                      ),
-                    ),
-                  ),
-                ],
+            BrowseScreenHeader(
+              title: group.title.toUpperCase(),
+              titleStyle: AppFonts.pixelifySans(
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                color: SwissTheme.textPrimary,
+              ),
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_road_signs_subgroups',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Road signs — ${group.title}',
+                includeFullRoadSignCatalog: true,
               ),
             ),
             Padding(

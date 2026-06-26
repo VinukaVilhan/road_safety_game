@@ -9,6 +9,12 @@ abstract final class DrivingAudioLevels {
   static const double reverse = 0.24;
   static const double brake = 0.34;
 
+  /// Looping rain ambience on adverse-weather levels — audible under engine idle.
+  static const double rainAmbience = 0.42;
+
+  /// One-shot thunder on lightning strike.
+  static const double thunderClap = 0.58;
+
   /// Quietest continuous vehicle loop while driving (reverse beep).
   static const double quietestVehicleLoop = reverse;
 

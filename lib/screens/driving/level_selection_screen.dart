@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
 import '../../models/driving/game_level.dart';
 import '../../services/content/driving_levels_service.dart';
@@ -12,7 +13,7 @@ import '../../widgets/last_driving_report_dialog.dart';
 import 'game_screen.dart';
 import 'emergency_vehicles_category_screen.dart';
 import '../../models/assistant/assistant_launch_context.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 
 class LevelSelectionScreen extends StatefulWidget {
   final DrivingTopic? topic; // Optional: if null, shows all levels (backward compatible)
@@ -204,49 +205,20 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     final levelIds = levels.map((e) => e.id).toList();
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: AssistantButton(
-        heroTag: 'assistant_level_select',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Level list — $headerTitle',
-          drivingTopic: widget.topic,
-          levelIdsForReportDigest: levelIds,
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(
-                      Icons.arrow_back_sharp,
-                      color: SwissTheme.textPrimary,
-                      size: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      headerTitle,
-                      style: _headerStyle,
-                      maxLines: 2,
-                      overflow: TextOverflow.clip,
-                      softWrap: true,
-                    ),
-                  ),
-                ],
+            BrowseScreenHeader(
+              title: headerTitle,
+              titleStyle: _headerStyle,
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_level_select',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Level list — $headerTitle',
+                drivingTopic: widget.topic,
+                levelIdsForReportDigest: levelIds,
+                includeFullRoadSignCatalog: true,
               ),
             ),
 
@@ -255,7 +227,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
             // Level Grid - Optimized for performance
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: LandscapeLayout.bodyPadding(context),
                 child: levels.isEmpty
                     ? Center(
                         child: Text(
@@ -270,12 +242,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         cacheExtent: 200,
                         addAutomaticKeepAlives: false,
                         addRepaintBoundaries: true,
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 1,
-                          mainAxisSpacing: 1,
-                          childAspectRatio: 0.70, // Slightly taller to accommodate more text
-                        ),
+                        gridDelegate: LandscapeLayout.selectionGridDelegate(context),
                         itemCount: levels.length,
                         itemBuilder: (context, index) {
                           final level = levels[index];

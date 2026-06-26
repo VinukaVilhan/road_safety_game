@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 import '../../models/driving/game_level.dart';
 import 'junctions_category_screen.dart';
 import 'level_selection_screen.dart';
@@ -86,42 +87,18 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: const AssistantButton(
-        heroTag: 'assistant_driving_topics',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Driving test — choose topic',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(
-                      Icons.arrow_back_sharp,
-                      color: SwissTheme.textPrimary,
-                      size: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    'DRIVING TEST',
-                    style: _headerStyle,
-                  ),
-                ],
+            BrowseScreenHeader(
+              title: 'DRIVING TEST',
+              titleStyle: _headerStyle,
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_driving_topics',
+              launchContext: const AssistantLaunchContext(
+                screenTitle: 'Driving test — choose topic',
+                includeFullRoadSignCatalog: true,
               ),
             ),
 
@@ -130,17 +107,12 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
             // Topic Grid - Optimized for performance
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: LandscapeLayout.bodyPadding(context),
                 child: GridView.builder(
                   cacheExtent: 200,
                   addAutomaticKeepAlives: false,
                   addRepaintBoundaries: true,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 1,
-                    mainAxisSpacing: 1,
-                    childAspectRatio: 0.70, // Slightly taller to accommodate more text
-                  ),
+                  gridDelegate: LandscapeLayout.selectionGridDelegate(context),
                   itemCount: topics.length,
                   itemBuilder: (context, index) {
                     final topic = topics[index];

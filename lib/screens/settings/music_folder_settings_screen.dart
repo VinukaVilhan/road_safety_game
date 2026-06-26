@@ -135,14 +135,6 @@ class _MusicFolderSettingsScreenState extends State<MusicFolderSettingsScreen> {
 
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: const AssistantButton(
-        heroTag: 'assistant_music_folder',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Music folder settings',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       appBar: AppBar(
         backgroundColor: SwissTheme.backgroundWhite,
         elevation: 0,
@@ -162,6 +154,19 @@ class _MusicFolderSettingsScreenState extends State<MusicFolderSettingsScreen> {
             color: SwissTheme.textPrimary,
           ),
         ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: AssistantButton(
+              inAppBar: true,
+              heroTag: 'assistant_music_folder',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Music folder settings',
+                includeFullRoadSignCatalog: true,
+              ),
+            ),
+          ),
+        ],
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),

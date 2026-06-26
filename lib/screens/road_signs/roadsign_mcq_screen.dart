@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
 import '../../data/repositories/progress_repository.dart';
 import '../../models/theory/theory_test.dart';
@@ -132,7 +133,7 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+                padding: LandscapeLayout.bodyPadding(context),
                 child: _buildQuestionContent(),
               ),
             ),
@@ -174,47 +175,49 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
 
   Widget _buildQuestionContent() {
     final q = _questions[_currentIndex];
-    return Column(
+    final questionPane = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (q.hasImage) ...[
-          _buildQuestionImage(q),
-          const SizedBox(height: 20),
-        ],
-        Text(
-          q.questionText,
-          style: _questionStyle,
-        ),
-        const SizedBox(height: 24),
+        Text(q.questionText, style: _questionStyle),
+        const SizedBox(height: 16),
         ...List.generate(q.options.length, (i) => _buildOption(q, i)),
+      ],
+    );
+
+    if (!q.hasImage) return questionPane;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 200, child: _buildQuestionImage(q)),
+        const SizedBox(width: 20),
+        Expanded(child: questionPane),
       ],
     );
   }
 
   Widget _buildQuestionImage(McqQuestion q) {
-    return Center(
-      child: Container(
-        width: 160,
-        height: 160,
-        decoration: BoxDecoration(
-          color: SwissTheme.backgroundLightGrey,
-          border: Border.all(color: SwissTheme.borderBlack, width: 1),
-        ),
-        child: ClipRect(
-          child: q.imageAssetPath != null
-              ? Image.asset(
-                  q.imageAssetPath!,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => _buildPlaceholderSign(q.id),
-                )
-              : (q.imageUrl != null
-                  ? Image.network(
-                      q.imageUrl!,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => _buildPlaceholderSign(q.id),
-                    )
-                  : _buildPlaceholderSign(q.id)),
-        ),
+    return Container(
+      width: 200,
+      height: 160,
+      decoration: BoxDecoration(
+        color: SwissTheme.backgroundLightGrey,
+        border: Border.all(color: SwissTheme.borderBlack, width: 1),
+      ),
+      child: ClipRect(
+        child: q.imageAssetPath != null
+            ? Image.asset(
+                q.imageAssetPath!,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => _buildPlaceholderSign(q.id),
+              )
+            : (q.imageUrl != null
+                ? Image.network(
+                    q.imageUrl!,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => _buildPlaceholderSign(q.id),
+                  )
+                : _buildPlaceholderSign(q.id)),
       ),
     );
   }

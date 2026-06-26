@@ -122,9 +122,12 @@ class UiSoundService {
   }
 
   /// Car engine start once the driving screen is ready and any level briefing was dismissed.
-  void playLevelEngineStart() {
+  ///
+  /// Completes when playback finishes (or immediately when [soundEnabled] is false).
+  /// Callers should keep gear / pedals locked until this future completes.
+  Future<void> playLevelEngineStart() async {
     if (!soundEnabled) return;
-    unawaited(_playEngineStartSound());
+    await _playEngineStartSound();
   }
 
   Future<void> _playTapSound() async {
@@ -164,6 +167,9 @@ class UiSoundService {
       }
       await _engineStartPlayer.seek(Duration.zero);
       await _engineStartPlayer.play();
+      await _engineStartPlayer.processingStateStream.firstWhere(
+        (state) => state == ProcessingState.completed,
+      );
     } catch (_) {
       // Optional SFX
     }

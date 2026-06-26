@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../services/progress/odometer_service.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
 import '../../widgets/assistant_button.dart';
 
@@ -54,14 +55,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: const AssistantButton(
-        heroTag: 'assistant_profile',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Profile',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       appBar: AppBar(
         backgroundColor: SwissTheme.backgroundWhite,
         foregroundColor: SwissTheme.textPrimary,
@@ -70,21 +63,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 8),
+            child: AssistantButton(
+              inAppBar: true,
+              heroTag: 'assistant_profile',
+              launchContext: AssistantLaunchContext(
+                screenTitle: 'Profile',
+                includeFullRoadSignCatalog: true,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(32, 0, 32, 64),
-          child: Column(
+        child: SingleChildScrollView(
+          padding: LandscapeLayout.screenPadding(context),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('PROFILE', style: titleStyle),
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                height: 5,
-                color: SwissTheme.accentRed,
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('PROFILE', style: titleStyle),
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      height: 5,
+                      color: SwissTheme.accentRed,
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(width: 32),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               if (user != null) ...[
                 Text('EMAIL', style: labelStyle),
                 const SizedBox(height: 4),
@@ -111,7 +130,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     return Text(line, style: valueStyle);
                   },
                 ),
-                const SizedBox(height: 48),
+                const SizedBox(height: 24),
                 const Divider(color: SwissTheme.dividerBlack, thickness: 1),
                 const SizedBox(height: 24),
                 Material(
@@ -160,6 +179,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
               ],
+                  ],
+                ),
+              ),
             ],
           ),
         ),

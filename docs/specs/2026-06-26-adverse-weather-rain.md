@@ -38,7 +38,7 @@ Teach safe driving in rain: visible downpour, reduced grip, longer braking, and 
 2. Car friction, braking, and steering grip are reduced; sharp steering at speed adds slight slide.
 3. Speed above ~72 world units/sec is clamped and records one penalty.
 4. Looping rain ambience and one thunder clap per lightning event (double-flash still uses one clap).
-5. Level unlocks after `junctions_cross_basics`; listed under Driving test → **Weather Conditions**; briefing explains wet-road rules.
+5. Level is open by default in Driving test → **Weather Conditions** (no cross-junction prerequisite); briefing explains wet-road rules.
 
 ### Maps / zones
 
@@ -110,3 +110,6 @@ Run the **agent completion gate** in [`.cursor/rules/spec-driven.mdc`](../../.cu
 | 2026-06-26 | New Driving test topic **Weather Conditions** on main menu |
 | 2026-06-26 | Thunder: longer random gaps (~32–58s); clearer double-flash with dark gap between strikes |
 | 2026-06-26 | Weather SFX: `rain_ambience.mp3` loop + `thunder_clap.mp3` once per strike; asset filenames standardized (snake_case) |
+| 2026-06-26 | Rain audio: `ensureRainLoop` on viewport mount and game resume; volume via `DrivingAudioLevels.rainAmbience` |
+| 2026-06-26 | Unlock fix: `emergency_weather` open by default — no `junctions_cross_basics` prerequisite |
+| 2026-06-26 | Rain audio: `invalidate()` on lesson end + `PopScope` on `GameScreen` — stops loop on back/quit |

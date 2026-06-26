@@ -113,7 +113,7 @@ Optional object/layer property: `fail_message` (custom fail text).
 | **Weather audio** | Looping `rain_ambience.mp3`; one-shot `thunder_clap.mp3` per lightning event (once even for double-flash) |
 | **Wet grip** | Friction ×0.55, braking ×0.6, steering grip ×0.72; slight lateral slide on sharp steer at speed |
 | **Speed cap** | ~72 world units/sec while raining; exceeding records one non-fatal penalty: *Driving too fast for wet road conditions* |
-| **Unlock** | Requires `junctions_cross_basics` completed; topic **Weather Conditions** on Driving test main menu |
+| **Unlock** | Open by default (first level in topic **Weather Conditions** on Driving test main menu) |
 
 **Code:** `lib/game/scenarios/emergency_weather.dart`, `Car` weather multipliers, `level_briefing_registry.dart`
 
@@ -148,7 +148,7 @@ Practical levels have **no** Easy/Medium/Hard tier. Progression is module order 
 | **Content lookup** | `level.id` override → `scenarioId` → default slide (`name` + `description` + zone reminder) |
 | **Registry** | `lib/services/content/level_briefing_registry.dart` |
 | **Skipped** | Rules-disabled levels (§4b); levels without a map asset |
-| **Session** | Radio blocked until briefing ends (`MusicService.beginDrivingLesson` after dismiss) |
+| **Session** | Radio blocked until briefing ends (`MusicService.beginDrivingLesson` after dismiss). Gearbox and accelerator blocked for **4 seconds** after level start (all levels, including Retry); brake and steering stay enabled. All lesson audio (engine, rain, ambulance siren) stops via `endLessonAudio()` on quit, pass/fail, or leaving `GameScreen`. |
 
 Slide shape: **Mission** → **Zones / rules** → **Pass/fail** (2–4 slides for custom scenarios; 1 slide for default).
 
@@ -158,4 +158,4 @@ Spec: [`specs/2026-06-26-level-briefing-carousel.md`](./specs/2026-06-26-level-b
 
 ---
 
-*Last updated: 2026-06-26 — unified level briefing carousel.*
+*Last updated: 2026-06-26 — driving controls gated until engine-start SFX completes.*

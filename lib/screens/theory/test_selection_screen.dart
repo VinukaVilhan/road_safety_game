@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
+import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
-import '../../widgets/assistant_button.dart';
+import '../../widgets/browse_screen_header.dart';
 import '../driving/driving_topic_selection_screen.dart';
 import 'theory_test_categories_screen.dart';
 
@@ -52,42 +53,18 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
-      floatingActionButtonLocation: FloatingActionButtonLocation.miniEndFloat,
-      floatingActionButton: const AssistantButton(
-        heroTag: 'assistant_select_mode',
-        launchContext: AssistantLaunchContext(
-          screenTitle: 'Select mode — theory or driving',
-          includeFullRoadSignCatalog: true,
-        ),
-      ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      UiSoundService().playMenuTap();
-                      Navigator.pop(context);
-                    },
-                    icon: const Icon(
-                      Icons.arrow_back_sharp,
-                      color: SwissTheme.textPrimary,
-                      size: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 16),
-                  Text(
-                    'SELECT MODE',
-                    style: _headerStyle,
-                  ),
-                ],
+            BrowseScreenHeader(
+              title: 'SELECT MODE',
+              titleStyle: _headerStyle,
+              onBack: () => Navigator.pop(context),
+              heroTag: 'assistant_select_mode',
+              launchContext: const AssistantLaunchContext(
+                screenTitle: 'Select mode — theory or driving',
+                includeFullRoadSignCatalog: true,
               ),
             ),
 
@@ -96,30 +73,26 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
             // Test Options - Two vertical blocks - Optimized with RepaintBoundary
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
+                padding: LandscapeLayout.bodyPadding(context),
+                child: Row(
                   children: [
-                    // Block 1: THEORY TEST (MCQ) - White background, black border
                     Expanded(
                       child: RepaintBoundary(
                         child: _buildTestOption(
                           title: 'THEORY TEST',
-                          icon: Icons.crop_square, // Geometric square icon
+                          icon: Icons.crop_square,
                           description: 'Test your knowledge with questions',
                           isBlackBackground: false,
                           onTap: () => _startMCQTest(context),
                         ),
                       ),
                     ),
-                    
-                    const SizedBox(height: 1), // 1px spacing between blocks
-                    
-                    // Block 2: DRIVING TEST (Practical) - Black background, white text
+                    const SizedBox(width: 1),
                     Expanded(
                       child: RepaintBoundary(
                         child: _buildTestOption(
                           title: 'DRIVING TEST',
-                          icon: Icons.radio_button_unchecked, // Geometric circle icon
+                          icon: Icons.radio_button_unchecked,
                           description: 'Practice driving through different levels',
                           isBlackBackground: true,
                           onTap: () => _startPracticalTest(context),
@@ -165,7 +138,7 @@ class _TestSelectionScreenState extends State<TestSelectionScreen> {
             ),
             borderRadius: BorderRadius.zero, // Sharp corners
           ),
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

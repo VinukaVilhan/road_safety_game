@@ -35,6 +35,16 @@ class DrivingLevelsService {
     ];
   }
 
+  /// Lookup by stable progress id (e.g. learning path `driving_level` ref).
+  static GameLevel? findLevelById(String levelId) {
+    final id = levelId.trim();
+    if (id.isEmpty) return null;
+    for (final level in getAllLevels()) {
+      if (level.id == id) return level;
+    }
+    return null;
+  }
+
   /// Progress / grouping for levels under [DrivingTopic.Junctions].
   static const String junctionModuleTJunction = 't_junction';
   static const String junctionModuleCross = 'cross_junction';

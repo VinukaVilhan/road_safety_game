@@ -30,16 +30,17 @@ Unlock the five non–road-sign theory categories (Best Practices, Traffic Rules
 3. Intro marks module viewed on back navigation (same progress store as road-signs study modules).
 4. MCQ uses 70% pass threshold via `ProgressRepository.recordTheoryAttempt`.
 5. Missing intro images show placeholder with expected path.
-6. Best Practices intro uses a paginated carousel (`introSlides`: image + text per scenario); MCQ unlocks after **Done** on the last slide.
+6. All five theory categories use a paginated intro carousel (`introSlides`: image + text per scenario); MCQ unlocks after **Done** on the last slide.
 
-### Best Practices intro slides
+### Intro slide images (per category folder under `assets/images/theory/intro/`)
 
-| Slide id | Image path |
-|----------|------------|
-| `seatbelt` | `assets/images/theory/intro/best_practices/seatbelt.png` |
-| `mirrors` | `assets/images/theory/intro/best_practices/mirrors.png` |
-| `following_distance` | `assets/images/theory/intro/best_practices/following_distance.png` |
-| `stay_alert` | `assets/images/theory/intro/best_practices/stay_alert.png` |
+| Category | Slide ids (filename = `{id}.png`) |
+|----------|-----------------------------------|
+| `best_practices` | `seatbelt`, `mirrors`, `following_distance`, `stay_alert` |
+| `traffic_rules` | `driving_licence`, `vehicle_documents`, `speed_limits`, `right_of_way` |
+| `parking` | `where_not_to_park`, `parallel_angle_parking`, `hill_parking`, `clearance` |
+| `vehicle_control` | `steering`, `braking`, `gears`, `mirrors_manoeuvres` |
+| `safety_procedures` | `hazard_lights`, `warning_triangle`, `breakdown`, `accidents` |
 
 ### Config
 

@@ -1,0 +1,332 @@
+{
+  "version": 1,
+  "modules": [
+    {
+      "id": "foundations",
+      "title": "Foundations",
+      "description": "Safe driving habits every driver should know",
+      "nodes": [
+        {
+          "id": "foundations_intro",
+          "kind": "theory_intro",
+          "title": "Intro: best practices",
+          "ref": "best_practices_intro",
+          "categoryId": "best_practices",
+          "unlockRequirementIds": []
+        },
+        {
+          "id": "foundations_mcq",
+          "kind": "theory_mcq",
+          "title": "MCQ: best practices",
+          "ref": "best_practices_mcq",
+          "categoryId": "best_practices",
+          "unlockRequirementIds": ["foundations_intro"]
+        },
+        {
+          "id": "foundations_final",
+          "kind": "module_final",
+          "title": "Module check",
+          "unlockRequirementIds": ["foundations_intro", "foundations_mcq"]
+        }
+      ]
+    },
+    {
+      "id": "vehicle_control",
+      "title": "Vehicle control",
+      "description": "Steering, braking, and gears",
+      "nodes": [
+        {
+          "id": "vehicle_control_intro",
+          "kind": "theory_intro",
+          "title": "Intro: vehicle control",
+          "ref": "vehicle_control_intro",
+          "categoryId": "vehicle_control",
+          "unlockRequirementIds": ["foundations_final"]
+        },
+        {
+          "id": "vehicle_control_mcq",
+          "kind": "theory_mcq",
+          "title": "MCQ: vehicle control",
+          "ref": "vehicle_control_mcq",
+          "categoryId": "vehicle_control",
+          "unlockRequirementIds": ["vehicle_control_intro"]
+        },
+        {
+          "id": "vehicle_control_final",
+          "kind": "module_final",
+          "title": "Module check",
+          "unlockRequirementIds": ["vehicle_control_intro", "vehicle_control_mcq"]
+        }
+      ]
+    },
+    {
+      "id": "traffic_rules",
+      "title": "Traffic rules",
+      "description": "Licence, documents, and right of way",
+      "nodes": [
+        {
+          "id": "traffic_rules_intro",
+          "kind": "theory_intro",
+          "title": "Intro: traffic rules",
+          "ref": "traffic_rules_intro",
+          "categoryId": "traffic_rules",
+          "unlockRequirementIds": ["vehicle_control_final"]
+        },
+        {
+          "id": "traffic_rules_mcq",
+          "kind": "theory_mcq",
+          "title": "MCQ: traffic rules",
+          "ref": "traffic_rules_mcq",
+          "categoryId": "traffic_rules",
+          "unlockRequirementIds": ["traffic_rules_intro"]
+        },
+        {
+          "id": "traffic_rules_final",
+          "kind": "module_final",
+          "title": "Module check",
+          "unlockRequirementIds": ["traffic_rules_intro", "traffic_rules_mcq"]
+        }
+      ]
+    },
+    {
+      "id": "road_signs",
+      "title": "Road signs & signals",
+      "description": "Traffic lights and signal knowledge",
+      "nodes": [
+        {
+          "id": "road_signs_lights_intro",
+          "kind": "road_signs_intro",
+          "title": "Intro: traffic lights",
+          "ref": "traffic_color_lights_intro",
+          "groupId": "traffic_and_signals",
+          "unlockRequirementIds": ["traffic_rules_final"]
+        },
+        {
+          "id": "road_signs_lights_mcq",
+          "kind": "road_signs_mcq",
+          "title": "MCQ: color lights",
+          "ref": "traffic_color_lights_mcq",
+          "groupId": "traffic_and_signals",
+          "unlockRequirementIds": ["road_signs_lights_intro"]
+        },
+        {
+          "id": "road_signs_lights_minigame",
+          "kind": "road_signs_minigame",
+          "title": "Mini game: match the light",
+          "ref": "traffic_color_lights_minigame",
+          "groupId": "traffic_and_signals",
+          "unlockRequirementIds": ["road_signs_lights_mcq"]
+        },
+        {
+          "id": "road_signs_final",
+          "kind": "module_final",
+          "title": "Module check",
+          "unlockRequirementIds": [
+            "road_signs_lights_intro",
+            "road_signs_lights_mcq",
+            "road_signs_lights_minigame"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "junctions",
+      "title": "Junctions",
+      "description": "T-junctions, crossings, and roundabouts",
+      "nodes": [
+        {
+          "id": "junctions_t_left",
+          "kind": "driving_level",
+          "title": "Left turn",
+          "ref": "junctions_t_left",
+          "unlockRequirementIds": ["road_signs_final"]
+        },
+        {
+          "id": "junctions_t_right",
+          "kind": "driving_level",
+          "title": "Right turn",
+          "ref": "junctions_t_right",
+          "unlockRequirementIds": ["junctions_t_left"]
+        },
+        {
+          "id": "junctions_cross_basics",
+          "kind": "driving_level",
+          "title": "Cross junction basics",
+          "ref": "junctions_cross_basics",
+          "unlockRequirementIds": ["junctions_t_right"]
+        },
+        {
+          "id": "junctions_roundabout_basics",
+          "kind": "driving_level",
+          "title": "Roundabout basics",
+          "ref": "junctions_roundabout_basics",
+          "unlockRequirementIds": ["junctions_t_right"]
+        },
+        {
+          "id": "junctions_final",
+          "kind": "module_final",
+          "title": "Module check",
+          "unlockRequirementIds": [
+            "junctions_t_left",
+            "junctions_t_right",
+            "junctions_cross_basics",
+            "junctions_roundabout_basics"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "road_markings",
+      "title": "Road markings",
+      "description": "Lane lines and pedestrian crossings",
+      "nodes": [
+        {
+          "id": "markings_solid",
+          "kind": "driving_level",
+          "title": "Solid lines",
+          "ref": "markings_solid",
+          "unlockRequirementIds": ["junctions_final"]
+        },
+        {
+          "id": "markings_dashed",
+          "kind": "driving_level",
+          "title": "Dashed lines",
+          "ref": "markings_dashed",
+          "unlockRequirementIds": ["markings_solid"]
+        },
+        {
+          "id": "markings_zebra",
+          "kind": "driving_level",
+          "title": "Zebra crossings",
+          "ref": "markings_zebra",
+          "unlockRequirementIds": ["markings_dashed"]
+        },
+        {
+          "id": "markings_junction_box",
+          "kind": "driving_level",
+          "title": "Junction box",
+          "ref": "markings_junction_box",
+          "unlockRequirementIds": ["markings_zebra"]
+        },
+        {
+          "id": "road_markings_final",
+          "kind": "module_final",
+          "title": "Module check",
+          "unlockRequirementIds": [
+            "markings_solid",
+            "markings_dashed",
+            "markings_zebra",
+            "markings_junction_box"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "parking",
+      "title": "Parking",
+      "description": "Where and how to park legally",
+      "nodes": [
+        {
+          "id": "parking_intro",
+          "kind": "theory_intro",
+          "title": "Intro: parking rules",
+          "ref": "parking_intro",
+          "categoryId": "parking",
+          "unlockRequirementIds": ["road_markings_final"]
+        },
+        {
+          "id": "parking_mcq",
+          "kind": "theory_mcq",
+          "title": "MCQ: parking",
+          "ref": "parking_mcq",
+          "categoryId": "parking",
+          "unlockRequirementIds": ["parking_intro"]
+        },
+        {
+          "id": "parking_parallel_basics",
+          "kind": "driving_level",
+          "title": "Parallel parking basics",
+          "ref": "parking_parallel_basics",
+          "underDevelopment": true,
+          "unlockRequirementIds": ["parking_mcq"]
+        },
+        {
+          "id": "parking_final",
+          "kind": "module_final",
+          "title": "Module check",
+          "unlockRequirementIds": ["parking_intro", "parking_mcq"]
+        }
+      ]
+    },
+    {
+      "id": "emergencies_weather",
+      "title": "Emergencies & weather",
+      "description": "Breakdowns, ambulances, and rain",
+      "nodes": [
+        {
+          "id": "safety_intro",
+          "kind": "theory_intro",
+          "title": "Intro: safety procedures",
+          "ref": "safety_procedures_intro",
+          "categoryId": "safety_procedures",
+          "unlockRequirementIds": ["parking_final"]
+        },
+        {
+          "id": "safety_mcq",
+          "kind": "theory_mcq",
+          "title": "MCQ: safety procedures",
+          "ref": "safety_procedures_mcq",
+          "categoryId": "safety_procedures",
+          "unlockRequirementIds": ["safety_intro"]
+        },
+        {
+          "id": "emergency_ambulance",
+          "kind": "driving_level",
+          "title": "Ambulance reaction",
+          "ref": "emergency_ambulance",
+          "unlockRequirementIds": ["safety_mcq"]
+        },
+        {
+          "id": "emergency_weather",
+          "kind": "driving_level",
+          "title": "Adverse weather",
+          "ref": "emergency_weather",
+          "unlockRequirementIds": ["emergency_ambulance"]
+        },
+        {
+          "id": "emergencies_weather_final",
+          "kind": "module_final",
+          "title": "Module check",
+          "unlockRequirementIds": [
+            "safety_intro",
+            "safety_mcq",
+            "emergency_ambulance",
+            "emergency_weather"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "graduation",
+      "title": "Graduation",
+      "description": "You completed the full curriculum",
+      "nodes": [
+        {
+          "id": "grand_final",
+          "kind": "grand_final",
+          "title": "Grand final",
+          "unlockRequirementIds": [
+            "foundations_final",
+            "vehicle_control_final",
+            "traffic_rules_final",
+            "road_signs_final",
+            "junctions_final",
+            "road_markings_final",
+            "parking_final",
+            "emergencies_weather_final"
+          ]
+        }
+      ]
+    }
+  ]
+}

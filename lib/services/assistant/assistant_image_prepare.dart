@@ -4,11 +4,13 @@ import 'dart:ui' as ui;
 /// Shrinks and re-encodes as PNG so inline Gemini requests stay within limits.
 Future<Uint8List?> shrinkImageForModel(Uint8List raw) async {
   try {
+    await Future<void>.delayed(Duration.zero);
     Uint8List working = raw;
     const maxBytes = 3 * 1024 * 1024; // ~3 MiB inline target
     const dims = <int>[1280, 960, 640, 480];
 
     for (final dim in dims) {
+      await Future<void>.delayed(Duration.zero);
       final codec = await ui.instantiateImageCodec(
         working,
         targetWidth: dim,
@@ -36,4 +38,24 @@ String mimeTypeFromFileName(String? name) {
   if (lower.endsWith('.gif')) return 'image/gif';
   if (lower.endsWith('.bmp')) return 'image/bmp';
   return 'image/jpeg';
+}
+
+/// Small preview stored in chat history (landscape transcript).
+Future<Uint8List?> shrinkImageForChatPreview(Uint8List raw) async {
+  if (raw.length <= 180 * 1024) return raw;
+  try {
+    await Future<void>.delayed(Duration.zero);
+    final codec = await ui.instantiateImageCodec(
+      raw,
+      targetWidth: 360,
+      allowUpscaling: false,
+    );
+    final frame = await codec.getNextFrame();
+    final ui.Image img = frame.image;
+    final bd = await img.toByteData(format: ui.ImageByteFormat.png);
+    img.dispose();
+    return bd?.buffer.asUint8List();
+  } catch (_) {
+    return raw.length <= 512 * 1024 ? raw : null;
+  }
 }

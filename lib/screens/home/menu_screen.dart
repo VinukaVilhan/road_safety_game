@@ -9,7 +9,7 @@ import '../../utils/app_fonts.dart';
 import '../../data/repositories/progress_repository.dart';
 import '../../services/content/image_preloader.dart';
 import '../../services/audio/ui_sound_service.dart';
-import '../theory/test_selection_screen.dart';
+import '../learning/learning_path_screen.dart';
 import 'profile_screen.dart';
 import '../driving/driving_tutorial_screen.dart';
 
@@ -232,7 +232,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const TestSelectionScreen(),
+        builder: (context) => const LearningPathScreen(),
       ),
     );
   }

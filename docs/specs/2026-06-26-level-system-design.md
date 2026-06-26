@@ -58,6 +58,10 @@ flowchart LR
 
 ## Curriculum structure
 
+### Player-facing learning path
+
+PLAY from the home menu opens a **consolidated learning path** (`assets/config/learning_path.json`) instead of separate Theory Test / Driving Test hubs. Each path **module** chains theory steps, practical `GameLevel` ids, and a **module checkpoint**; a **grand final** node completes when all module checkpoints are satisfied. Path nodes reference existing theory / road-signs module ids and `GameLevel.id` values — catalogs in `theory_curriculum.json`, `road_signs_curriculum.json`, and `driving_levels_service.dart` remain authoring sources. Spec: [`2026-06-26-learning-path.md`](./2026-06-26-learning-path.md).
+
 ### Topics and modules
 
 | `DrivingTopic` | `moduleId` values (when used) | Hub screen |

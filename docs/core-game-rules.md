@@ -135,7 +135,9 @@ Full design (unlock graph, definition of done for new levels): [`specs/2026-06-2
 
 Practical levels have **no** Easy/Medium/Hard tier. Progression is module order + unlock chain. Theory uses `TestDifficulty` separately.
 
-**Code:** `level_selection_screen.dart`, `game_screen.dart`, `level_progress_service.dart`, `last_driving_report_service.dart`, `driving_game.dart`
+**Learning path (PLAY):** One consolidated curriculum map replaces the Theory/Driving fork. Manifest: `assets/config/learning_path.json`. Per module: theory (intro + MCQ) → practical levels → module checkpoint; grand final when all module checkpoints are done. Path unlock uses `unlockRequirementIds` on path nodes; completion reads existing theory and driving progress stores (no duplicate lesson state). Under-development driving levels stay locked on the path. Spec: [`specs/2026-06-26-learning-path.md`](./specs/2026-06-26-learning-path.md).
+
+**Code:** `level_selection_screen.dart`, `game_screen.dart`, `level_progress_service.dart`, `last_driving_report_service.dart`, `driving_game.dart`, `learning_path_screen.dart`, `learning_path_service.dart`
 
 ---
 
@@ -146,7 +148,7 @@ Practical levels have **no** Easy/Medium/Hard tier. Progression is module order 
 | **Hub** | Six categories on Theory Test screen; Road Signs uses `road_signs_curriculum.json`; other five use `theory_curriculum.json` |
 | **Module kinds** | `intro` (reference sheet + image) then `mcq` (text-only for these five categories) |
 | **Unlock** | View intro module → MCQ unlocks; MCQ pass (≥70%) stored by module/test id |
-| **Intro images** | `assets/images/theory/intro/` — Best Practices uses a **carousel** (`introSlides` in JSON, one image per scenario under `best_practices/`); other categories use a single reference image until migrated |
+| **Intro images** | `assets/images/theory/intro/<category_id>/` — carousel (`introSlides` in JSON): one image per scenario; all five theory categories use this pattern |
 | **Questions** | `TheoryQuestionsService` pools; shared MCQ UI via `RoadSignMcqScreen` + `McqQuestionsService` |
 
 Spec: [`specs/2026-06-26-theory-category-intro-mcq.md`](./specs/2026-06-26-theory-category-intro-mcq.md)

@@ -1,23 +1,45 @@
-# Theory intro images
+# Theory intro images (carousel)
 
-## Best Practices (carousel — one image per scenario)
+One PNG/JPEG per scenario slide. Folder name matches category id in `theory_curriculum.json`.
 
-Place in `best_practices/`:
-
+## `best_practices/`
 | File | Scenario |
 |------|----------|
 | `seatbelt.png` | Seatbelt |
 | `mirrors.png` | Mirrors |
 | `following_distance.png` | Following distance |
-| `stay_alert.png` | Stay alert / distractions |
+| `stay_alert.png` | Stay alert |
 
-## Other categories (single reference sheet)
-
-| File | Category |
+## `traffic_rules/`
+| File | Scenario |
 |------|----------|
-| `traffic_rules_reference.png` | Traffic Rules |
-| `parking_reference.png` | Parking |
-| `vehicle_control_reference.png` | Vehicle Control |
-| `safety_procedures_reference.png` | Safety Procedures |
+| `driving_licence.png` | Driving licence |
+| `vehicle_documents.png` | Vehicle documents |
+| `speed_limits.png` | Speed limits |
+| `right_of_way.png` | Right of way |
 
-Hot restart after adding new assets.
+## `parking/`
+| File | Scenario |
+|------|----------|
+| `where_not_to_park.png` | Where not to park |
+| `parallel_angle_parking.png` | Parallel / angle parking |
+| `hill_parking.png` | Hill parking |
+| `clearance.png` | Clearance |
+
+## `vehicle_control/`
+| File | Scenario |
+|------|----------|
+| `steering.png` | Steering |
+| `braking.png` | Braking |
+| `gears.png` | Gears |
+| `mirrors_manoeuvres.png` | Mirrors before manoeuvres |
+
+## `safety_procedures/`
+| File | Scenario |
+|------|----------|
+| `hazard_lights.png` | Hazard lights |
+| `warning_triangle.png` | Warning triangle |
+| `breakdown.png` | Breakdown |
+| `accidents.png` | Accidents |
+
+**Total: 20 images** (4 per category × 5 categories). Hot restart after adding assets.

@@ -144,32 +144,17 @@ class _IntroCarouselState extends State<_IntroCarousel> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.category.introHeading,
-                        style: AppFonts.pixelifySans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: SwissTheme.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        widget.category.introLead,
-                        style: AppFonts.pixelifySans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: SwissTheme.textSecondary,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Text(
+                    widget.category.introHeading,
+                    style: AppFonts.pixelifySans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: SwissTheme.textPrimary,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Expanded(
                   child: PageView.builder(
                     controller: _pageController,
@@ -252,15 +237,15 @@ class _SlidePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SizedBox(
-            width: 240,
-            child: _IntroFigure(imageAsset: slide.imageAsset),
+            width: 200,
+            child: _IntroFigure(imageAsset: slide.imageAsset, compact: true),
           ),
-          const SizedBox(width: 20),
+          const SizedBox(width: 16),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -269,19 +254,19 @@ class _SlidePage extends StatelessWidget {
                   Text(
                     slide.title,
                     style: AppFonts.pixelifySans(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: SwissTheme.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Text(
                     slide.body,
                     style: AppFonts.pixelifySans(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: SwissTheme.textPrimary,
-                      height: 1.45,
+                      height: 1.4,
                     ),
                   ),
                 ],
@@ -427,13 +412,17 @@ class _ReferenceSheet extends StatelessWidget {
 
 class _IntroFigure extends StatelessWidget {
   final String imageAsset;
+  final bool compact;
 
-  const _IntroFigure({required this.imageAsset});
+  const _IntroFigure({
+    required this.imageAsset,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      padding: EdgeInsets.all(compact ? 8 : 12),
       decoration: BoxDecoration(
         color: SwissTheme.backgroundLightGrey,
         border: Border.all(color: SwissTheme.borderBlack.withValues(alpha: 0.35)),
@@ -441,33 +430,64 @@ class _IntroFigure extends StatelessWidget {
       child: imageAsset.isNotEmpty
           ? Image.asset(
               imageAsset,
-              height: 180,
+              width: double.infinity,
               fit: BoxFit.contain,
               filterQuality: FilterQuality.medium,
               gaplessPlayback: true,
-              errorBuilder: (_, __, ___) => _Placeholder(imageAsset: imageAsset),
+              errorBuilder: (_, __, ___) => _Placeholder(imageAsset: imageAsset, compact: compact),
             )
-          : const _Placeholder(imageAsset: ''),
+          : _Placeholder(imageAsset: '', compact: compact),
     );
   }
 }
 
 class _Placeholder extends StatelessWidget {
   final String imageAsset;
+  final bool compact;
 
-  const _Placeholder({required this.imageAsset});
+  const _Placeholder({
+    required this.imageAsset,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    if (compact) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.image_outlined,
+              size: 28,
+              color: SwissTheme.textSecondary.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              imageAsset.isEmpty ? 'Image pending' : 'Image pending',
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppFonts.pixelifySans(fontSize: 10, color: SwissTheme.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.image_outlined, size: 48, color: SwissTheme.textSecondary.withValues(alpha: 0.5)),
-          const SizedBox(height: 8),
+          Icon(Icons.image_outlined, size: 40, color: SwissTheme.textSecondary.withValues(alpha: 0.5)),
+          const SizedBox(height: 6),
           Text(
             imageAsset.isEmpty ? 'Intro image pending' : 'Add image:\n$imageAsset',
             textAlign: TextAlign.center,
+            maxLines: 4,
+            overflow: TextOverflow.ellipsis,
             style: AppFonts.pixelifySans(fontSize: 11, color: SwissTheme.textSecondary, height: 1.35),
           ),
         ],

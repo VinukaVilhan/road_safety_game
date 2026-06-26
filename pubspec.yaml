@@ -89,9 +89,14 @@ flutter:
   - assets/config/developer_env.json
   - assets/config/road_signs_curriculum.json
   - assets/config/theory_curriculum.json
+  - assets/config/learning_path.json
   - assets/images/
   - assets/images/theory/intro/
   - assets/images/theory/intro/best_practices/
+  - assets/images/theory/intro/traffic_rules/
+  - assets/images/theory/intro/parking/
+  - assets/images/theory/intro/vehicle_control/
+  - assets/images/theory/intro/safety_procedures/
   - assets/images/rescaled/
   - assets/tiles/
   - assets/roadsigns/

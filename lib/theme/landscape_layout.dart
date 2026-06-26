@@ -74,4 +74,20 @@ abstract final class LandscapeLayout {
       ),
     );
   }
+
+  /// Left context rail on assistant chat (quick prompts, attached report).
+  static double chatSidebarWidth(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    if (w >= 960) return 300;
+    if (w >= 720) return 260;
+    return 220;
+  }
+
+  /// Max width for a single chat bubble in the message column.
+  static double chatBubbleMaxWidth(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    final sidebar = chatSidebarWidth(context);
+    final messageColumn = w - sidebar - 1;
+    return messageColumn.clamp(280.0, 520.0) * 0.72;
+  }
 }

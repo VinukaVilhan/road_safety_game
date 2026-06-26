@@ -52,12 +52,40 @@ abstract final class MediaAssets {
       'assets/images/theory/intro/best_practices/following_distance.png';
   static const String theoryBpStayAlert =
       'assets/images/theory/intro/best_practices/stay_alert.png';
-  static const String theoryIntroTrafficRules =
-      'assets/images/theory/intro/traffic_rules_reference.png';
-  static const String theoryIntroParking =
-      'assets/images/theory/intro/parking_reference.png';
-  static const String theoryIntroVehicleControl =
-      'assets/images/theory/intro/vehicle_control_reference.png';
-  static const String theoryIntroSafetyProcedures =
-      'assets/images/theory/intro/safety_procedures_reference.png';
+
+  static const String theoryTrDrivingLicence =
+      'assets/images/theory/intro/traffic_rules/driving_licence.png';
+  static const String theoryTrVehicleDocuments =
+      'assets/images/theory/intro/traffic_rules/vehicle_documents.png';
+  static const String theoryTrSpeedLimits =
+      'assets/images/theory/intro/traffic_rules/speed_limits.png';
+  static const String theoryTrRightOfWay =
+      'assets/images/theory/intro/traffic_rules/right_of_way.png';
+
+  static const String theoryPkWhereNotToPark =
+      'assets/images/theory/intro/parking/where_not_to_park.png';
+  static const String theoryPkParallelAngleParking =
+      'assets/images/theory/intro/parking/parallel_angle_parking.png';
+  static const String theoryPkHillParking =
+      'assets/images/theory/intro/parking/hill_parking.png';
+  static const String theoryPkClearance =
+      'assets/images/theory/intro/parking/clearance.png';
+
+  static const String theoryVcSteering =
+      'assets/images/theory/intro/vehicle_control/steering.png';
+  static const String theoryVcBraking =
+      'assets/images/theory/intro/vehicle_control/braking.png';
+  static const String theoryVcGears =
+      'assets/images/theory/intro/vehicle_control/gears.png';
+  static const String theoryVcMirrorsManoeuvres =
+      'assets/images/theory/intro/vehicle_control/mirrors_manoeuvres.png';
+
+  static const String theorySpHazardLights =
+      'assets/images/theory/intro/safety_procedures/hazard_lights.png';
+  static const String theorySpWarningTriangle =
+      'assets/images/theory/intro/safety_procedures/warning_triangle.png';
+  static const String theorySpBreakdown =
+      'assets/images/theory/intro/safety_procedures/breakdown.png';
+  static const String theorySpAccidents =
+      'assets/images/theory/intro/safety_procedures/accidents.png';
 }

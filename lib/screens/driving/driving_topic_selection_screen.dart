@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
@@ -70,26 +69,6 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
       fontWeight: FontWeight.w600,
       color: SwissTheme.accentBlue,
     );
-    
-    // Defer orientation change to avoid blocking UI initialization
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    });
-  }
-
-  @override
-  void dispose() {
-    // Allow all orientations when leaving
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    super.dispose();
   }
 
   // All available driving topics
@@ -99,6 +78,7 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
     DrivingTopic.RoadMarkings,
     DrivingTopic.RoadSigns,
     DrivingTopic.EmergencySituations,
+    DrivingTopic.WeatherConditions,
     DrivingTopic.Parking,
   ];
 

@@ -71,7 +71,6 @@ $details$fail$penalties$ambBlock
 Focused level: ${level.name} (id: ${level.id})
 Topic: ${level.topic.displayName}
 Description: ${level.description}
-Difficulty: ${level.difficulty.name}
 Map: ${level.mapAsset ?? '(default)'}
 Scenario: ${level.scenarioId ?? '(none)'}
 ''';

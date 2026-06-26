@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/media_assets.dart';
 import '../../data/repositories/progress_repository.dart';
 import '../../models/theory/road_signs_curriculum.dart';
 import '../../services/audio/ui_sound_service.dart';
@@ -17,7 +18,7 @@ class TrafficColorLightsIntroScreen extends StatelessWidget {
     required this.breadcrumb,
   });
 
-  static const _imageAsset = 'assets/images/signal_light.png';
+  static const _imageAsset = MediaAssets.signalLight;
 
   static const _docLead =
       'Traffic lights are signals at junctions and crossings. They use a simple color code so everyone knows when to stop, when to prepare, and when it may be safe to move if the way is clear.';

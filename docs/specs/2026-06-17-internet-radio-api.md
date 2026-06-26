@@ -40,11 +40,26 @@ Replace the phone FM app launcher with in-app internet radio: stations fetched f
 6. Radio plays **only during an active driving lesson** — not during briefing, not after pass/fail.
 7. Playback **stops automatically** when the lesson ends (pass, fail, quit, or leave `GameScreen`).
 8. Retry after fail re-enables radio for the new attempt.
+9. Radio volume capped below vehicle idle / reverse / accelerate SFX (`DrivingAudioLevels.radioMaxDuringLesson`).
 
-### UI
+### Session / lifecycle
 
-- `RadioTunerSheet` — search, station list, now playing
-- `game_screen.dart` — subtitle: "Stream stations in-app via API"
+- Radio gated to active driving lesson via `MusicService.beginDrivingLesson` / `endDrivingLesson`.
+- Blocked during briefing; stops on pass, fail, quit, or leave `GameScreen`.
+- Retry after fail re-enables radio for the new attempt.
+
+---
+
+## Technical design
+
+### Flutter / Flame
+
+| Item | Detail |
+|------|--------|
+| API client | `lib/services/audio/radio_api_service.dart` — Radio Browser API |
+| Playback | `MusicService.playUrl` / `just_audio`; volume capped via `driving_audio_levels.dart` |
+| UI | `RadioTunerSheet`; `game_screen.dart` — "Stream stations in-app via API" |
+| Removed | `FmRadioService`, Android FM `MethodChannel` |
 
 ---
 
@@ -56,15 +71,32 @@ Replace the phone FM app launcher with in-app internet radio: stations fetched f
 - [x] No `openFmRadio` platform channel
 - [x] Radio stops on level pass/fail and when leaving game
 - [x] Radio blocked until briefing ends; resumes on retry
+- [x] Radio volume stays below car idle / reverse / accelerate SFX during lesson
 - [ ] Manual playtest: pick station, hear audio, pause/stop
+- [x] **Spec kit updated** (same task as code)
 
 ---
 
-## Spec kit updates
+## Test plan
 
-- [x] This spec — Status Done
-- [ ] `core-game-rules.md` — N/A (non-gameplay)
-- [ ] `AGENTS.md` — N/A
+### Manual
+
+1. Start a driving level; open Radio after briefing ends — stations load.
+2. Search and play a station — audio in-app, no external FM app.
+3. Pass or fail level — radio stops automatically.
+4. Leave `GameScreen` — radio stops.
+5. Retry after fail — radio available again for new attempt.
+
+---
+
+## Spec kit updates (required when shipping)
+
+Run the **agent completion gate** in [`.cursor/rules/spec-driven.mdc`](../../.cursor/rules/spec-driven.mdc).
+
+- [ ] [`../core-game-rules.md`](../core-game-rules.md) — N/A (non-gameplay feature)
+- [x] This spec — acceptance criteria checked; **Status** → Done; **Implementation log** line
+- [x] `AGENTS.md` — radio lifecycle + `MusicService` gating bullet
+- [x] N/A — audio/session feature; no zone rule change
 
 ---
 
@@ -72,4 +104,7 @@ Replace the phone FM app launcher with in-app internet radio: stations fetched f
 
 | Date | Note |
 |------|------|
+| 2026-06-17 | In-app Radio Browser API + `just_audio`; removed FM launcher |
 | 2026-06-17 | Driving-lesson session gating: `beginDrivingLesson` / `endDrivingLesson` in `MusicService` + `GameScreen` lifecycle |
+| 2026-06-26 | Spec normalized to completion-gate template |
+| 2026-06-26 | Radio mix cap: `DrivingAudioLevels.radioMaxDuringLesson` (85% of reverse loop vol) |

@@ -11,7 +11,7 @@
 
 ## Goal
 
-One paragraph: what gameplay problem this solves.
+One paragraph: what gameplay problem this solves and for whom (player / curriculum author).
 
 ## Non-goals
 
@@ -21,8 +21,10 @@ One paragraph: what gameplay problem this solves.
 
 ## Background
 
-- Read [`../core-game-rules.md`](../core-game-rules.md) — cite section numbers (e.g. §2 Driving zones, §3 Road-crossing).
+- Read [`../core-game-rules.md`](../core-game-rules.md) — cite section numbers (e.g. §2 Driving zones, §3 Road-crossing, §7 Level curriculum).
+- If adding or changing a level in the catalog, read [`2026-06-26-level-system-design.md`](./2026-06-26-level-system-design.md).
 - Relevant map: `assets/tiles/….tmx`
+- Relevant `AGENTS.md` facts or file paths only — do not duplicate long domain docs.
 - Existing behaviour to preserve.
 
 ---
@@ -45,6 +47,10 @@ One paragraph: what gameplay problem this solves.
 
 - Checklist rows, failure messages, assistant rubric:
 
+### Session / lifecycle (if applicable)
+
+- Radio, assistant, progress sync boundaries (e.g. lesson end, leave `GameScreen`):
+
 ---
 
 ## Technical design
@@ -54,8 +60,14 @@ One paragraph: what gameplay problem this solves.
 | Item | Detail |
 |------|--------|
 | Primary file(s) | `lib/game/driving_game.dart`, … |
+| Zone mixins | `lib/game/zones/` (if new topic) |
 | TMX changes | layer / object / properties |
-| UI | `lib/screens/game_screen.dart`, reports |
+| Level catalog | `lib/services/content/driving_levels_service.dart` |
+| UI | `lib/screens/driving/game_screen.dart`, `lib/widgets/driving/` |
+
+### Config / secrets
+
+- Document in comments or README only — never commit `assistant_secrets.json` or API keys.
 
 ---
 
@@ -63,7 +75,8 @@ One paragraph: what gameplay problem this solves.
 
 - [ ] …
 - [ ] Manual playtest on target level(s)
-- [ ] **Spec kit updated** (same task as code)
+- [ ] No regression on: …
+- [ ] **Spec kit updated** (same task as code — see below)
 
 ---
 
@@ -71,17 +84,28 @@ One paragraph: what gameplay problem this solves.
 
 ### Manual
 
-1. Launch level from Road Markings category.
+1. Launch level from level selection (correct module / unlock state).
 2.
+
+---
+
+## Rollout (if needed)
+
+- Map asset deploy, Firestore schema, or feature-flag notes:
 
 ---
 
 ## Spec kit updates (required when shipping)
 
+Run the **agent completion gate** in [`.cursor/rules/spec-driven.mdc`](../../.cursor/rules/spec-driven.mdc) — same task as code, without waiting for the user to ask.
+
+Check all that apply:
+
 - [ ] [`../core-game-rules.md`](../core-game-rules.md) — § section(s): …
-- [ ] This spec — acceptance criteria checked; **Status** → Done
-- [ ] `AGENTS.md` — only if new stable preference
-- [ ] N/A — internal refactor only
+- [ ] [`2026-06-26-level-system-design.md`](./2026-06-26-level-system-design.md) — if curriculum / unlock / new-level DoD changed
+- [ ] This spec — acceptance criteria checked; **Status** → Done; **Implementation log** line
+- [ ] `AGENTS.md` — **only** new stable preference or ops fact (not routine spec-kit sync)
+- [ ] N/A — internal refactor; no gameplay rule change
 
 ---
 
@@ -89,4 +113,4 @@ One paragraph: what gameplay problem this solves.
 
 | Date | Note |
 |------|------|
-| | |
+| | PR / commit; list spec-kit files updated |

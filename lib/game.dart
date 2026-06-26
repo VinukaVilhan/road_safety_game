@@ -1,7 +1,10 @@
 import 'dart:math' as math;
+
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/services.dart';
+
+import 'constants/media_assets.dart';
 
 class RealisticCarGame extends FlameGame with KeyboardHandler {
   late Car car; // Make car accessible
@@ -113,7 +116,7 @@ class Car extends SpriteComponent {
     super.onLoad();
     
     // Load the black car sprite
-    sprite = await Sprite.load('BlackCar.png');
+    sprite = await Sprite.load(MediaAssets.blackCar);
     
     // Set car size and anchor
     size = Vector2(90, 90);

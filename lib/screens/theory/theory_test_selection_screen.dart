@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../theme/swiss_theme.dart';
@@ -69,27 +68,8 @@ class _TheoryTestSelectionScreenState extends State<TheoryTestSelectionScreen> {
       fontWeight: FontWeight.w600,
       color: SwissTheme.accentBlue,
     );
-    
-    // Defer orientation change to avoid blocking UI initialization
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    });
-    _loadCompletedTests();
-  }
 
-  @override
-  void dispose() {
-    // Allow all orientations when leaving
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    super.dispose();
+    _loadCompletedTests();
   }
 
   // Get tests for the current category

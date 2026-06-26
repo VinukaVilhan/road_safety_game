@@ -1,10 +1,11 @@
 part of '../driving_game.dart';
 
-/// Tries bundled ambulance art (same folder convention as [BlackCar.png]), then a fallback sprite.
+/// Tries bundled ambulance art (same folder convention as [MediaAssets.blackCar]), then a fallback sprite.
 Future<Sprite> _loadAmbulanceSpriteForLevel() async {
   const candidates = <String>[
-    'Ambulance - v1.png',
-    'Ambulance.png',
+    MediaAssets.ambulanceV1,
+    MediaAssets.ambulanceV2,
+    'ambulance.png',
   ];
   for (final name in candidates) {
     try {

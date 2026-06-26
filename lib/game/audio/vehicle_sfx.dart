@@ -1,20 +1,20 @@
 part of '../driving_game.dart';
 
-/// Engine audio: Car_Start.m4a (one-shot) → Car_Idle.m4a (seamless loop with
+/// Engine audio: car_start.m4a (one-shot) → car_idle.m4a (seamless loop with
 /// dynamic pitch + volume). Uses [AudioPlayer] in [PlayerMode.mediaPlayer]
 /// directly so that [AudioPlayer.setPlaybackRate] and [ReleaseMode.loop] work
 /// reliably on Android (SoundPool / lowLatency does NOT support these).
 class VehicleSfx {
-  static const String _engineIdleLoopAsset = 'Car_Idle.m4a';
-  static const String _engineStartAsset = 'Car_Start.m4a';
-  static const String _reverseLoopAsset = 'Reverse_Sound.m4a';
-  static const String _brakeAsset = 'brake.wav';
+  static const String _engineIdleLoopAsset = MediaAssets.carIdle;
+  static const String _engineStartAsset = MediaAssets.carStart;
+  static const String _reverseLoopAsset = MediaAssets.reverseLoop;
+  static const String _brakeAsset = MediaAssets.brake;
 
-  static const double _engineStartVol = 0.55;
-  static const double _idleEngineVol = 0.32;
-  static const double _maxEngineVol = 0.72;
-  static const double _reverseVol = 0.24;
-  static const double _brakeVol = 0.34;
+  static const double _engineStartVol = DrivingAudioLevels.engineStart;
+  static const double _idleEngineVol = DrivingAudioLevels.engineIdle;
+  static const double _maxEngineVol = DrivingAudioLevels.engineMax;
+  static const double _reverseVol = DrivingAudioLevels.reverse;
+  static const double _brakeVol = DrivingAudioLevels.brake;
 
   /// Playback rate = pitch multiplier. 0.85 = low idle rumble, 2.0 = screaming.
   /// Clamped to 0.5–2.0 which is the universal safe range across platforms.
@@ -35,7 +35,7 @@ class VehicleSfx {
 
   /// dt-accumulator so the idle loop starts after the start clip finishes.
   double _startElapsed = 0.0;
-  /// How long Car_Start.m4a runs before we switch to the idle loop.
+  /// How long car_start.m4a runs before we switch to the idle loop.
   static const double _startDuration = 2.4;
   bool _inStartPhase = false;
 
@@ -43,11 +43,11 @@ class VehicleSfx {
   double _lastVol = -1;
   double _brakeRepeat = 0;
 
-  /// After the first [Car_Start] in a level, only the idle loop is used when
+  /// After the first car start in a level, only the idle loop is used when
   /// returning from P/R to forward gears (see [resetForLevelRestart] on retry).
   bool _playedCarStartForLevel = false;
 
-  /// Call when the driving level restarts (e.g. Retry) so [Car_Start] plays again.
+  /// Call when the driving level restarts (e.g. Retry) so car start plays again.
   void resetForLevelRestart() {
     _playedCarStartForLevel = false;
     // Force the forward/reverse state machine to re-run; otherwise [wantForward]
@@ -174,7 +174,7 @@ class VehicleSfx {
     _disposePlayer(_startPlayer);
     _startPlayer = null;
 
-    // First forward engagement this level: Car_Start → idle. Later P/R→D: idle only.
+    // First forward engagement this level: car start → idle. Later P/R→D: idle only.
     if (_playedCarStartForLevel) {
       unawaited(_launchIdleLoop(seq));
       return;

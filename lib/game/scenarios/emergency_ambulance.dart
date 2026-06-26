@@ -15,7 +15,7 @@ class _AmbulanceCheckpoint {
 }
 
 /// `scenarioId: emergency_ambulance` — timed checkpoints, safe-zone pull-over, success layer.
-extension _EmergencyAmbulanceScenario on RealisticCarGame {
+extension _EmergencyAmbulanceScenario on RealisticCarGameBase {
   bool get _isEmergencyAmbulanceScenario =>
       (scenarioId ?? '').trim().toLowerCase() == 'emergency_ambulance';
 
@@ -54,7 +54,7 @@ extension _EmergencyAmbulanceScenario on RealisticCarGame {
       if (rect == null) continue;
       final limit = timeFromProperty ??
           ((id == 'cp1' || id == 'cp2')
-              ? RealisticCarGame._ambCpDefaultTimeLimitSecs
+              ? RealisticCarGameBase._ambCpDefaultTimeLimitSecs
               : 0.0);
       _ambCheckpoints.add(
         _AmbulanceCheckpoint(id: id, rect: rect, timeLimitSecs: limit),
@@ -139,7 +139,7 @@ extension _EmergencyAmbulanceScenario on RealisticCarGame {
     if (cp2 == null) _ambCp2Cleared = true;
 
     _ambTotalElapsed += dt;
-    if (_ambTotalElapsed > RealisticCarGame._ambLevelTimeoutSecs) {
+    if (_ambTotalElapsed > RealisticCarGameBase._ambLevelTimeoutSecs) {
       _failTest('Time limit exceeded.');
       return;
     }
@@ -233,7 +233,7 @@ extension _EmergencyAmbulanceScenario on RealisticCarGame {
       pullOverCompleted: _ambulancePullOverComplete,
       yieldLeftSide: _ambulanceYieldCompletedLeftSide,
       elapsedSecs: _ambTotalElapsed,
-      levelTimeoutSecs: RealisticCarGame._ambLevelTimeoutSecs,
+      levelTimeoutSecs: RealisticCarGameBase._ambLevelTimeoutSecs,
       cp1TimeLimitSecs: cp1?.timeLimitSecs ?? 0,
       cp2TimeLimitSecs: cp2?.timeLimitSecs ?? 0,
       ambulanceRouteCompleted: deco?.routeCompleted ?? false,

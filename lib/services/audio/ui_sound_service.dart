@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 
+import '../../constants/media_assets.dart';
+
 /// Short UI feedback for menus and dialogs. Uses [soundEnabled] / [vibrationEnabled]
 /// so the options screen can turn each off independently.
 ///
@@ -13,12 +15,9 @@ class UiSoundService {
 
   UiSoundService._();
 
-  static const String _tapAsset =
-      'assets/audio/litupsubway-ui-hover-sfx-513360.mp3';
-  static const String _toggleAsset =
-      'assets/audio/freesound_community-menu-selection-102220.mp3';
-  static const String _engineStartAsset =
-      'assets/audio/freesound_community-car-engine-starting-43705.mp3';
+  static const String _tapAsset = MediaAssets.uiTap;
+  static const String _toggleAsset = MediaAssets.uiToggle;
+  static const String _engineStartAsset = MediaAssets.uiEngineStart;
 
   final AudioPlayer _tapPlayer = AudioPlayer();
   final AudioPlayer _togglePlayer = AudioPlayer();
@@ -43,14 +42,14 @@ class UiSoundService {
       _warmEngineStart(),
       _warmLevel(
         player: _levelPassPlayer,
-        assetPath: 'assets/audio/level_pass.wav',
+        assetPath: MediaAssets.levelPass,
         volume: 0.5,
         readyFlag: (v) => _levelPassReady = v,
         isReady: () => _levelPassReady,
       ),
       _warmLevel(
         player: _levelFailPlayer,
-        assetPath: 'assets/audio/level_fail.wav',
+        assetPath: MediaAssets.levelFail,
         volume: 0.48,
         readyFlag: (v) => _levelFailReady = v,
         isReady: () => _levelFailReady,
@@ -174,7 +173,7 @@ class UiSoundService {
     if (!soundEnabled) return;
     unawaited(_playLevelAsset(
       player: _levelPassPlayer,
-      assetPath: 'assets/audio/level_pass.wav',
+      assetPath: MediaAssets.levelPass,
       volume: 0.5,
       readyFlag: (v) => _levelPassReady = v,
       isReady: () => _levelPassReady,
@@ -185,7 +184,7 @@ class UiSoundService {
     if (!soundEnabled) return;
     unawaited(_playLevelAsset(
       player: _levelFailPlayer,
-      assetPath: 'assets/audio/level_fail.wav',
+      assetPath: MediaAssets.levelFail,
       volume: 0.48,
       readyFlag: (v) => _levelFailReady = v,
       isReady: () => _levelFailReady,

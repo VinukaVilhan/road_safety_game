@@ -128,3 +128,8 @@ assets/config/developer_env.json
 *.freezed.dart
 *.mocks.dart
 
+# Cursor IDE local state (mcp.json tokens, hooks, plans) — rules are tracked
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
+

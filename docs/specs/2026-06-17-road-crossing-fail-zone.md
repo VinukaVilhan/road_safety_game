@@ -79,12 +79,15 @@ When the player drives into the red **Zone_Fail_WT** area on road-crossing maps 
 
 ---
 
-## Spec kit updates
+## Spec kit updates (required when shipping)
 
-- [x] [`../core-game-rules.md`](../core-game-rules.md) — §2, §3
-- [x] This spec — **Status** → Done
-- [x] `.cursor/rules/spec-driven.mdc` — kit bootstrap
-- [x] Workspace `AGENTS.md` — spec kit pointer
+Run the **agent completion gate** in [`.cursor/rules/spec-driven.mdc`](../../.cursor/rules/spec-driven.mdc).
+
+- [x] [`../core-game-rules.md`](../core-game-rules.md) — §2 Driving zones, §3 Road-crossing levels
+- [ ] [`2026-06-26-level-system-design.md`](./2026-06-26-level-system-design.md) — N/A (no curriculum change)
+- [x] This spec — acceptance criteria checked; **Status** → Done; **Implementation log** line
+- [x] `AGENTS.md` — spec kit pointer (subsequent LMS-style kit upgrade)
+- [x] `.cursor/rules/spec-driven.mdc` — initial kit bootstrap (superseded by 2026-06-26 completion gate)
 
 ---
 
@@ -93,3 +96,4 @@ When the player drives into the red **Zone_Fail_WT** area on road-crossing maps 
 | Date | Note |
 |------|------|
 | 2026-06-17 | Wheel-based Zone_Fail_WT contact; TMX fail_message; briefing + rubric; spec kit |
+| 2026-06-26 | Spec normalized to completion-gate template |

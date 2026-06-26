@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../models/driving/game_level.dart';
@@ -41,23 +40,6 @@ class _JunctionsCategoryScreenState extends State<JunctionsCategoryScreen> {
       fontSize: 11,
       fontWeight: FontWeight.w400,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    });
-  }
-
-  @override
-  void dispose() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    super.dispose();
   }
 
   static const List<_JunctionCategory> _categories = [

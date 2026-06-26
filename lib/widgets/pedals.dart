@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../constants/media_assets.dart';
+
 class PedalsWidget extends StatefulWidget {
   final VoidCallback onAcceleratorDown;
   final VoidCallback onAcceleratorUp;
@@ -32,8 +34,8 @@ class _PedalsWidgetState extends State<PedalsWidget> {
       children: [
         // Accelerator (Gas)
         _buildPedal(
-          normalImagePath: 'assets/images/rescaled/gas_normal.png',
-          pressedImagePath: 'assets/images/rescaled/gas_pressed.png',
+          normalImagePath: MediaAssets.gasNormalRescaled,
+          pressedImagePath: MediaAssets.gasPressedRescaled,
           isPressed: _isAcceleratorPressed,
           onTapDown: () {
             setState(() => _isAcceleratorPressed = true);
@@ -49,8 +51,8 @@ class _PedalsWidgetState extends State<PedalsWidget> {
         Transform.translate(
           offset: const Offset(-50, 0),
           child: _buildPedal(
-            normalImagePath: 'assets/images/rescaled/brake_normal.png',
-            pressedImagePath: 'assets/images/rescaled/brake_pressed.png',
+            normalImagePath: MediaAssets.brakeNormalRescaled,
+            pressedImagePath: MediaAssets.brakePressedRescaled,
             isPressed: _isBrakePressed,
             onTapDown: () {
               setState(() => _isBrakePressed = true);

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'music_access_stub.dart'
     if (dart.library.io) 'music_access_io.dart' as access_impl;
 import 'music_service_stub.dart' if (dart.library.io) 'music_service_io.dart' as io_impl;
+import 'driving_audio_levels.dart';
 
 /// Service for playing radio, Spotify, or local music from a folder.
 /// Use [loadSavedMusicFolderPath] at startup and [setMusicFolderPath] from
@@ -19,6 +20,12 @@ class MusicService {
   static const String _prefsKeyMusicFolder = 'music_folder_path';
 
   final AudioPlayer _player = AudioPlayer();
+
+  /// Caps stream/local playback so vehicle idle / reverse / accelerate SFX stay louder.
+  Future<void> _applyDrivingMixVolume() async {
+    if (!isDrivingLessonActive) return;
+    await _player.setVolume(DrivingAudioLevels.radioMaxDuringLesson);
+  }
 
   /// True while an active driving lesson is in progress (not briefing / result).
   final ValueNotifier<bool> drivingLessonActive = ValueNotifier<bool>(false);
@@ -119,6 +126,7 @@ class MusicService {
 
     try {
       await _player.setFilePath(path);
+      await _applyDrivingMixVolume();
       await _player.play();
       return null;
     } catch (e) {
@@ -135,6 +143,7 @@ class MusicService {
     await _player.stop();
     try {
       await _player.setUrl(url);
+      await _applyDrivingMixVolume();
       await _player.play();
       return null;
     } catch (e) {
@@ -152,7 +161,10 @@ class MusicService {
   Future<void> pause() => _player.pause();
 
   /// Resume playback
-  Future<void> play() => _player.play();
+  Future<void> play() async {
+    await _applyDrivingMixVolume();
+    await _player.play();
+  }
 
   /// Stop and release
   Future<void> stop() => _player.stop();
@@ -166,6 +178,7 @@ class MusicService {
     if (_player.playing) {
       await _player.pause();
     } else {
+      await _applyDrivingMixVolume();
       await _player.play();
     }
   }

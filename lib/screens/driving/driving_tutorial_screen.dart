@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../models/driving/tutorial_progress.dart';
@@ -161,24 +160,6 @@ class _DrivingTutorialLessonPage extends StatefulWidget {
 }
 
 class _DrivingTutorialLessonPageState extends State<_DrivingTutorialLessonPage> {
-  @override
-  void initState() {
-    super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-  }
-
-  @override
-  void dispose() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    super.dispose();
-  }
-
   Future<void> _complete() async {}
 
   @override

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -7,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flame/game.dart';
 import '../../models/driving/game_level.dart';
+import '../../game/effects/weather_effects_log.dart';
 import '../../game/driving_game.dart';
 import '../../utils/app_fonts.dart';
 import '../../widgets/gearbox.dart';
@@ -20,6 +20,11 @@ import '../../services/audio/music_service.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../widgets/assistant_button.dart';
+import '../../widgets/driving/driving_attempt_summary_content.dart';
+import '../../widgets/driving/driving_pause_dialog.dart';
+import '../../widgets/driving/driving_radio_icon.dart';
+import '../../widgets/driving/level_briefing.dart';
+import '../../widgets/driving/pedestrian_crossing_sign_hud.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLevel level;
@@ -37,86 +42,10 @@ class GameScreenState extends State<GameScreen> {
   int _currentGear = 1; // Track current gear (P=0, 1,2,3,4,R=-1)
   final List<String> _gears = ['P', '1', '2', '3', '4', 'R'];
   final ValueNotifier<double> _steeringRotation = ValueNotifier<double>(0.0);
-  DateTime? _lastSteeringUpdate;
   bool _resultDialogVisible = false;
   bool _levelStoryShown = false;
   /// Screenshot bytes captured when the game reports a non-fatal penalty.
   final List<({String description, Uint8List bytes})> _penaltyCaptures = [];
-
-  static const String _radioIconAsset = 'assets/images/Radio.png';
-
-  Widget _radioIconWidget({double size = 32, Color fallbackColor = Colors.white}) {
-    return Image.asset(
-      _radioIconAsset,
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) => Icon(
-        Icons.radio,
-        color: fallbackColor,
-        size: size,
-      ),
-    );
-  }
-
-  Widget _buildPedestrianCrossingSignHud({int? distanceMeters}) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 380),
-      curve: Curves.easeOutBack,
-      builder: (context, t, child) {
-        final clamped = t.clamp(0.0, 1.0);
-        return Transform.scale(
-          scale: clamped,
-          alignment: Alignment.bottomLeft,
-          child: Opacity(opacity: clamped, child: child),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.55),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.45),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              game.spawnSignAssetPath,
-              width: 88,
-              height: 88,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const Icon(
-                Icons.directions_walk,
-                color: Colors.white,
-                size: 72,
-              ),
-            ),
-            if (distanceMeters != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                '${distanceMeters}m',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 
   /// Hit-test exclusion for pause/radio/pedals (left) and gearbox/steering (right).
   final GlobalKey _excludeHudLeftKey = GlobalKey();
@@ -140,14 +69,11 @@ class GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
-    // Force landscape orientation for game
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     game = RealisticCarGame(
       mapAsset: widget.level.mapAsset,
+      levelId: widget.level.id,
       scenarioId: widget.level.scenarioId,
+      drivingRulesEnabled: widget.level.enableDrivingRules,
       onTestPassed: _handleTestPassed,
       onTestFailed: (message) => unawaited(_handleTestFailed(message)),
       onPenaltyRecorded: (description) => unawaited(_onPenaltyRecorded(description)),
@@ -155,48 +81,24 @@ class GameScreenState extends State<GameScreen> {
       turnSignalLeft: _turnSignalLeftNotifier,
       turnSignalRight: _turnSignalRightNotifier,
     );
+    WeatherEffectsLog.info(
+      'GameScreen started level id=${widget.level.id} '
+      'name=${widget.level.name} '
+      'scenarioId=${widget.level.scenarioId ?? "(null)"} '
+      'mapAsset=${widget.level.mapAsset ?? "(default)"}',
+    );
     // Configure the game based on the level
-    _configureGameForLevel();
-    if (_willShowLevelBriefing()) {
+    if (willShowLevelBriefing(widget.level)) {
       game.pauseEngine();
     } else {
       MusicService().beginDrivingLesson();
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _showLevelStoryIfAvailable();
+      _showLevelBriefingIfNeeded();
     });
     _odometerFlushTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       unawaited(OdometerService.instance.flushPendingToPersistence());
     });
-  }
-
-  String? _levelStoryText() {
-    switch (widget.level.scenarioId) {
-      case 'markings_zebra_crossing':
-        return 'Road Crossing Story\n\n'
-            'You are driving through a busy school-zone crossing. '
-            'A pedestrian may step onto the zebra crossing at any moment.\n\n'
-            'Your mission:\n'
-            '- Slow down and enter the approach zone safely.\n'
-            '- Stop fully in gear (no Park) and wait in the grey zig-zag zone.\n'
-            '- Cross straight ahead through the zebra — do not continue past the stop line.\n'
-            '- Finish in the green zone. Entering the red wrong-turn area ends the level.';
-      case 'markings_stop_yield':
-        return 'Stop & Yield Lines\n\n'
-            'Practice stopping before the crossing and yielding correctly.\n\n'
-            '- Enter the yellow approach zone at a safe speed.\n'
-            '- Slow to 60 or below in the yellow approach zone.\n'
-            '- Stop fully in gear inside the grey zig-zag zone (no Park).\n'
-            '- Do not drive past the stop line into the red wrong-turn zone — that fails the level.';
-      default:
-        return null;
-    }
-  }
-
-  bool _willShowLevelBriefing() {
-    if (widget.level.scenarioId == 'emergency_ambulance') return true;
-    final story = _levelStoryText();
-    return story != null && story.trim().isNotEmpty;
   }
 
   void _resumeGameAfterBriefing() {
@@ -206,57 +108,18 @@ class GameScreenState extends State<GameScreen> {
     UiSoundService().playLevelEngineStart();
   }
 
-  void _showLevelStoryIfAvailable() {
-    if (!mounted) return;
-    if (_levelStoryShown) return;
-
-    if (widget.level.scenarioId == 'emergency_ambulance') {
-      _levelStoryShown = true;
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => const _AmbulanceBriefingCarouselDialog(),
-      ).then((_) {
-        if (mounted) _resumeGameAfterBriefing();
-      });
-      return;
-    }
-
-    final story = _levelStoryText();
-    if (story == null || story.trim().isEmpty) {
+  void _showLevelBriefingIfNeeded() {
+    if (!mounted || _levelStoryShown) return;
+    if (!willShowLevelBriefing(widget.level)) {
       UiSoundService().playLevelEngineStart();
       return;
     }
     _levelStoryShown = true;
-    final theme = Theme.of(context).textTheme;
-    showDialog<void>(
+    showLevelBriefingDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1a1a2e),
-          title: Text(
-            'Level Briefing',
-            style: theme.titleLarge!.copyWith(color: Colors.white),
-          ),
-          content: Text(
-            story,
-            style: theme.bodyMedium!.copyWith(color: Colors.white70, height: 1.4),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                UiSoundService().playMenuTap();
-                Navigator.of(context).pop();
-              },
-              child: const Text('Start Level'),
-            ),
-          ],
-        );
-      },
-    ).then((_) {
-      if (mounted) _resumeGameAfterBriefing();
-    });
+      level: widget.level,
+      onDismissed: _resumeGameAfterBriefing,
+    );
   }
 
   void _syncTurnSignalsToGame() {
@@ -278,30 +141,7 @@ class GameScreenState extends State<GameScreen> {
     _steeringRotation.dispose();
     _turnSignalLeftNotifier.dispose();
     _turnSignalRightNotifier.dispose();
-    // Restore portrait orientation when leaving game
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
     super.dispose();
-  }
-
-  void _configureGameForLevel() {
-    // Customize game settings based on level difficulty
-    switch (widget.level.difficulty) {
-      case LevelDifficulty.Easy:
-        game.roadSpeed = 150.0;
-        break;
-      case LevelDifficulty.Medium:
-        game.roadSpeed = 200.0;
-        break;
-      case LevelDifficulty.Hard:
-        game.roadSpeed = 250.0;
-        break;
-      case LevelDifficulty.Extreme:
-        game.roadSpeed = 300.0;
-        break;
-    }
   }
 
   @override
@@ -352,7 +192,7 @@ class GameScreenState extends State<GameScreen> {
                           IconButton(
                             onPressed: () {
                               UiSoundService().playMenuTap();
-                              _showPauseDialog();
+                              showDrivingPauseDialog(context: context, game: game);
                             },
                             icon: const Icon(
                               Icons.pause,
@@ -371,7 +211,7 @@ class GameScreenState extends State<GameScreen> {
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             padding: EdgeInsets.zero,
-                            icon: _radioIconWidget(size: 32, fallbackColor: Colors.white),
+                            icon: const DrivingRadioIcon(size: 32, fallbackColor: Colors.white),
                           ),
                         ],
                       ),
@@ -592,7 +432,8 @@ class GameScreenState extends State<GameScreen> {
                           left: 20,
                           bottom: 20,
                           child: IgnorePointer(
-                            child: _buildPedestrianCrossingSignHud(
+                            child: PedestrianCrossingSignHud(
+                              signAssetPath: game.spawnSignAssetPath,
                               distanceMeters: distanceMeters,
                             ),
                           ),
@@ -796,55 +637,6 @@ class GameScreenState extends State<GameScreen> {
     game.car?.coast();
   }
 
-  void _showPauseDialog() {
-    final theme = Theme.of(context).textTheme;
-    showDialog<void>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1a1a2e),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            'Game Paused',
-            style: theme.titleLarge!.copyWith(color: Colors.white),
-          ),
-          content: Text(
-            'What would you like to do?',
-            style: theme.bodyLarge!.copyWith(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                UiSoundService().playMenuTap();
-                Navigator.of(context).pop(); // Resume game
-              },
-              child: Text(
-                'Resume',
-                style: theme.labelLarge!.copyWith(color: Colors.green),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                UiSoundService().playMenuTap();
-                Navigator.of(context).pop(); // Close dialog
-                Navigator.of(context).pop(); // Return to level selection
-              },
-              child: Text(
-                'Quit',
-                style: theme.labelLarge!.copyWith(color: Colors.red),
-              ),
-            ),
-          ],
-        );
-      },
-    ).then((_) {
-      if (!mounted) return;
-      game.resumeAmbientAudioAfterUiOverlay();
-    });
-  }
-
   Future<Uint8List?> _captureGameScreenshot() async {
     try {
       final boundary =
@@ -864,13 +656,6 @@ class GameScreenState extends State<GameScreen> {
     if (bytes == null || bytes.isEmpty) return;
     if (!mounted) return;
     _penaltyCaptures.add((description: description, bytes: bytes));
-  }
-
-  bool get _isMarkingsDashedLevel {
-    if (widget.level.scenarioId == 'emergency_ambulance') return false;
-    final a = (widget.level.mapAsset ?? '').toLowerCase();
-    return a.contains('lane-markings-dashed') ||
-        widget.level.scenarioId == 'markings_dashed';
   }
 
   void _handleTestPassed() {
@@ -904,7 +689,10 @@ class GameScreenState extends State<GameScreen> {
         return AlertDialog(
           backgroundColor: const Color(0xFF1a1a2e),
           title: Text(title, style: const TextStyle(color: Colors.white)),
-          content: _buildAttemptSummaryContent(summary),
+          content: DrivingAttemptSummaryContent(
+            summary: summary,
+            level: widget.level,
+          ),
           actions: [
             TextButton(
               onPressed: () async {
@@ -912,7 +700,7 @@ class GameScreenState extends State<GameScreen> {
                 // Dashed-lines: reaching the green finish unlocks the level even if penalties
                 // prevented a "pass" on the report.
                 if (summary.passed ||
-                    (_isMarkingsDashedLevel && summary.reachedFinishZone)) {
+                    (widget.level.isMarkingsDashedLevel && summary.reachedFinishZone)) {
                   await LevelProgressService.markLevelCompleted(
                     widget.level.id,
                     moduleId: widget.level.moduleId,
@@ -954,7 +742,10 @@ class GameScreenState extends State<GameScreen> {
         return AlertDialog(
           backgroundColor: const Color(0xFF1a1a2e),
           title: const Text('Test Failed', style: TextStyle(color: Colors.white)),
-          content: _buildAttemptSummaryContent(summary),
+          content: DrivingAttemptSummaryContent(
+            summary: summary,
+            level: widget.level,
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -1019,7 +810,7 @@ class GameScreenState extends State<GameScreen> {
                     width: 40,
                     height: 40,
                     child: Center(
-                      child: _radioIconWidget(size: 28, fallbackColor: Colors.white70),
+                      child: const DrivingRadioIcon(size: 28, fallbackColor: Colors.white70),
                     ),
                   ),
                   title: Text('Radio', style: theme.bodyLarge!.copyWith(color: Colors.white)),
@@ -1038,424 +829,6 @@ class GameScreenState extends State<GameScreen> {
           ),
         );
       },
-    );
-  }
-
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
-  }
-
-  String _signalLabel(String expected) {
-    switch (expected) {
-      case 'left':
-        return 'Left signal';
-      case 'right':
-        return 'Right signal';
-      default:
-        return 'Turn signal';
-    }
-  }
-
-  Widget _buildCheckRow(String label, bool ok) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          ok ? Icons.check_circle : Icons.cancel,
-          color: ok ? Colors.greenAccent : Colors.redAccent,
-          size: 18,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(color: Colors.white70),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAttemptSummaryContent(DrivingAttemptSummary summary) {
-    final isRoadCrossingLevel =
-        (widget.level.mapAsset ?? '').toLowerCase().contains('road-crossing');
-    final signalName = _signalLabel(summary.expectedTurnSignal);
-    final midTurnLabel = _isMarkingsDashedLevel
-        ? 'Kept $signalName on throughout the purple turn zone.'
-        : 'Kept $signalName while turning.';
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!summary.passed && summary.failureMessage != null) ...[
-            Text(
-              summary.failureMessage!,
-              style: const TextStyle(color: Colors.white70),
-            ),
-            const SizedBox(height: 10),
-          ],
-          if (summary.penalties.isNotEmpty) ...[
-            Text(
-              'Penalties (${summary.penalties.length})',
-              style: const TextStyle(
-                color: Colors.orangeAccent,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            ...summary.penalties.map(
-              (p) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Text(
-                  '• $p',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Screenshots for each penalty are saved in your driving report.',
-              style: TextStyle(color: Colors.white54, fontSize: 12),
-            ),
-            const SizedBox(height: 10),
-          ],
-          if (isRoadCrossingLevel) ...[
-            _buildCheckRow('Entered speed limit zone (yellow).', summary.enteredApproachZone),
-            const SizedBox(height: 6),
-            _buildCheckRow(
-              'Stopped in gear and completed zebra crossing wait (grey zig-zag zone).',
-              summary.waitedAtRoadCrossing,
-            ),
-            const SizedBox(height: 6),
-            _buildCheckRow('Reached finish zone (green).', summary.reachedFinishZone),
-          ] else if (_isMarkingsDashedLevel) ...[
-            _buildCheckRow(
-              'Right turn signal used in approach zone (yellow).',
-              summary.signaledCorrectlyInApproachZone,
-            ),
-            const SizedBox(height: 6),
-            _buildCheckRow('Entered turn execution zone (purple).', summary.enteredMidTurnZone),
-            const SizedBox(height: 6),
-            _buildCheckRow(
-              midTurnLabel,
-              summary.hadCorrectSignalInMidTurnZone,
-            ),
-            const SizedBox(height: 6),
-            _buildCheckRow('Reached finish zone (green).', summary.reachedFinishZone),
-          ] else if (widget.level.scenarioId == 'emergency_ambulance') ...[
-            if (summary.ambulance != null) ...[
-              Builder(
-                builder: (context) {
-                  final a = summary.ambulance!;
-                  String yn(bool v) => v ? 'Yes' : 'No';
-                  String side(bool? y) {
-                    if (y == null) return '—';
-                    return y ? 'Left safe strip' : 'Right safe strip';
-                  }
-
-                  String cpGate(double sec) {
-                    if (sec <= 0) return 'no per-CP limit';
-                    return '${sec.toStringAsFixed(0)} s to reach';
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Level timer: ${a.elapsedSecs.toStringAsFixed(1)} s of '
-                        '${a.levelTimeoutSecs.toStringAsFixed(0)} s max (whole level timeout).',
-                        style: const TextStyle(color: Colors.white54, fontSize: 12),
-                      ),
-                      const SizedBox(height: 8),
-                      if (a.mapHasCp1) ...[
-                        _buildCheckRow('Reached Checkpoint 1 in time.', a.cp1Cleared),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 26, bottom: 4),
-                          child: Text(
-                            'CP1 time gate: ${cpGate(a.cp1TimeLimitSecs)}',
-                            style: const TextStyle(color: Colors.white38, fontSize: 11),
-                          ),
-                        ),
-                      ],
-                      if (a.mapHasCp2) ...[
-                        _buildCheckRow('Reached Checkpoint 2 in time.', a.cp2Cleared),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 26, bottom: 4),
-                          child: Text(
-                            'CP2 time gate: ${cpGate(a.cp2TimeLimitSecs)}',
-                            style: const TextStyle(color: Colors.white38, fontSize: 11),
-                          ),
-                        ),
-                      ],
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text(
-                          a.mapHasCpf
-                              ? 'Map has a final gate (CPF): complete pull-over before crossing it.'
-                              : 'No CPF final gate on this map layout.',
-                          style: const TextStyle(color: Colors.white38, fontSize: 11),
-                        ),
-                      ),
-                      _buildCheckRow(
-                        'Safe pull-over completed (Park + matching zone + correct signal).',
-                        a.pullOverCompleted,
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 26, bottom: 4),
-                        child: Text(
-                          'Yield side: ${side(a.yieldLeftSide)}',
-                          style: const TextStyle(color: Colors.white38, fontSize: 11),
-                        ),
-                      ),
-                      Text(
-                        'Ambulance AI at end: ${a.ambulanceAiState} · route completed: ${yn(a.ambulanceRouteCompleted)}',
-                        style: const TextStyle(color: Colors.white38, fontSize: 11),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                  );
-                },
-              ),
-            ],
-            _buildCheckRow(
-              'Ambulance reached the finish area while you stayed correctly yielded.',
-              summary.reachedFinishZone && summary.passed,
-            ),
-          ] else ...[
-            _buildCheckRow('Entered approach zone (yellow).', summary.enteredApproachZone),
-            const SizedBox(height: 6),
-            _buildCheckRow(
-              'Used $signalName in approach zone.',
-              summary.signaledCorrectlyInApproachZone,
-            ),
-            const SizedBox(height: 6),
-            _buildCheckRow('Entered turn execution zone (purple).', summary.enteredMidTurnZone),
-            const SizedBox(height: 6),
-            _buildCheckRow(
-              midTurnLabel,
-              summary.hadCorrectSignalInMidTurnZone,
-            ),
-            const SizedBox(height: 6),
-            _buildCheckRow('Reached finish zone (green).', summary.reachedFinishZone),
-          ],
-          const SizedBox(height: 6),
-          _buildCheckRow(
-            'Minor obstacle bumps (non-crash): ${summary.nonCrashBumpCount}',
-            summary.nonCrashBumpCount == 0,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Time spent: ${_formatDuration(summary.timeSpent)}',
-            style: const TextStyle(color: Colors.white70),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Score: ${summary.score}/100',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AmbulanceBriefingSlide {
-  final String title;
-  final String body;
-  const _AmbulanceBriefingSlide(this.title, this.body);
-}
-
-/// Swipe or use Next/Back; one short tip per page for the emergency ambulance level.
-class _AmbulanceBriefingCarouselDialog extends StatefulWidget {
-  const _AmbulanceBriefingCarouselDialog();
-
-  @override
-  State<_AmbulanceBriefingCarouselDialog> createState() =>
-      _AmbulanceBriefingCarouselDialogState();
-}
-
-class _AmbulanceBriefingCarouselDialogState
-    extends State<_AmbulanceBriefingCarouselDialog> {
-  static const List<_AmbulanceBriefingSlide> _slides = [
-    _AmbulanceBriefingSlide(
-      'Sirens on the way',
-      'An ambulance can appear while you drive. Slow down and be ready to yield safely.',
-    ),
-    _AmbulanceBriefingSlide(
-      'Hit the early checkpoints',
-      'Reach Checkpoint 1 and Checkpoint 2 within the time limits.',
-    ),
-    _AmbulanceBriefingSlide(
-      'Signals and side',
-      'Left safe strip: left indicator only. Right strip: right indicator only.',
-    ),
-    _AmbulanceBriefingSlide(
-      'Three steps to yield',
-      'After Checkpoint 2, in order:\n'
-      '1) Overlap the matching safe zone with the correct signal on (you may still be moving).\n'
-      '2) Bring both wheels on that side fully inside the zone.\n'
-      '3) Shift to Park (P). The ambulance will only pass after all three are done.',
-    ),
-    _AmbulanceBriefingSlide(
-      'When to pull over',
-      'After you clear Checkpoint 2, finish your pull-over before you cross the final gate (CPF).',
-    ),
-    _AmbulanceBriefingSlide(
-      'While it passes',
-      'Stay slow and yielded. The ambulance will pass you and follow its route.',
-    ),
-    _AmbulanceBriefingSlide(
-      'How you pass',
-      'You complete the level when the ambulance reaches the success area and you remain correctly stopped and yielded.',
-    ),
-  ];
-
-  late final PageController _pageController;
-  int _pageIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context).textTheme;
-    final w = MediaQuery.sizeOf(context).width * 0.62;
-    final boxW = math.min(440.0, w);
-    return AlertDialog(
-      backgroundColor: const Color(0xFF1a1a2e),
-      title: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              'Ambulance — briefing',
-              style: theme.titleLarge!.copyWith(color: Colors.white),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              UiSoundService().playMenuTap();
-              Navigator.of(context).pop();
-            },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white60,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              'Skip',
-              style: theme.labelLarge!.copyWith(color: Colors.white60),
-            ),
-          ),
-        ],
-      ),
-      content: SizedBox(
-        width: boxW,
-        height: 200,
-        child: Column(
-          children: [
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: _slides.length,
-                onPageChanged: (i) => setState(() => _pageIndex = i),
-                itemBuilder: (context, i) {
-                  final s = _slides[i];
-                  return SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          s.title,
-                          style: theme.titleSmall!.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          s.body,
-                          style: theme.bodyMedium!.copyWith(
-                            color: Colors.white70,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                _slides.length,
-                (i) => Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: i == _pageIndex ? Colors.white : Colors.white30,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        if (_pageIndex > 0)
-          TextButton(
-            onPressed: () {
-              UiSoundService().playMenuTap();
-              _pageController.previousPage(
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeOutCubic,
-              );
-            },
-            child: Text(
-              'Back',
-              style: theme.labelLarge!.copyWith(color: Colors.white70),
-            ),
-          ),
-        TextButton(
-          onPressed: () {
-            UiSoundService().playMenuTap();
-            if (_pageIndex < _slides.length - 1) {
-              _pageController.nextPage(
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeOutCubic,
-              );
-            } else {
-              Navigator.of(context).pop();
-            }
-          },
-          child: Text(
-            _pageIndex < _slides.length - 1 ? 'Next' : 'Start Level',
-            style: theme.labelLarge!.copyWith(color: Colors.greenAccent),
-          ),
-        ),
-      ],
     );
   }
 }

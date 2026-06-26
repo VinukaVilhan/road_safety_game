@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../theme/swiss_theme.dart';
 import '../../utils/app_fonts.dart';
 import '../../data/repositories/progress_repository.dart';
@@ -45,12 +44,6 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
       _questions = RoadSignsQuestionsService.getQuestionsForTest('warning_signs_mcq', count: 10);
     }
     _initStyles();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    });
   }
 
   void _initStyles() {
@@ -79,17 +72,6 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
       fontWeight: FontWeight.w400,
       color: SwissTheme.textSecondary,
     );
-  }
-
-  @override
-  void dispose() {
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    super.dispose();
   }
 
   void _onOptionSelected(int index) {

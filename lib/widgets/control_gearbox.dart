@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../constants/media_assets.dart';
+
 class ControlGearboxWidget extends StatelessWidget {
   final int currentGear;
   final List<String> gears;
@@ -40,7 +42,7 @@ class ControlGearboxWidget extends StatelessWidget {
             child: Align(
               alignment: Alignment.bottomCenter,
               child: Image.asset(
-                'assets/images/rescaled/gearbox_cubic.png',
+                MediaAssets.gearboxCubicRescaled,
                 width: _frameWidth,
                 height: _frameHeight,
                 fit: BoxFit.contain,

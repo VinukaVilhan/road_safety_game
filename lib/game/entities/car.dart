@@ -112,7 +112,7 @@ class Car extends SpriteComponent {
     super.onLoad();
 
     // Load the black car sprite
-    sprite = await Sprite.load('BlackCar.png');
+    sprite = await Sprite.load(MediaAssets.blackCar);
 
     // Set car size and anchor
     size = Vector2(60, 60);
@@ -125,15 +125,9 @@ class Car extends SpriteComponent {
   void onMount() {
     super.onMount();
 
-    // Tiled `Player_Spawn` / spawn layers (see [_pickPlayerSpawnFromObjectGroups]);
-    // fallback: map centre when the road has not finished loading yet.
+    // Tiled spawn layers — see [_pickPlayerSpawnFromObjectGroups] and [_applyPlayerSpawnToWorld].
     final game = findGame()! as RealisticCarGame;
-    final centerX = (game._mapWidth ?? 1600) / 2;
-    final centerY = (game._mapHeight ?? 1600) / 2;
-    position = game._spawnPoint?.clone() ?? Vector2(centerX, centerY);
-    // Immediate snap; follow(snap: true) applies on the next behaviour mount tick.
-    game.camera.viewfinder.position = position.clone();
-    game.camera.follow(this, snap: true);
+    game._applyPlayerSpawnToWorld();
   }
 
   @override
@@ -147,7 +141,7 @@ class Car extends SpriteComponent {
     final realisticGame = game as RealisticCarGame;
 
     // Update friction from map (e.g. Base layer property) if available
-    friction = realisticGame._baseLayerFriction;
+    friction = realisticGame._baseLayerFriction * realisticGame.weatherFrictionMultiplier;
 
     if (_offRoadResetTimer > 0) {
       _offRoadResetTimer -= dt;
@@ -182,7 +176,9 @@ class Car extends SpriteComponent {
       }
     } else if (isBraking) {
       if (velocity.length > 0) {
-        acceleration = velocity.normalized() * -brakeForce;
+        acceleration = velocity.normalized() *
+            -brakeForce *
+            realisticGame.weatherBrakeMultiplier;
       }
     } else {
       // Apply friction when coasting
@@ -222,7 +218,19 @@ class Car extends SpriteComponent {
       bool isMovingForward = forwardDot > 0;
 
       // Apply rotation: more steering + more speed = faster turning
-      angle += steeringRadians * turnRate * normalizedSpeed * dt;
+      angle += steeringRadians *
+          turnRate *
+          normalizedSpeed *
+          realisticGame.weatherSteerGripMultiplier *
+          dt;
+
+      if (realisticGame.isAdverseWeatherActive &&
+          currentSpeed > 20 &&
+          steerAngle.abs() > 35) {
+        final perp = Vector2(-math.sin(angle), math.cos(angle));
+        final slide = steerAngle.sign * currentSpeed * 0.014 * dt;
+        velocity += perp * slide;
+      }
 
       // Rotate velocity vector to match car's new direction
       // Preserve forward/backward direction
@@ -257,7 +265,7 @@ class Car extends SpriteComponent {
           acceleration = Vector2.zero();
           isCurrentlyOffRoad = true;
           _offRoadResetTimer = 0.5;
-          if (impactSpeed >= RealisticCarGame.wallHighSpeedCrashThreshold) {
+          if (impactSpeed >= RealisticCarGameBase.wallHighSpeedCrashThreshold) {
             realisticGame._failFromHighSpeedWallCrash();
           } else {
             realisticGame.registerNonCrashBump();
@@ -333,7 +341,7 @@ class Car extends SpriteComponent {
       final maxStep = math.max(velocity.length, 8.0) * dt * 2.5;
       final clamped = movedWorld > maxStep ? maxStep : movedWorld;
       if (clamped > 1e-6) {
-        realisticGame.reportOdometerMeters(clamped * RealisticCarGame.worldUnitsToMeters);
+        realisticGame.reportOdometerMeters(clamped * RealisticCarGameBase.worldUnitsToMeters);
       }
     }
 

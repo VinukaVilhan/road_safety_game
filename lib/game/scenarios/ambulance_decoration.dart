@@ -2,7 +2,7 @@ part of '../driving_game.dart';
 
 /// Maps with `Ambulance_Spawn` / `Ambulance_Route` (e.g. [ambulance-reaction.tmx]):
 /// decoration AI, siren audio, and yield rules for the [Ambulance] entity.
-extension _AmbulanceDecorationScenario on RealisticCarGame {
+extension _AmbulanceDecorationScenario on RealisticCarGameBase {
   /// Layer name `Ambulance_Route` and/or class `AmbulanceRoute`.
   void _loadAmbulanceRouteFromTmx(TiledComponent tiledMap) {
     _ambulanceRouteWaypoints.clear();
@@ -144,14 +144,14 @@ extension _AmbulanceDecorationScenario on RealisticCarGame {
   Future<void> _startAmbulanceSiren(double volume) async {
     await _stopAmbulanceSiren();
     try {
-      final v = (volume * RealisticCarGame._ambulanceSirenMasterGain).clamp(0.0, 1.0);
+      final v = (volume * RealisticCarGameBase._ambulanceSirenMasterGain).clamp(0.0, 1.0);
       _ambulanceSirenPlayer = await FlameAudio.loop(
-        RealisticCarGame._ambulanceLoopAsset,
+        MediaAssets.ambulanceSiren,
         volume: v,
       );
     } catch (e, st) {
       debugPrint(
-        'Ambulance loop failed (add assets/audio/${RealisticCarGame._ambulanceLoopAsset}): $e\n$st',
+        'Ambulance loop failed (add assets/audio/${MediaAssets.ambulanceSiren}): $e\n$st',
       );
     }
   }

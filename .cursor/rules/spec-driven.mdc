@@ -1,5 +1,5 @@
 ---
-description: Spec kit workflow — read specs/core rules before building; update docs in the same task when gameplay changes
+description: Spec kit workflow — read specs/core rules before building; sync docs with code; completion gate before task ends
 alwaysApply: true
 ---
 
@@ -7,11 +7,14 @@ alwaysApply: true
 
 | Doc | Role |
 |-----|------|
-| `docs/core-game-rules.md` | **Canonical gameplay rules** — TMX zones, levels, scoring |
+| `docs/core-game-rules.md` | **Canonical gameplay rules** — TMX zones, levels, scoring, scenarios |
+| `docs/specs/2026-06-26-level-system-design.md` | **Level system architecture** — curriculum, unlock graph, new-level checklist |
 | `docs/specs/*.md` | **One change** — requirements and acceptance criteria |
-| `AGENTS.md` (workspace root) | Preferences + stable facts |
+| `AGENTS.md` (workspace root `CarGame/`) | Preferences + stable facts |
 
-Do not implement level or zone behaviour that contradicts `docs/core-game-rules.md` unless the user's spec explicitly changes a rule.
+Do not implement level or zone behaviour that contradicts `docs/core-game-rules.md` unless the user's spec explicitly changes a rule and includes rollout notes.
+
+Features touching level catalog, unlocks, or curriculum must cite **§7** in core rules and the level-system design spec.
 
 Per-feature specs live in `docs/specs/`; **one spec = one change**.
 
@@ -19,10 +22,11 @@ Per-feature specs live in `docs/specs/`; **one spec = one change**.
 
 If the task mentions `docs/specs/<file>.md`, `@docs/specs/`, or *"implement per spec"*:
 
-1. **Read the spec first** — goal, non-goals, requirements, acceptance criteria. Cross-check `docs/core-game-rules.md`.
+1. **Read the spec first** — goal, non-goals, requirements, acceptance criteria. Cross-check cited sections in `docs/core-game-rules.md`.
 2. **Implement against it** — do not edit the spec file unless the user explicitly changes requirements.
 3. **Before finishing** — verify every acceptance-criteria checkbox you can; note manual-only items for the user.
-4. **Update the spec kit** — same task as code (see **Keep the spec kit in sync** below).
+4. **Update the spec kit** — same task/PR as code (see **Keep the spec kit in sync** below).
+5. **Session boundaries** — if the feature touches driving lessons, radio, or assistant visibility, respect lifecycle rules in workspace `AGENTS.md`.
 
 ## When to create a spec (suggest if missing)
 
@@ -31,39 +35,67 @@ If the task mentions `docs/specs/<file>.md`, `@docs/specs/`, or *"implement per 
 | New/changed zone types or level pass/fail rules | Typo / copy fix |
 | New TMX conventions across multiple maps | One-line bug in a single file |
 | Scoring / rubric / report behaviour | Dependency bump |
+| New level, scenario, or unlock rule | Styling-only HUD tweak |
 
-If the user starts a non-trivial feature without a spec, **offer** to copy `docs/specs/_template.md` → `docs/specs/YYYY-MM-DD-short-name.md` before coding. Do not block tiny fixes.
+If the user starts a non-trivial feature without a spec, **offer** to copy `docs/specs/_template.md` → `docs/specs/YYYY-MM-DD-short-name.md` and fill goal + acceptance criteria before coding. Do not block tiny fixes.
+
+## Specs vs plans
+
+| Artifact | Use for |
+|----------|---------|
+| `docs/specs/*.md` | **What** to build — requirements, acceptance criteria (source of truth for one feature) |
+| `.cursor/plans/*.plan.md` | **How** to sequence a large effort — todos, exploration; link from the spec if both exist |
+
+Prefer a dated spec for shippable features; use plans only for multi-session architecture or when the user attaches a plan file.
 
 ## New spec workflow
 
 1. Copy `docs/specs/_template.md` → `docs/specs/YYYY-MM-DD-short-feature-name.md`.
-2. Fill goal, scope, acceptance criteria, affected surfaces (TMX, `driving_game.dart`, UI).
+2. Fill goal, scope, acceptance criteria, affected surfaces (TMX, `driving_game.dart`, level catalog, UI). List affected `core-game-rules.md` sections in Background.
 3. User prompt: *Implement per `docs/specs/<filename>.md`. Do not edit the spec file.*
 
 See `docs/specs/README.md` for the full checklist.
 
 ## Keep the spec kit in sync (required)
 
-When you **build or change** gameplay, zones, levels, scoring, or player-facing rules — **update documentation in the same task**.
+When you **build or change** gameplay, zones, levels, scoring, scenarios, or player-facing rules — **update documentation in the same task**.
 
-### What to update
+**This is automatic.** Do not wait for the user to ask. Apply the **completion gate** below before marking any non-trivial task done.
+
+### Agent completion gate (run before every task ends)
+
+If the task is **not** in [Skip doc updates](#skip-doc-updates-only-when), complete every row that applies:
+
+| Step | Action | When |
+|------|--------|------|
+| 1 | Edit matching **§** in [`docs/core-game-rules.md`](../../docs/core-game-rules.md) | Gameplay, zones, scoring, scenarios |
+| 2 | Update [`docs/specs/2026-06-26-level-system-design.md`](../../docs/specs/2026-06-26-level-system-design.md) | Curriculum, unlock graph, new-level definition of done |
+| 3 | Dated spec — check acceptance criteria, **Status**, **Implementation log** line | Feature tracked in or implementing `docs/specs/YYYY-MM-DD-….md` |
+| 4 | Create retroactive `docs/specs/YYYY-MM-DD-….md` | Shipped non-trivial behaviour with no existing spec |
+| 5 | **Completion summary** — list spec-kit files updated, or state *no doc change — internal refactor only* | Always |
+
+**Do not update `AGENTS.md`** for routine spec-kit sync — only for new **stable** preferences or ops facts agents must always know.
+
+### What to update (detail)
 
 | You changed… | Update |
 |--------------|--------|
-| **Gameplay / zone / level logic** | [`docs/core-game-rules.md`](../../docs/core-game-rules.md) — matching § section(s) |
-| **Feature from a spec** | That `docs/specs/YYYY-MM-DD-….md` — check acceptance criteria; set **Status** Done; fill **Implementation log** |
-| **Non-trivial feature without a spec** | Create `docs/specs/YYYY-MM-DD-….md` after shipping (or before if greenfield) |
-| **Stable preference** agents should always know | workspace [`AGENTS.md`](../../../AGENTS.md) — one bullet only |
+| **Gameplay / zone / level / scoring logic** | [`docs/core-game-rules.md`](../../docs/core-game-rules.md) — edit the matching § section(s); add rows/rules if new behaviour |
+| **Level catalog, unlocks, curriculum order** | [`docs/specs/2026-06-26-level-system-design.md`](../../docs/specs/2026-06-26-level-system-design.md) + core rules §7 |
+| **Feature you implemented from a spec** | That `docs/specs/YYYY-MM-DD-….md` — check off acceptance criteria; set **Status** Done; fill **Implementation log** |
+| **Non-trivial feature without an existing spec** | Create `docs/specs/YYYY-MM-DD-….md` **after** shipping (or before if greenfield) so the change is recorded |
+| **Stable preference or recurring ops fact** | workspace [`AGENTS.md`](../../../AGENTS.md) — one bullet only; do not duplicate `core-game-rules.md` |
 
 ### When implementing (even without a spec)
 
-1. **Before coding** — skim `docs/core-game-rules.md` for sections you might affect.
-2. **After coding** — if behaviour differs from core rules, **update that file** or fix the code.
-3. **Tell the user** — list which spec-kit files you updated (or "no doc change — refactor only").
+1. **Before coding** — skim `docs/core-game-rules.md` for sections you might affect; cite them if you create a spec.
+2. **After coding** — run the [Agent completion gate](#agent-completion-gate-run-before-every-task-ends); if behaviour differs from `core-game-rules.md`, **update that file** (intentional change) or fix the code (bug).
+3. **Tell the user** — in the completion summary, list which spec-kit files were updated (or explicitly "no doc change — internal refactor only").
 
 ### Skip doc updates only when
 
-- Pure refactor with **zero** player-visible behaviour change
+- Pure refactor with **zero** player-visible or gameplay behaviour change
 - Typo, styling, or dependency bump with no rule change
+- Test-only or comment-only changes
 
-If unsure whether gameplay changed, **update `core-game-rules.md`**.
+If unsure whether gameplay changed, **update `core-game-rules.md`** — stale rules mislead future agents more than an extra bullet.

@@ -75,13 +75,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
       color: SwissTheme.textSecondary,
     );
     
-    // Defer orientation change to avoid blocking UI initialization
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-      
       // Preload images after first frame to avoid blocking UI
       if (mounted) {
         ImagePreloader.preloadImages(context);
@@ -110,13 +104,6 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _animationController.dispose();
-    // Allow all orientations when leaving menu
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     super.dispose();
   }
 

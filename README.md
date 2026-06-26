@@ -71,7 +71,7 @@ lib/
 │   └── driving_game.dart # Flame game: car physics & rendering
 ├── game.dart                   # Car and RealisticCarGame classes
 ├── models/
-│   ├── game_level.dart         # Level, DrivingTopic, LevelDifficulty
+│   ├── game_level.dart         # Level, DrivingTopic
 │   └── theory_test.dart        # TheoryTest, category enums
 ├── screens/
 │   ├── auth_wrapper.dart       # Auth state router

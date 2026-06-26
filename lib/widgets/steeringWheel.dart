@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../constants/media_assets.dart';
+
 class SteeringWheelWidget extends StatelessWidget {
   final double rotation;
   final Function(DragStartDetails) onPanStart;
@@ -37,7 +39,7 @@ class SteeringWheelWidget extends StatelessWidget {
           angle: rotation,
           child: ClipOval(
             child: Image.asset(
-              'assets/images/rescaled/Steering_Wheel.png',
+              MediaAssets.steeringWheelRescaled,
               width: 120,
               height: 120,
               fit: BoxFit.cover,

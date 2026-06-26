@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="60" height="60" tilewidth="16" tileheight="16" infinite="0" nextlayerid="18" nextobjectid="28">
  <tileset firstgid="1" name="Road" tilewidth="16" tileheight="16" tilecount="144" columns="12">
-  <image source="../images/new-map.png" width="192" height="192"/>
+  <image source="../images/new_map.png" width="192" height="192"/>
  </tileset>
  <tileset firstgid="145" name="Lines" tilewidth="16" tileheight="16" tilecount="80" columns="10">
   <image source="../images/lines.png" width="160" height="128"/>
@@ -456,7 +456,7 @@
  </objectgroup>
  <objectgroup color="#55ffff" id="17" name="Spawn_Sign" class="Spawn_Sign">
   <properties>
-   <property name="sign_asset" value="assets/roadsigns/Pedestrian_Crossing.jpeg"/>
+   <property name="sign_asset" value="assets/roadsigns/pedestrian_crossing.jpeg"/>
   </properties>
   <object id="27" name="Spawn_Sign" type="Spawn_Sign" x="420" y="728" width="118.667" height="17.3333"/>
  </objectgroup>

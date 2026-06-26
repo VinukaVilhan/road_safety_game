@@ -77,7 +77,7 @@ class LastDrivingReportService {
 
   static bool _isDashedMarkingsMap(GameLevel level) {
     final a = (level.mapAsset ?? '').toLowerCase();
-    return a.contains('lane-markings-dashed') || level.scenarioId == 'markings_dashed';
+    return a.contains('lane_markings_dashed') || level.scenarioId == 'markings_dashed';
   }
 
   static String _signalPhrase(String expected) {

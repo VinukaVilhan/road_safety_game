@@ -159,7 +159,7 @@ class LastDrivingReport {
   });
 
   static bool isRoadCrossingMap(String? mapAsset) =>
-      (mapAsset ?? '').toLowerCase().contains('road-crossing');
+      (mapAsset ?? '').toLowerCase().contains('road_crossing');
 
   static String? _optionalNonEmptyPath(dynamic v) {
     if (v is! String) return null;

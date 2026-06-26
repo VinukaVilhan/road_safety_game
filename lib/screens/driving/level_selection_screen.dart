@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../theme/swiss_theme.dart';
 import '../../utils/app_fonts.dart';
 import '../../models/driving/game_level.dart';
@@ -56,7 +55,6 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
   static const Set<String> _underDevelopmentEmergencySituationsLevelIds = {
     'emergency_braking',
     'emergency_breakdown',
-    'emergency_weather',
   };
 
   // Cache font styles to avoid recreating them on every build
@@ -110,29 +108,9 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
       fontWeight: FontWeight.w600,
       color: SwissTheme.accentBlue,
     );
-    
-    // Defer orientation change to avoid blocking UI initialization
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    });
 
     _loadCompletedLevels();
     unawaited(_refreshSavedDrivingReports());
-  }
-
-  @override
-  void dispose() {
-    // Allow all orientations when leaving
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    super.dispose();
   }
 
   // Get levels based on topic (or all levels if topic is null)
@@ -367,12 +345,11 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top row: Level number and difficulty indicator
+                  // Top row: Level number and lock state
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Giant level number (top left) - use topicLevel instead of number
                       Text(
                         displayLevelNumber(level).toString().padLeft(2, '0'),
                         style: _levelNumberStyle.copyWith(
@@ -381,19 +358,6 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
                             : SwissTheme.textSecondary.withOpacity(0.3),
                         ),
                       ),
-                      
-                      // Difficulty circle (top right) - only for unlocked levels
-                      if (isUnlocked)
-                        Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: _getDifficultyColor(level.difficulty),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      
-                      // Lock icon (center) - only for locked levels
                       if (!isUnlocked)
                         Expanded(
                           child: Center(
@@ -498,19 +462,6 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     );
   }
 
-  Color _getDifficultyColor(LevelDifficulty difficulty) {
-    switch (difficulty) {
-      case LevelDifficulty.Easy:
-        return SwissTheme.accentGreen;
-      case LevelDifficulty.Medium:
-        return SwissTheme.accentOrange;
-      case LevelDifficulty.Hard:
-        return SwissTheme.accentRed;
-      case LevelDifficulty.Extreme:
-        return SwissTheme.accentRed;
-    }
-  }
-
   Future<void> _loadCompletedLevels() async {
     try {
       final ids = await LevelProgressService.getCompletedLevelIds();
@@ -577,10 +528,8 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     if (_isUnderDevelopmentLevel(level)) {
       unlockMessage = '"${level.name}" is under development.';
     } else if (level.unlockRequirementIds.isNotEmpty) {
-      // Resolve names from the full topic so cross-module prerequisites still show correctly.
-      final pool = widget.topic != null
-          ? DrivingLevelsService.getLevelsForTopic(widget.topic!)
-          : levels;
+      // Resolve prerequisite names across the full catalog (may be another topic).
+      final pool = DrivingLevelsService.getAllLevels();
       final requiredLevels = pool
           .where((l) => level.unlockRequirementIds.contains(l.id))
           .map((l) => l.name)

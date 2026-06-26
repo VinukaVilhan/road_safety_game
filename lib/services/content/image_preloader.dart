@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import '../../constants/media_assets.dart';
+
 /// Service to preload images used in the app to avoid loading delays during navigation
 class ImagePreloader {
   static final Map<String, ImageProvider> _preloadedImages = {};
@@ -12,14 +14,14 @@ class ImagePreloader {
     _isPreloading = true;
     
     final images = [
-      'assets/images/rescaled/Steering_Wheel.png',
-      'assets/images/rescaled/gearbox_cubic.png',
-      'assets/images/rescaled/gas_normal.png',
-      'assets/images/rescaled/gas_pressed.png',
-      'assets/images/rescaled/gas pressed simple.png',
-      'assets/images/rescaled/brake_normal.png',
-      'assets/images/rescaled/brake_pressed.png',
-      'assets/images/rescaled/brake pressed simple.png',
+      MediaAssets.steeringWheelRescaled,
+      MediaAssets.gearboxCubicRescaled,
+      MediaAssets.gasNormalRescaled,
+      MediaAssets.gasPressedRescaled,
+      MediaAssets.gasPressedSimpleRescaled,
+      MediaAssets.brakeNormalRescaled,
+      MediaAssets.brakePressedRescaled,
+      MediaAssets.brakePressedSimpleRescaled,
     ];
     
     for (final path in images) {

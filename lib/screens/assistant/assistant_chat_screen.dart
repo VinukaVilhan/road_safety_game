@@ -115,12 +115,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     _controller.addListener(() {
       if (mounted) setState(() {});
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      SystemChrome.setPreferredOrientations([
-        DeviceOrientation.portraitUp,
-        DeviceOrientation.portraitDown,
-      ]);
-    });
     _bootstrap();
   }
 
@@ -190,12 +184,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     unawaited(
       InstructorChatSessionsService.instance.saveMessages(_sessionId, List<AssistantMessage>.from(_messages)),
     );
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();

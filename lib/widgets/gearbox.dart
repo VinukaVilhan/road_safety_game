@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../constants/media_assets.dart';
+
 class GearboxWidget extends StatelessWidget {
   final int currentGear;
   final List<String> gears;
@@ -31,12 +33,12 @@ class GearboxWidget extends StatelessWidget {
             child: Align(
               alignment: Alignment.bottomCenter,
               child: Image.asset(
-                'assets/images/rescaled/gearbox_cubic.png',
+                MediaAssets.gearboxCubicRescaled,
                 width: frameWidth,
                 height: frameHeight,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) {
-                  debugPrint('Failed to load gearbox image: assets/images/rescaled/gearbox_cubic.png');
+                  debugPrint('Failed to load gearbox image: ${MediaAssets.gearboxCubicRescaled}');
                   debugPrint('Error: $error');
                   return _buildFallbackGearbox(context);
                 },

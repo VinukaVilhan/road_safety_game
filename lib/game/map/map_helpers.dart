@@ -172,26 +172,48 @@ bool _isJunctionBoxTileLayer(TileLayer layer) {
 String _tiledLayerTag(ObjectGroup layer) =>
     layer.name.replaceAll(' ', '_').toLowerCase();
 
-/// Prefer `Player_Spawn` over other layers whose names contain "spawn" (e.g. ambulance marker).
+/// Prefer explicit player/spawn layers over ambulance markers.
+///
+/// Canonical TMX: `Spawn_Layer` + class `Spawn_Point` (point object), or
+/// `Player_Spawn` for maps that split player vs ambulance spawns.
 Vector2? _pickPlayerSpawnFromObjectGroups(Iterable<ObjectGroup> groups) {
-  Vector2? pickFromLayer(ObjectGroup layer) {
+  Vector2? pickFromLayer(ObjectGroup layer, {bool requireSpawnMarker = true}) {
     final layerTag = _tiledLayerTag(layer);
     final layerClassTag = (layer.class_ ?? '').replaceAll(' ', '_').toLowerCase();
     final isSpawnLayer =
         layerTag.contains('spawn') || layerClassTag.contains('spawn');
     for (final obj in layer.objects) {
+      if (!obj.visible) continue;
       final objectClassTag = obj.class_.replaceAll(' ', '_').toLowerCase();
       final objectTypeTag = obj.type.replaceAll(' ', '_').toLowerCase();
       final objectNameTag = obj.name.replaceAll(' ', '_').toLowerCase();
       final isSpawnObject = objectClassTag.contains('spawn') ||
           objectTypeTag.contains('spawn') ||
           objectNameTag.contains('spawn');
-      if (!isSpawnLayer && !isSpawnObject) continue;
+      if (requireSpawnMarker && !isSpawnLayer && !isSpawnObject) continue;
       final spawnX = obj.isPoint ? obj.x : obj.x + (obj.width / 2);
       final spawnY = obj.isPoint ? obj.y : obj.y + (obj.height / 2);
       return Vector2(spawnX, spawnY);
     }
     return null;
+  }
+
+  bool isCanonicalSpawnLayer(ObjectGroup layer) {
+    final t = _tiledLayerTag(layer);
+    final cls = (layer.class_ ?? '').replaceAll(' ', '_').toLowerCase();
+    return t == 'spawn_layer' || cls == 'spawn_point';
+  }
+
+  for (final layer in groups) {
+    if (!isCanonicalSpawnLayer(layer)) continue;
+    final p = pickFromLayer(layer, requireSpawnMarker: false);
+    if (p != null) {
+      print(
+        '[DEBUG] _pickPlayerSpawn - chose Spawn_Layer / Spawn_Point "${layer.name}" '
+        'class="${layer.class_ ?? ""}" at $p',
+      );
+      return p;
+    }
   }
 
   for (final layer in groups) {

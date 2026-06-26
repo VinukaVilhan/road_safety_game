@@ -111,7 +111,7 @@ class PathModuleSnakeSection extends StatelessWidget {
                       Text(
                         module.title.toUpperCase(),
                         style: AppFonts.pixelifySans(
-                          fontSize: 14,
+                          fontSize: 20,
                           fontWeight: FontWeight.w800,
                           color: moduleDone ? SwissTheme.textPrimary : SwissTheme.backgroundWhite,
                         ),

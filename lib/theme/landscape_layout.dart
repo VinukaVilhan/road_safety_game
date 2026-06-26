@@ -75,7 +75,7 @@ abstract final class LandscapeLayout {
     );
   }
 
-  /// Left context rail on assistant chat (quick prompts, attached report).
+  /// Left chat-history rail on assistant chat.
   static double chatSidebarWidth(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
     if (w >= 960) return 300;
@@ -83,11 +83,21 @@ abstract final class LandscapeLayout {
     return 220;
   }
 
+  static const double chatSidebarRailWidth = 40;
+
+  /// Width of the message column for the given sidebar state.
+  static double chatMessagePaneWidth(BuildContext context, {required bool sidebarExpanded}) {
+    final total = MediaQuery.sizeOf(context).width;
+    final rail = sidebarExpanded ? chatSidebarWidth(context) : chatSidebarRailWidth;
+    return (total - rail - 1).clamp(280.0, total);
+  }
+
   /// Max width for a single chat bubble in the message column.
-  static double chatBubbleMaxWidth(BuildContext context) {
-    final w = MediaQuery.sizeOf(context).width;
-    final sidebar = chatSidebarWidth(context);
-    final messageColumn = w - sidebar - 1;
-    return messageColumn.clamp(280.0, 520.0) * 0.72;
+  static double chatBubbleMaxWidth(
+    BuildContext context, {
+    required bool sidebarExpanded,
+  }) {
+    return chatMessagePaneWidth(context, sidebarExpanded: sidebarExpanded).clamp(280.0, 520.0) *
+        0.72;
   }
 }

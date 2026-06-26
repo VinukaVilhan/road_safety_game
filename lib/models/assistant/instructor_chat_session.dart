@@ -25,6 +25,14 @@ class InstructorChatSession {
 
   bool get isReport => kind == kindLevelReport;
 
+  /// Local calendar date when this thread was started (DD/MM/YYYY).
+  String get createdDateLabel {
+    final local = createdAt.toLocal();
+    final d = local.day.toString().padLeft(2, '0');
+    final m = local.month.toString().padLeft(2, '0');
+    return '$d/$m/${local.year}';
+  }
+
   LastDrivingReport? get lastReport {
     final j = reportJson;
     if (j == null) return null;

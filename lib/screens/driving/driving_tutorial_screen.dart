@@ -2,10 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../models/assistant/assistant_launch_context.dart';
 import '../../models/driving/tutorial_progress.dart';
 import '../../services/audio/ui_sound_service.dart';
-import '../../widgets/assistant_button.dart';
 import '../../theme/swiss_theme.dart';
 import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
@@ -57,19 +55,6 @@ class _DrivingTutorialScreenState extends State<DrivingTutorialScreen> {
           },
         ),
         title: Text('Controls', style: titleStyle),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 8),
-            child: AssistantButton(
-              inAppBar: true,
-              heroTag: 'assistant_driving_tutorial_menu',
-              launchContext: AssistantLaunchContext(
-                screenTitle: 'Controls — driving tutorials',
-                includeFullRoadSignCatalog: true,
-              ),
-            ),
-          ),
-        ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -82,9 +67,8 @@ class _DrivingTutorialScreenState extends State<DrivingTutorialScreen> {
             ),
           ),
           Expanded(
-            child: GridView.builder(
+            child: ListView.builder(
               padding: LandscapeLayout.bodyPadding(context),
-              gridDelegate: LandscapeLayout.listCardGridDelegate(context),
               itemCount: DrivingTutorialLesson.values.length,
               itemBuilder: (context, index) {
                 final lesson = DrivingTutorialLesson.values[index];
@@ -139,7 +123,7 @@ class _LessonTile extends StatelessWidget {
             ),
             padding: const EdgeInsets.all(16),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Icon(
                   Icons.play_circle_outline,
@@ -150,6 +134,7 @@ class _LessonTile extends StatelessWidget {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(lesson.title, style: titleStyle),
                       const SizedBox(height: 4),
@@ -157,6 +142,7 @@ class _LessonTile extends StatelessWidget {
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Icon(Icons.chevron_right, color: SwissTheme.textSecondary),
               ],
             ),

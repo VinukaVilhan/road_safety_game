@@ -62,150 +62,149 @@ class AssistantChatComposer extends StatelessWidget {
   final void Function(Uint8List bytes) onPreviewImage;
   final VoidCallback onSend;
 
-  bool get _controlsDisabled => sending || bootstrapping || preparingImage || !assistantReady;
+  bool get _inputDisabled => sending || bootstrapping || preparingImage || !assistantReady;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
-        if (preparingImage)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Row(
-              children: [
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  'Preparing photo…',
-                  style: bodyStyle.copyWith(fontSize: 11, color: SwissTheme.textSecondary),
-                ),
-              ],
-            ),
-          ),
-        if (pendingImagePreview != null)
-          Material(
-            color: SwissTheme.backgroundLightGrey,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+    return Material(
+      color: SwissTheme.backgroundWhite,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
+          if (preparingImage)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ChatImagePreview(
-                    bytes: pendingImagePreview!,
-                    maxHeight: 72,
-                    onTap: () => onPreviewImage(pendingImagePreview!),
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Photo ready to send',
-                          style: bodyStyle.copyWith(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Add a message or tap send.',
-                          style: bodyStyle.copyWith(
-                            fontSize: 11,
-                            color: SwissTheme.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Remove photo',
-                    onPressed: sending ? null : onClearPendingImage,
-                    icon: const Icon(Icons.close, size: 18),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Preparing photo…',
+                    style: bodyStyle.copyWith(fontSize: 10, color: SwissTheme.textSecondary),
                   ),
                 ],
               ),
             ),
-          ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                ComposerIconButton(
-                  tooltip: 'Photo from gallery',
-                  icon: Icons.add_photo_alternate_outlined,
-                  onPressed: _controlsDisabled ? null : onPickGallery,
-                ),
-                if (!kIsWeb)
-                  ComposerIconButton(
-                    tooltip: 'Take photo with camera',
-                    icon: Icons.photo_camera_outlined,
-                    onPressed: _controlsDisabled ? null : onTakePhoto,
-                  ),
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    minLines: 1,
-                    maxLines: 2,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) {
-                      final t = controller.text;
-                      if (t.trim().isNotEmpty || hasPendingImage) {
-                        onSend();
-                      }
-                    },
-                    style: bodyStyle.copyWith(fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'Ask about signs, rules, or your last run…',
-                      hintStyle: bodyStyle.copyWith(
-                        fontSize: 12,
-                        color: SwissTheme.textSecondary,
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+              child: ListenableBuilder(
+                listenable: controller,
+                builder: (context, _) {
+                  final canSend =
+                      !_inputDisabled && (controller.text.trim().isNotEmpty || hasPendingImage);
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      ComposerIconButton(
+                        tooltip: 'Photo from gallery',
+                        icon: Icons.add_photo_alternate_outlined,
+                        onPressed: _inputDisabled ? null : onPickGallery,
                       ),
-                      filled: true,
-                      fillColor: SwissTheme.backgroundWhite,
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                      if (!kIsWeb)
+                        ComposerIconButton(
+                          tooltip: 'Take photo with camera',
+                          icon: Icons.photo_camera_outlined,
+                          onPressed: _inputDisabled ? null : onTakePhoto,
+                        ),
+                      if (pendingImagePreview != null) ...[
+                        SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              ChatImagePreview(
+                                bytes: pendingImagePreview!,
+                                maxHeight: 48,
+                                maxWidth: 48,
+                                onTap: () => onPreviewImage(pendingImagePreview!),
+                              ),
+                              Positioned(
+                                top: -6,
+                                right: -6,
+                                child: Material(
+                                  color: SwissTheme.backgroundWhite,
+                                  shape: const CircleBorder(
+                                    side: BorderSide(color: SwissTheme.borderBlack, width: 1),
+                                  ),
+                                  child: InkWell(
+                                    customBorder: const CircleBorder(),
+                                    onTap: sending ? null : onClearPendingImage,
+                                    child: const Padding(
+                                      padding: EdgeInsets.all(2),
+                                      child: Icon(Icons.close, size: 14),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: TextField(
+                          controller: controller,
+                          enabled: !_inputDisabled,
+                          minLines: 1,
+                          maxLines: 2,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) {
+                            if (canSend) onSend();
+                          },
+                          style: bodyStyle.copyWith(fontSize: 13),
+                          decoration: InputDecoration(
+                            hintText: pendingImagePreview != null
+                                ? 'Optional caption…'
+                                : 'Ask about signs, rules, or your last run…',
+                            hintStyle: bodyStyle.copyWith(
+                              fontSize: 12,
+                              color: SwissTheme.textSecondary,
+                            ),
+                            filled: true,
+                            fillColor: SwissTheme.backgroundWhite,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            enabledBorder: const OutlineInputBorder(
+                              borderSide: BorderSide(color: SwissTheme.borderBlack, width: 1),
+                            ),
+                            focusedBorder: const OutlineInputBorder(
+                              borderSide: BorderSide(color: SwissTheme.accentBlue, width: 2),
+                            ),
+                            disabledBorder: const OutlineInputBorder(
+                              borderSide: BorderSide(color: SwissTheme.dividerBlack, width: 1),
+                            ),
+                          ),
+                        ),
                       ),
-                      enabledBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: SwissTheme.borderBlack, width: 1),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        onPressed: canSend ? onSend : null,
+                        style: IconButton.styleFrom(
+                          backgroundColor: SwissTheme.textPrimary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(44, 44),
+                        ),
+                        icon: const Icon(Icons.send, size: 20),
                       ),
-                      focusedBorder: const OutlineInputBorder(
-                        borderSide: BorderSide(color: SwissTheme.accentBlue, width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: (_controlsDisabled ||
-                          (controller.text.trim().isEmpty && !hasPendingImage))
-                      ? null
-                      : onSend,
-                  style: IconButton.styleFrom(
-                    backgroundColor: SwissTheme.textPrimary,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(44, 44),
-                  ),
-                  icon: const Icon(Icons.send, size: 20),
-                ),
-              ],
+                    ],
+                  );
+                },
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

@@ -136,19 +136,7 @@ class _InstructorChatsListScreenState extends State<InstructorChatsListScreen> {
 
   String _subtitle(InstructorChatSession s) {
     final kind = s.isReport ? 'Level report' : 'General';
-    final when = _formatRelative(s.updatedAt);
-    return '$kind · $when · ${s.messageCount} messages';
-  }
-
-  String _formatRelative(DateTime utc) {
-    final local = utc.toLocal();
-    final now = DateTime.now();
-    final d = now.difference(local);
-    if (d.inMinutes < 1) return 'just now';
-    if (d.inHours < 1) return '${d.inMinutes}m ago';
-    if (d.inDays < 1) return '${d.inHours}h ago';
-    if (d.inDays < 7) return '${d.inDays}d ago';
-    return '${local.day}/${local.month}/${local.year}';
+    return '$kind · Created ${s.createdDateLabel} · ${s.messageCount} messages';
   }
 
   @override

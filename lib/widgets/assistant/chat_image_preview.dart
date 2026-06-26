@@ -10,21 +10,24 @@ class ChatImagePreview extends StatelessWidget {
     super.key,
     required this.bytes,
     required this.maxHeight,
+    this.maxWidth,
     this.onTap,
   });
 
   final Uint8List bytes;
   final double maxHeight;
+  final double? maxWidth;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final w = maxWidth ?? maxHeight;
     final image = ClipRRect(
       borderRadius: BorderRadius.circular(2),
       child: Image.memory(
         bytes,
         fit: BoxFit.cover,
-        width: double.infinity,
+        width: w,
         height: maxHeight,
         cacheWidth: 400,
         gaplessPlayback: true,

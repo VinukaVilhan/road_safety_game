@@ -27,8 +27,8 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
   final ScrollController _scrollController = ScrollController();
 
   late final TextStyle _headerStyle = AppFonts.pixelifySans(
-    fontSize: 28,
-    fontWeight: FontWeight.w700,
+    fontSize: 20,
+    fontWeight: FontWeight.w800,
     letterSpacing: -0.5,
     color: SwissTheme.textPrimary,
   );

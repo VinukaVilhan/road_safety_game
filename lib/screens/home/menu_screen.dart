@@ -37,7 +37,7 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
     
     // Cache font styles once during initialization
     _titleStyle = AppFonts.pixelifySans(
-      fontSize: 56,
+      fontSize: 90,
       fontWeight: FontWeight.w900,
       height: 0.9,
       letterSpacing: -1.0,
@@ -145,7 +145,11 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _buildMenuRow(
-                          _buildMenuButton('01', 'PLAY', () => _startGame(context)),
+                          _buildMenuButton(
+                            '01',
+                            'PLAY',
+                            () => _startGame(context),
+                          ),
                           _buildMenuButton(
                             '02',
                             'CONTROLS',
@@ -172,8 +176,8 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
                           ),
                         ),
                         const SizedBox(height: LandscapeLayout.menuItemGap),
-                        Center(
-                          child: _buildMenuButton('05', 'QUIT', () => _quitGame(context)),
+                        _buildQuitRow(
+                          _buildMenuButton('05', 'QUIT', () => _quitGame(context)),
                         ),
                       ],
                     ),
@@ -198,7 +202,28 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildMenuButton(String number, String text, VoidCallback onPressed) {
+  /// Centers [child] on the gap between the two columns above (03 / 04).
+  Widget _buildQuitRow(Widget child) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            const SizedBox(width: 24),
+            const Expanded(child: SizedBox.shrink()),
+          ],
+        ),
+        child,
+      ],
+    );
+  }
+
+  Widget _buildMenuButton(
+    String number,
+    String text,
+    VoidCallback onPressed,
+  ) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -208,19 +233,27 @@ class _MenuScreenState extends State<MenuScreen> with SingleTickerProviderStateM
         },
         borderRadius: BorderRadius.zero, // Sharp corners
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 0),
-          child: Row(
-            children: [
-              Text(
-                number,
-                style: _menuButtonNumberStyle,
-              ),
-              const SizedBox(width: 16),
-              Text(
-                text,
-                style: _menuButtonTextStyle,
-              ),
-            ],
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: SwissTheme.borderBlack, width: 1),
+          ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  number,
+                  style: _menuButtonNumberStyle,
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  text,
+                  style: _menuButtonTextStyle,
+                ),
+              ],
+            ),
           ),
         ),
       ),

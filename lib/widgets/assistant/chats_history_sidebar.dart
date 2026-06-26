@@ -13,6 +13,7 @@ class ChatsHistorySidebar extends StatelessWidget {
     required this.loading,
     required this.onNewChat,
     required this.onSelect,
+    this.onCollapse,
   });
 
   final double width;
@@ -21,10 +22,11 @@ class ChatsHistorySidebar extends StatelessWidget {
   final bool loading;
   final VoidCallback? onNewChat;
   final void Function(InstructorChatSession session) onSelect;
+  final VoidCallback? onCollapse;
 
   String _subtitle(InstructorChatSession s) {
     final kind = s.isReport ? 'Report' : 'General';
-    return '$kind · ${s.messageCount} msgs';
+    return '$kind · ${s.createdDateLabel} · ${s.messageCount} msgs';
   }
 
   @override
@@ -37,9 +39,17 @@ class ChatsHistorySidebar extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+              padding: const EdgeInsets.fromLTRB(4, 6, 6, 6),
               child: Row(
                 children: [
+                  if (onCollapse != null)
+                    IconButton(
+                      tooltip: 'Hide chats',
+                      icon: const Icon(Icons.chevron_left, size: 20),
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      onPressed: onCollapse,
+                    ),
                   Expanded(
                     child: Text(
                       'CHATS',

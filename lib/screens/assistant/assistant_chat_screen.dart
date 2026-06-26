@@ -23,7 +23,7 @@ import '../../widgets/assistant/assistant_chat_composer.dart';
 import '../../widgets/assistant/attached_report_banner.dart';
 import '../../widgets/assistant/chat_image_preview.dart';
 import '../../widgets/assistant/chat_message_bubble.dart';
-import '../../widgets/assistant/chats_history_sidebar.dart';
+import '../../widgets/assistant/retractable_chats_sidebar.dart';
 import 'assistant_chat_constants.dart';
 import 'instructor_chats_list_screen.dart';
 
@@ -63,6 +63,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
 
   List<InstructorChatSession> _chatSessions = [];
   bool _loadingChatSessions = true;
+  bool _sidebarExpanded = true;
 
   AssistantLaunchContext _contextForModel() {
     return AssistantLaunchContext(
@@ -505,11 +506,25 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
         elevation: 0,
         backgroundColor: SwissTheme.backgroundWhite,
         foregroundColor: SwissTheme.textPrimary,
-        title: Text(
-          _appBarTitle,
-          style: titleStyle,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _appBarTitle,
+              style: titleStyle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (_sessionMeta != null)
+              Text(
+                'Created ${_sessionMeta!.createdDateLabel}',
+                style: AppFonts.pixelifySans(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: SwissTheme.textSecondary,
+                ),
+              ),
+          ],
         ),
         actions: [
           PopupMenuButton<String>(
@@ -561,13 +576,15 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ChatsHistorySidebar(
-                  width: LandscapeLayout.chatSidebarWidth(context),
+                RetractableChatsSidebar(
+                  expanded: _sidebarExpanded,
+                  expandedWidth: LandscapeLayout.chatSidebarWidth(context),
                   sessions: _chatSessions,
                   currentSessionId: _sessionId,
                   loading: _loadingChatSessions,
                   onNewChat: _sending || _bootstrapping ? null : () => unawaited(_newChat()),
                   onSelect: _switchToSession,
+                  onToggle: () => setState(() => _sidebarExpanded = !_sidebarExpanded),
                 ),
                 const VerticalDivider(width: 1, thickness: 1, color: SwissTheme.dividerBlack),
                 Expanded(
@@ -618,7 +635,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                             return ChatMessageBubble(
                               message: m,
                               bodyStyle: bodyStyle,
-                              maxWidth: LandscapeLayout.chatBubbleMaxWidth(context),
+                              maxWidth: LandscapeLayout.chatBubbleMaxWidth(
+                                context,
+                                sidebarExpanded: _sidebarExpanded,
+                              ),
                               onImageTap: (bytes) => showAssistantChatImagePreview(context, bytes),
                             );
                           },
@@ -641,7 +661,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                               const SizedBox(width: 8),
                               Text(
                                 'Thinking…',
-                                style: bodyStyle.copyWith(fontSize: 11, color: SwissTheme.textSecondary),
+                                style: bodyStyle.copyWith(
+                                  fontSize: 11,
+                                  color: SwissTheme.textSecondary,
+                                ),
                               ),
                             ],
                           ),

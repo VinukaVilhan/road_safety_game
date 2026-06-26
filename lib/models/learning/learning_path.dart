@@ -84,16 +84,19 @@ class LearningPathProgress {
   final Set<String> passedMcqIds;
   final Set<String> viewedIntroIds;
   final Set<String> completedLevelIds;
+  final Set<String> passedModuleFinalIds;
 
   const LearningPathProgress({
     required this.passedMcqIds,
     required this.viewedIntroIds,
     required this.completedLevelIds,
+    required this.passedModuleFinalIds,
   });
 
   static const empty = LearningPathProgress(
     passedMcqIds: {},
     viewedIntroIds: {},
     completedLevelIds: {},
+    passedModuleFinalIds: {},
   );
 }

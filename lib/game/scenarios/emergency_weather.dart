@@ -5,7 +5,6 @@ extension _EmergencyWeatherScenario on RealisticCarGameBase {
   static const double _weatherFrictionMultiplier = 0.55;
   static const double _weatherBrakeMultiplier = 0.6;
   static const double _weatherSteerGripMultiplier = 0.72;
-  static const double _weatherMaxSpeedWorldUnits = 72.0;
 
   bool get _isEmergencyWeatherScenario =>
       (scenarioId ?? '').trim().toLowerCase() == 'emergency_weather';
@@ -232,24 +231,7 @@ extension _EmergencyWeatherScenario on RealisticCarGameBase {
     }
   }
 
-  void _updateAdverseWeatherRules() {
-    if (!_isEmergencyWeatherScenario || _testFinished) return;
-    final c = car;
-    if (c == null) return;
-
-    final maxSpeed = _weatherMaxSpeedWorldUnits;
-    final currentSpeed = c.velocity.length;
-    if (currentSpeed <= maxSpeed) return;
-
-    if (!_weatherSpeedPenaltyIssued) {
-      _weatherSpeedPenaltyIssued = true;
-      _recordPenalty('Driving too fast for wet road conditions');
-    }
-    c.velocity = c.velocity.normalized() * maxSpeed;
-  }
-
   void _resetEmergencyWeatherForRestart() {
-    _weatherSpeedPenaltyIssued = false;
     _scheduleNextThunderStrike(initial: true);
     _weatherThunderOverlay?.clear();
   }

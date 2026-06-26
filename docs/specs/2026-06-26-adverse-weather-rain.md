@@ -5,7 +5,7 @@
 | **Status** | Done |
 | **Author** | Agent |
 | **Created** | 2026-06-26 |
-| **Related** | Level `emergency_weather`, map `cross_junction.tmx` |
+| **Related** | Level `emergency_weather`, map `adverse_weather.tmx` |
 
 ---
 
@@ -63,7 +63,7 @@ Teach safe driving in rain: visible downpour, reduced grip, longer braking, and 
 | Headlights | `lib/game/effects/car_headlights.dart` — warm cone beams + lens highlights on [Car] when `weatherHeadlightsEnabled` |
 | Scenario logic | `lib/game/scenarios/emergency_weather.dart` |
 | Physics | `lib/game/entities/car.dart` reads `weatherFrictionMultiplier`, `weatherBrakeMultiplier`, `weatherSteerGripMultiplier` |
-| Level row | `driving_levels_service.dart` — `mapAsset: cross_junction.tmx`, `scenarioId: emergency_weather` |
+| Level row | `driving_levels_service.dart` — `mapAsset: adverse_weather.tmx`, `scenarioId: emergency_weather` |
 | Weather audio | `lib/game/audio/weather_sfx.dart` — `rain_ambience.mp3` loop, `thunder_clap.mp3` once per strike |
 
 ---
@@ -117,3 +117,5 @@ Run the **agent completion gate** in [`.cursor/rules/spec-driven.mdc`](../../.cu
 | 2026-06-26 | Rain audio: `invalidate()` on lesson end + `PopScope` on `GameScreen` — stops loop on back/quit |
 | 2026-06-26 | Rain audio: app-wide `WeatherSfxService` singleton; `endLesson()` on back/route pop (fixed player id) |
 | 2026-06-26 | Weather headlights: `CarWeatherHeadlightsPainter` — warm cones + lens glow on player car |
+| 2026-06-26 | Dedicated map `adverse_weather.tmx` (copy of `cross_junction.tmx`) for weather level |
+| 2026-06-26 | TMX `Check_Layer` / `Speed_Layer` rules, lights/wipers popup, speed HUD, weather-only AI report rubric |

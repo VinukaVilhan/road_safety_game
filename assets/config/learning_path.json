@@ -25,7 +25,7 @@
         {
           "id": "foundations_final",
           "kind": "module_final",
-          "title": "Module check",
+          "title": "Module test",
           "unlockRequirementIds": ["foundations_intro", "foundations_mcq"]
         }
       ]
@@ -54,7 +54,7 @@
         {
           "id": "vehicle_control_final",
           "kind": "module_final",
-          "title": "Module check",
+          "title": "Module test",
           "unlockRequirementIds": ["vehicle_control_intro", "vehicle_control_mcq"]
         }
       ]
@@ -83,7 +83,7 @@
         {
           "id": "traffic_rules_final",
           "kind": "module_final",
-          "title": "Module check",
+          "title": "Module test",
           "unlockRequirementIds": ["traffic_rules_intro", "traffic_rules_mcq"]
         }
       ]
@@ -120,7 +120,7 @@
         {
           "id": "road_signs_final",
           "kind": "module_final",
-          "title": "Module check",
+          "title": "Module test",
           "unlockRequirementIds": [
             "road_signs_lights_intro",
             "road_signs_lights_mcq",
@@ -165,7 +165,7 @@
         {
           "id": "junctions_final",
           "kind": "module_final",
-          "title": "Module check",
+          "title": "Module test",
           "unlockRequirementIds": [
             "junctions_t_left",
             "junctions_t_right",
@@ -211,7 +211,7 @@
         {
           "id": "road_markings_final",
           "kind": "module_final",
-          "title": "Module check",
+          "title": "Module test",
           "unlockRequirementIds": [
             "markings_solid",
             "markings_dashed",
@@ -253,7 +253,7 @@
         {
           "id": "parking_final",
           "kind": "module_final",
-          "title": "Module check",
+          "title": "Module test",
           "unlockRequirementIds": ["parking_intro", "parking_mcq"]
         }
       ]
@@ -296,7 +296,7 @@
         {
           "id": "emergencies_weather_final",
           "kind": "module_final",
-          "title": "Module check",
+          "title": "Module test",
           "unlockRequirementIds": [
             "safety_intro",
             "safety_mcq",

@@ -90,6 +90,7 @@ flutter:
   - assets/config/road_signs_curriculum.json
   - assets/config/theory_curriculum.json
   - assets/config/learning_path.json
+  - assets/config/module_finals.json
   - assets/images/
   - assets/images/theory/intro/
   - assets/images/theory/intro/best_practices/

@@ -108,11 +108,13 @@ Optional object/layer property: `fail_message` (custom fail text).
 | Rule | Detail |
 |------|--------|
 | **Scenario id** | `emergency_weather` — rain visuals + wet-road physics on any linked map |
-| **Map** | `cross_junction.tmx` (standard junction zones; same pass flow as cross junction basics) |
+| **Map** | `adverse_weather.tmx` (copy of cross junction layout; editable independently for weather level) |
 | **Rain visuals** | Viewport-space vertical streaks via `RainViewportOverlay`; periodic lightning flash via `ThunderFlashOverlay` (~32–58s random gap; ~35% double-flash); world-space low-beam cones on the player car via `CarWeatherHeadlightsPainter` |
 | **Weather audio** | Looping `rain_ambience.mp3`; one-shot `thunder_clap.mp3` per lightning event (once even for double-flash) |
 | **Wet grip** | Friction ×0.55, braking ×0.6, steering grip ×0.72; slight lateral slide on sharp steer at speed |
-| **Speed cap** | ~72 world units/sec while raining; exceeding records one non-fatal penalty: *Driving too fast for wet road conditions* |
+| **Check zone** | Yellow `Check_Layer` — popup to turn on headlights + wipers (`require_headlights`, `require_windshield_wipers`, `popup_title`, `popup_message`) |
+| **Speed zone** | Purple `Speed_Layer` — `max_speed` (HUD units) + optional `speed_message`; penalty if exceeded after check zone |
+| **Pass** | Green `Zone_Finish` with check complete and **no** wet-weather penalties |
 | **Unlock** | Open by default (first level in topic **Weather Conditions** on Driving test main menu) |
 
 **Code:** `lib/game/scenarios/emergency_weather.dart`, `lib/game/entities/car_facing.dart` (`CarFacing` / `CarZones`), `Car` weather multipliers, `level_briefing_registry.dart`
@@ -135,7 +137,7 @@ Full design (unlock graph, definition of done for new levels): [`specs/2026-06-2
 
 Practical levels have **no** Easy/Medium/Hard tier. Progression is module order + unlock chain. Theory uses `TestDifficulty` separately.
 
-**Learning path (PLAY):** One consolidated curriculum map replaces the Theory/Driving fork. Manifest: `assets/config/learning_path.json`. Per module: theory (intro + MCQ) → practical levels → module checkpoint; grand final when all module checkpoints are done. Path unlock uses `unlockRequirementIds` on path nodes; completion reads existing theory and driving progress stores (no duplicate lesson state). Under-development driving levels stay locked on the path. Spec: [`specs/2026-06-26-learning-path.md`](./specs/2026-06-26-learning-path.md).
+**Learning path (PLAY):** One consolidated curriculum map replaces the Theory/Driving fork. Manifest: `assets/config/learning_path.json`. Per module: theory (intro + MCQ) → practical levels → **module test** (`module_final` node); grand final when all module tests are passed. Module tests are mixed MCQ + practical assessments configured in `assets/config/module_finals.json` (70% theory pass; practical levels must be passed in sequence). Path unlock uses `unlockRequirementIds` on path nodes; lesson completion reads existing theory and driving progress stores; module-test pass is stored separately by path node id. Under-development driving levels stay locked on the path. Specs: [`specs/2026-06-26-learning-path.md`](./specs/2026-06-26-learning-path.md), [`specs/2026-06-27-module-final-assessments.md`](./specs/2026-06-27-module-final-assessments.md).
 
 **Code:** `level_selection_screen.dart`, `game_screen.dart`, `level_progress_service.dart`, `last_driving_report_service.dart`, `driving_game.dart`, `learning_path_screen.dart`, `learning_path_service.dart`
 

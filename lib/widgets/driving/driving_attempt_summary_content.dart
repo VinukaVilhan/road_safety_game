@@ -92,6 +92,13 @@ class DrivingAttemptSummaryContent extends StatelessWidget {
               label: 'Reached finish zone.',
               ok: summary.reachedFinishZone,
             ),
+          ] else if (level.scenarioId == 'emergency_weather') ...[
+            if (summary.weather != null)
+              _WeatherSummarySection(w: summary.weather!),
+            _CheckRow(
+              label: 'Reached finish zone.',
+              ok: summary.reachedFinishZone,
+            ),
           ] else if (level.scenarioId == 'emergency_ambulance') ...[
             if (summary.ambulance != null) _AmbulanceSummarySection(a: summary.ambulance!),
             _CheckRow(
@@ -183,6 +190,52 @@ class _CheckRow extends StatelessWidget {
         Expanded(
           child: Text(label, style: const TextStyle(color: Colors.white70)),
         ),
+      ],
+    );
+  }
+}
+
+class _WeatherSummarySection extends StatelessWidget {
+  const _WeatherSummarySection({required this.w});
+
+  final WeatherAttemptSnapshot w;
+
+  @override
+  Widget build(BuildContext context) {
+    final limit = w.speedLimit;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _CheckRow(
+          label: 'Entered check zone (lights & wipers prompt).',
+          ok: w.enteredCheckZone,
+        ),
+        const SizedBox(height: 6),
+        _CheckRow(
+          label: 'Headlights and wipers confirmed at check zone.',
+          ok: w.checkRequirementsMet,
+        ),
+        const SizedBox(height: 6),
+        _CheckRow(
+          label: 'Entered wet-road speed section.',
+          ok: w.enteredSpeedZone,
+        ),
+        if (limit != null) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 26),
+            child: Text(
+              'Speed limit in section: $limit (HUD units)',
+              style: const TextStyle(color: Colors.white38, fontSize: 11),
+            ),
+          ),
+        ],
+        const SizedBox(height: 6),
+        _CheckRow(
+          label: 'Stayed within speed limit after check zone.',
+          ok: !w.exceededSpeedInZone,
+        ),
+        const SizedBox(height: 8),
       ],
     );
   }

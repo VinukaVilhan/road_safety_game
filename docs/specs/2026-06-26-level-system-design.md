@@ -60,7 +60,7 @@ flowchart LR
 
 ### Player-facing learning path
 
-PLAY from the home menu opens a **consolidated learning path** (`assets/config/learning_path.json`) instead of separate Theory Test / Driving Test hubs. Each path **module** chains theory steps, practical `GameLevel` ids, and a **module checkpoint**; a **grand final** node completes when all module checkpoints are satisfied. Path nodes reference existing theory / road-signs module ids and `GameLevel.id` values — catalogs in `theory_curriculum.json`, `road_signs_curriculum.json`, and `driving_levels_service.dart` remain authoring sources. Spec: [`2026-06-26-learning-path.md`](./2026-06-26-learning-path.md).
+PLAY from the home menu opens a **consolidated learning path** (`assets/config/learning_path.json`) instead of separate Theory Test / Driving Test hubs. Each path **module** chains theory steps, practical `GameLevel` ids, and a **module test** (`module_final`); a **grand final** node completes when all module tests are passed. Module test content: `assets/config/module_finals.json`. Path nodes reference existing theory / road-signs module ids and `GameLevel.id` values — catalogs in `theory_curriculum.json`, `road_signs_curriculum.json`, and `driving_levels_service.dart` remain authoring sources. Specs: [`2026-06-26-learning-path.md`](./2026-06-26-learning-path.md), [`2026-06-27-module-final-assessments.md`](./2026-06-27-module-final-assessments.md).
 
 ### Topics and modules
 
@@ -113,7 +113,7 @@ Junctions — cross_junction
   junctions_cross_advanced ← junctions_cross_basics (no map yet)
 
 Weather Conditions
-  emergency_weather (open; rain on cross-junction.tmx)
+  emergency_weather (open; rain on adverse_weather.tmx)
 
 Junctions — roundabout
   junctions_roundabout_basics ← junctions_t_right (rules disabled)

@@ -6,6 +6,7 @@ import '../../models/learning/learning_path.dart';
 import '../../models/theory/road_signs_curriculum.dart';
 import '../../models/theory/theory_category_curriculum.dart';
 import '../../screens/driving/game_screen.dart';
+import '../../screens/learning/module_final_screen.dart';
 import '../../screens/minigames/traffic_color_lights_intro_screen.dart';
 import '../../screens/minigames/traffic_color_lights_minigame_screen.dart';
 import '../../screens/road_signs/road_signs_learn_screen.dart';
@@ -28,7 +29,14 @@ class LearningPathNavigator {
     BuildContext context,
     LearningPathNode node,
   ) async {
-    if (node.isCheckpoint) {
+    if (node.kind == LearningPathNodeKind.moduleFinal) {
+      await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => ModuleFinalScreen(nodeId: node.id)),
+      );
+      return;
+    }
+    if (node.kind == LearningPathNodeKind.grandFinal) {
       await _showCheckpointDialog(context, node);
       return;
     }
@@ -44,6 +52,10 @@ class LearningPathNavigator {
       case LearningPathNodeKind.drivingLevel:
         await _openDrivingLevel(context, node);
       case LearningPathNodeKind.moduleFinal:
+        await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(builder: (_) => ModuleFinalScreen(nodeId: node.id)),
+        );
       case LearningPathNodeKind.grandFinal:
         await _showCheckpointDialog(context, node);
     }

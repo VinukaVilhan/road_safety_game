@@ -22,6 +22,38 @@ double? _readNumericPropertyAsDouble(CustomProperties properties, String name) {
   }
 }
 
+bool _readBoolProperty(CustomProperties properties, String name,
+    {bool defaultValue = false}) {
+  try {
+    final v = properties.getValue<bool>(name);
+    if (v != null) return v;
+  } catch (_) {}
+  try {
+    final i = properties.getValue<int>(name);
+    if (i != null) return i != 0;
+  } catch (_) {}
+  try {
+    final s = properties.getValue<String>(name);
+    if (s != null) {
+      final t = s.trim().toLowerCase();
+      if (t == 'true' || t == '1' || t == 'yes') return true;
+      if (t == 'false' || t == '0' || t == 'no') return false;
+    }
+  } catch (_) {}
+  return defaultValue;
+}
+
+String? _readStringProperty(CustomProperties properties, String name) {
+  try {
+    final s = properties.getValue<String>(name);
+    if (s == null) return null;
+    final t = s.trim();
+    return t.isEmpty ? null : t;
+  } catch (_) {
+    return null;
+  }
+}
+
 /// TMX may use `max_speed` or `speed_limit` on the object or parent layer.
 double? _readZoneSpeedLimit(CustomProperties objProps, CustomProperties layerProps) {
   return _readNumericPropertyAsDouble(objProps, 'max_speed') ??

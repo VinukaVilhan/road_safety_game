@@ -30,6 +30,15 @@ Road-crossing (zebra-style) level checklist:
 5) Obstacle discipline — Avoid minor non-crash contacts; a clean run requires zero.
 ''';
 
+  /// Checklist for adverse weather (`adverse_weather.tmx`).
+  static const String adverseWeatherRubric = '''
+Adverse weather level checklist:
+1) Check zone — Enter the yellow Check_Layer and confirm headlights + windshield wipers in the popup.
+2) Speed section — Enter the purple Speed_Layer and stay at or below the TMX `max_speed` (shown on HUD).
+3) Route completion — Reach the green finish zone with no wet-weather penalties.
+4) Obstacle discipline — Avoid minor non-crash contacts; a clean run requires zero.
+''';
+
   static String _formatReport(LastDrivingReport r) {
     final details = r.mistakeDetails.isEmpty
         ? '(none)'
@@ -123,8 +132,13 @@ Options: ${q.options.join(' | ')}
       );
     }
 
-    sections.add('Game rubric — standard turns:\n$standardTurnRubric');
-    sections.add('Game rubric — road crossing:\n$roadCrossingRubric');
+    if (ctx.level != null &&
+        ctx.level!.scenarioId == 'emergency_weather') {
+      sections.add('Game rubric — adverse weather:\n$adverseWeatherRubric');
+    } else {
+      sections.add('Game rubric — standard turns:\n$standardTurnRubric');
+      sections.add('Game rubric — road crossing:\n$roadCrossingRubric');
+    }
 
     if (ctx.includeFullRoadSignCatalog) {
       sections.add(_roadSignCatalogDigest());

@@ -382,7 +382,7 @@ class DrivingLevelsService {
       isUnlocked: true,
       topic: DrivingTopic.WeatherConditions,
       topicLevel: 1,
-      mapAsset: 'cross_junction.tmx',
+      mapAsset: 'adverse_weather.tmx',
       scenarioId: 'emergency_weather',
     ),
   ];

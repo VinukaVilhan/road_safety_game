@@ -27,13 +27,27 @@ class LastDrivingReportService {
   /// Legacy single global report (pre per-level); merged in [_readAllRaw] until a new save runs.
   static const _legacyPrefsKey = 'last_driving_report_v1';
 
+  static bool _isWeatherLevel(GameLevel level) =>
+      (level.scenarioId ?? '').trim() == 'emergency_weather';
+
   static ({int correct, int mistakes, int total}) _rubricCounts(
     DrivingAttemptSummary s, {
     required bool roadCrossingLayout,
     bool dashedMarkingsLayout = false,
+    bool weatherLayout = false,
   }) {
     final List<bool> checks;
-    if (roadCrossingLayout) {
+    if (weatherLayout && s.weather != null) {
+      final w = s.weather!;
+      checks = [
+        w.enteredCheckZone,
+        w.checkRequirementsMet,
+        w.enteredSpeedZone,
+        !w.exceededSpeedInZone,
+        s.reachedFinishZone,
+        s.nonCrashBumpCount == 0,
+      ];
+    } else if (roadCrossingLayout) {
       checks = [
         s.enteredApproachZone,
         s.waitedAtRoadCrossing,
@@ -96,9 +110,45 @@ class LastDrivingReportService {
     DrivingAttemptSummary s, {
     required bool roadCrossingLayout,
     bool dashedMarkingsLayout = false,
+    bool weatherLayout = false,
   }) {
     final lines = <String>[];
-    if (roadCrossingLayout) {
+    if (weatherLayout && s.weather != null) {
+      final w = s.weather!;
+      if (!w.enteredCheckZone) {
+        lines.add(
+          'Check zone — you did not enter the yellow check area for lights and wipers.',
+        );
+      }
+      if (!w.checkRequirementsMet) {
+        lines.add(
+          'Lights & wipers — headlights and windshield wipers were not confirmed at the check zone.',
+        );
+      }
+      if (!w.enteredSpeedZone) {
+        lines.add(
+          'Speed section — the purple wet-road speed zone was not entered.',
+        );
+      }
+      if (w.exceededSpeedInZone) {
+        final lim = w.speedLimit;
+        lines.add(
+          lim != null
+              ? 'Speed limit — exceeded $lim after the check zone in the wet section.'
+              : 'Speed limit — drove too fast in the wet section after the check zone.',
+        );
+      }
+      if (!s.reachedFinishZone) {
+        lines.add(
+          'Route completion — the green finish zone was not reached.',
+        );
+      }
+      if (s.nonCrashBumpCount > 0) {
+        lines.add(
+          'Obstacle discipline — recorded ${s.nonCrashBumpCount} minor non-crash contact(s); a clean run requires none.',
+        );
+      }
+    } else if (roadCrossingLayout) {
       if (!s.enteredApproachZone) {
         lines.add(
           'Approach control — yellow speed-limit zone was not entered as required before the attempt ended.',
@@ -493,8 +543,19 @@ class LastDrivingReportService {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     final road = LastDrivingReport.isRoadCrossingMap(level.mapAsset);
     final dashed = _isDashedMarkingsMap(level);
-    final counts = _rubricCounts(summary, roadCrossingLayout: road, dashedMarkingsLayout: dashed);
-    final mistakeDetails = mistakeDetailLines(summary, roadCrossingLayout: road, dashedMarkingsLayout: dashed);
+    final weather = _isWeatherLevel(level);
+    final counts = _rubricCounts(
+      summary,
+      roadCrossingLayout: road,
+      dashedMarkingsLayout: dashed,
+      weatherLayout: weather,
+    );
+    final mistakeDetails = mistakeDetailLines(
+      summary,
+      roadCrossingLayout: road,
+      dashedMarkingsLayout: dashed,
+      weatherLayout: weather,
+    );
     final recordedAt = DateTime.now().toUtc();
 
     String? screenshotPath;

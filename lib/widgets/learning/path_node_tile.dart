@@ -54,7 +54,7 @@ class PathNodeTile extends StatelessWidget {
       case LearningPathNodeKind.drivingLevel:
         return 'Drive';
       case LearningPathNodeKind.moduleFinal:
-        return 'Checkpoint';
+        return 'Module test';
       case LearningPathNodeKind.grandFinal:
         return 'Grand final';
     }

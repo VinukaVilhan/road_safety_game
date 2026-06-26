@@ -23,6 +23,7 @@ import '../../widgets/driving/driving_attempt_summary_content.dart';
 import '../../widgets/driving/driving_pause_dialog.dart';
 import '../../widgets/driving/driving_radio_icon.dart';
 import '../../widgets/driving/level_briefing.dart';
+import '../../widgets/driving/weather_precheck_dialog.dart';
 import '../../widgets/driving/pedestrian_crossing_sign_hud.dart';
 
 class GameScreen extends StatefulWidget {
@@ -84,6 +85,12 @@ class GameScreenState extends State<GameScreen> {
       onTestPassed: _handleTestPassed,
       onTestFailed: (message) => unawaited(_handleTestFailed(message)),
       onPenaltyRecorded: (description) => unawaited(_onPenaltyRecorded(description)),
+      onWeatherCheckPrompt: (request) {
+        if (!mounted) return;
+        unawaited(
+          showWeatherPrecheckDialog(context: context, request: request),
+        );
+      },
       onOdometerDeltaMeters: OdometerService.instance.recordSessionDelta,
       turnSignalLeft: _turnSignalLeftNotifier,
       turnSignalRight: _turnSignalRightNotifier,
@@ -363,6 +370,41 @@ class GameScreenState extends State<GameScreen> {
                       },
                     ),
                   ),
+                ),
+
+                // Wet-road speed hint from Speed_Layer (adverse weather)
+                ValueListenableBuilder<String?>(
+                  valueListenable: game.weatherSpeedHint,
+                  builder: (context, hint, _) {
+                    if (hint == null || hint.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Positioned(
+                      top: 68,
+                      right: 20,
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 280),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.withValues(alpha: 0.82),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Text(
+                          hint,
+                          style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
 
                 // Bottom-right: Gearbox above Steering Wheel

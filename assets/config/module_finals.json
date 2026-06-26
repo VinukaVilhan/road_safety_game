@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "assessments": [
+    {
+      "nodeId": "foundations_final",
+      "title": "Foundations module test",
+      "description": "Answer theory questions from best-practices topics covered in this module.",
+      "mcqPools": ["best_practices_mcq"],
+      "mcqQuestionCount": 6,
+      "drivingLevelIds": [],
+      "passScorePercent": 70
+    },
+    {
+      "nodeId": "vehicle_control_final",
+      "title": "Vehicle control module test",
+      "description": "Answer theory questions on steering, braking, and gears.",
+      "mcqPools": ["vehicle_control_mcq"],
+      "mcqQuestionCount": 6,
+      "drivingLevelIds": [],
+      "passScorePercent": 70
+    },
+    {
+      "nodeId": "traffic_rules_final",
+      "title": "Traffic rules module test",
+      "description": "Answer theory questions on licences, documents, and right of way.",
+      "mcqPools": ["traffic_rules_mcq"],
+      "mcqQuestionCount": 6,
+      "drivingLevelIds": [],
+      "passScorePercent": 70
+    },
+    {
+      "nodeId": "road_signs_final",
+      "title": "Road signs module test",
+      "description": "Answer questions on traffic lights and signals from this module.",
+      "mcqPools": ["traffic_color_lights_mcq", "traffic_signals_mcq"],
+      "mcqQuestionCount": 8,
+      "drivingLevelIds": [],
+      "passScorePercent": 70
+    },
+    {
+      "nodeId": "junctions_final",
+      "title": "Junctions module test",
+      "description": "Mixed theory review plus practical driving at T-junctions and cross junctions.",
+      "mcqPools": ["traffic_rules_mcq", "control_priority_mcq"],
+      "mcqQuestionCount": 5,
+      "drivingLevelIds": ["junctions_t_left", "junctions_cross_basics"],
+      "passScorePercent": 70
+    },
+    {
+      "nodeId": "road_markings_final",
+      "title": "Road markings module test",
+      "description": "Theory on lane rules plus practical driving on markings and crossings.",
+      "mcqPools": ["traffic_rules_mcq"],
+      "mcqQuestionCount": 4,
+      "drivingLevelIds": ["markings_solid", "markings_zebra"],
+      "passScorePercent": 70
+    },
+    {
+      "nodeId": "parking_final",
+      "title": "Parking module test",
+      "description": "Answer theory questions on where and how to park legally.",
+      "mcqPools": ["parking_mcq"],
+      "mcqQuestionCount": 6,
+      "drivingLevelIds": [],
+      "passScorePercent": 70
+    },
+    {
+      "nodeId": "emergencies_weather_final",
+      "title": "Emergencies & weather module test",
+      "description": "Safety theory plus practical ambulance reaction and adverse-weather driving.",
+      "mcqPools": ["safety_procedures_mcq"],
+      "mcqQuestionCount": 5,
+      "drivingLevelIds": ["emergency_ambulance", "emergency_weather"],
+      "passScorePercent": 70
+    }
+  ]
+}

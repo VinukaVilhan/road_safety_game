@@ -7,6 +7,7 @@ import '../../models/learning/learning_path.dart';
 import '../progress/level_progress_service.dart';
 import '../../data/repositories/progress_repository.dart';
 import 'driving_levels_service.dart';
+import 'module_finals_service.dart';
 
 /// Loads the consolidated learning path and resolves unlock / completion state.
 class LearningPathService {
@@ -42,10 +43,14 @@ class LearningPathService {
     final passed = await ProgressRepository.instance.getCompletedTestIds();
     final viewed = await ProgressRepository.instance.getRoadSignsLearnViewedModuleIds();
     final levels = await LevelProgressService.getCompletedLevelIds();
+    final moduleFinalIds = await ModuleFinalsService.instance.allNodeIds();
+    final passedModuleFinals =
+        await ProgressRepository.instance.getPassedModuleFinalIds(moduleFinalIds);
     return LearningPathProgress(
       passedMcqIds: passed,
       viewedIntroIds: viewed,
       completedLevelIds: levels,
+      passedModuleFinalIds: passedModuleFinals,
     );
   }
 
@@ -60,9 +65,12 @@ class LearningPathService {
   }
 
   bool isNodeComplete(LearningPathNode node, LearningPathProgress progress) {
-    if (node.isCheckpoint) {
+    if (node.kind == LearningPathNodeKind.moduleFinal) {
+      return progress.passedModuleFinalIds.contains(node.id);
+    }
+    if (node.kind == LearningPathNodeKind.grandFinal) {
       return node.unlockRequirementIds.every(
-        (id) => isNodeCompleteById(id, progress),
+        (id) => progress.passedModuleFinalIds.contains(id),
       );
     }
 

@@ -60,7 +60,7 @@ extension ZoneHelpers on RealisticCarGameBase {
   }
 
   void _enforceSpeedLimitZones() {
-    if (!drivingRulesEnabled) return;
+    if (!drivingRulesEnabled || _isEmergencyWeatherScenario) return;
     if (_testFinished || car == null || _drivingZones.isEmpty) return;
 
     final carRect = Rect.fromCenter(

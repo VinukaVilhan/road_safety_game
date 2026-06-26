@@ -63,6 +63,8 @@ extension GameLevelGameplay on GameLevel {
 
   bool get isRoadCrossingLevel =>
       (mapAsset ?? '').toLowerCase().contains('road_crossing');
+
+  bool get isAdverseWeatherLevel => scenarioId == 'emergency_weather';
 }
 
 extension DrivingTopicExtension on DrivingTopic {

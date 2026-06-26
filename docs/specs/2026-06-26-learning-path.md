@@ -11,7 +11,7 @@
 
 ## Goal
 
-Replace the Theory Test / Driving Test fork with one **landscape learning path**: per themed module, players complete theory (intro + MCQ), then practical driving levels where available, then a **module final** checkpoint before the next module. A **grand final** node appears when all modules are complete.
+Replace the Theory Test / Driving Test fork with one **landscape learning path**: per themed module, players complete theory (intro + MCQ), then practical driving levels where available, then a **module test** (mixed MCQ + practical) before the next module. A **grand final** node appears when all module tests are complete.
 
 ## Non-goals
 
@@ -37,7 +37,7 @@ Replace the Theory Test / Driving Test fork with one **landscape learning path**
 2. Path modules are separated visually; nodes unlock in manifest order with cross-module gates via `unlockRequirementIds`.
 3. Node kinds: `theory_intro`, `theory_mcq`, `road_signs_intro`, `road_signs_mcq`, `road_signs_minigame`, `driving_level`, `module_final`, `grand_final`.
 4. Completion reads existing progress (theory MCQ pass, intro viewed, driving level complete) — no duplicate lesson state.
-5. `module_final` / `grand_final` complete when all listed prerequisites are done (computed, no new activity).
+5. `module_final` completes when the player **passes** the module test (`module_finals.json`). `grand_final` completes when all module tests are passed.
 6. Under-development driving nodes stay locked (same ids as level selection).
 
 ### UI
@@ -67,6 +67,7 @@ Replace the Theory Test / Driving Test fork with one **landscape learning path**
 - [x] Unlock uses path `unlockRequirementIds` + existing progress stores
 - [x] Tapping nodes opens existing intro / MCQ / minigame / `GameScreen` flows
 - [x] Under-development levels locked on path
+- [x] Tapping `module_final` opens mixed MCQ + practical module test
 - [x] **Spec kit updated**
 
 ---
@@ -76,3 +77,4 @@ Replace the Theory Test / Driving Test fork with one **landscape learning path**
 | Date | Note |
 |------|------|
 | 2026-06-26 | Initial learning path: manifest, service, screen, menu wire; updated core-game-rules §7/§10, level-system-design |
+| 2026-06-27 | Module tests replace computed checkpoints — `module_finals.json`, `ModuleFinalScreen`; see `2026-06-27-module-final-assessments.md` |

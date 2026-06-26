@@ -20,6 +20,7 @@ extension DrivingRuleZones on RealisticCarGameBase {
 
   void _updateDrivingRuleZones() {
     if (!drivingRulesEnabled || _isEmergencyAmbulanceScenario) return;
+    if (_isEmergencyWeatherScenario) return;
     if (_testFinished || car == null || _drivingZones.isEmpty) return;
 
     final currentInside = <int>{};

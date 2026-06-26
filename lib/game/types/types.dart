@@ -50,6 +50,8 @@ class DrivingAttemptSummary {
   final List<String> penalties;
   /// Non-null when the attempt was the ambulance practical scenario.
   final AmbulanceAttemptSnapshot? ambulance;
+  /// Non-null when the attempt was adverse weather (`emergency_weather`).
+  final WeatherAttemptSnapshot? weather;
 
   const DrivingAttemptSummary({
     required this.passed,
@@ -66,6 +68,7 @@ class DrivingAttemptSummary {
     required this.score,
     this.penalties = const [],
     this.ambulance,
+    this.weather,
   });
 }
 
@@ -77,6 +80,27 @@ class PathNode {
   final bool isSafe;
 
   PathNode(this.position, this.angle, this.isSafe);
+}
+
+/// Wet-weather level rubric (`emergency_weather` / `adverse_weather.tmx`).
+class WeatherAttemptSnapshot {
+  final bool enteredCheckZone;
+  final bool checkRequirementsMet;
+  final bool headlightsActive;
+  final bool windshieldActive;
+  final bool enteredSpeedZone;
+  final int? speedLimit;
+  final bool exceededSpeedInZone;
+
+  const WeatherAttemptSnapshot({
+    this.enteredCheckZone = false,
+    this.checkRequirementsMet = false,
+    this.headlightsActive = false,
+    this.windshieldActive = false,
+    this.enteredSpeedZone = false,
+    this.speedLimit,
+    this.exceededSpeedInZone = false,
+  });
 }
 
 enum AmbulanceState { catchingUp, tailgating, passing }

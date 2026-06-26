@@ -26,6 +26,7 @@ part 'map/ambulance_map_loaders.dart';
 part 'scenarios/ambulance_decoration.dart';
 part 'scenarios/emergency_ambulance.dart';
 part 'scenarios/emergency_weather.dart';
+part 'scenarios/weather_rule_zones.dart';
 part 'entities/car_facing.dart';
 part 'entities/car.dart';
 part 'entities/ambulance.dart';
@@ -56,7 +57,6 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
   final List<Rect> _successLayerRects = [];
 
   // --- Emergency weather scenario (`scenarioId: emergency_weather`) ---
-  bool _weatherSpeedPenaltyIssued = false;
   bool _weatherEffectsMounted = false;
   RainVisibilityDimOverlay? _weatherDimOverlay;
   RainViewportOverlay? _weatherRainOverlay;
@@ -66,6 +66,29 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
   String? _weatherLevelId;
   double _weatherMountRetryTimer = 0;
   double _weatherHealthLogTimer = 0;
+
+  // --- Adverse weather TMX zones (Check_Layer / Speed_Layer) ---
+  _WeatherRectZone? _weatherCheckZone;
+  _WeatherRectZone? _weatherSpeedZone;
+  Rect? _weatherFinishRect;
+  int? _weatherFinishRequiredStep;
+  bool _weatherEnteredCheckZone = false;
+  bool _weatherCheckRequirementsMet = false;
+  bool _weatherHeadlightsActive = false;
+  bool _weatherWindshieldActive = false;
+  bool _weatherCheckPromptShown = false;
+  bool _weatherInsideCheckZone = false;
+  bool _weatherInsideSpeedZone = false;
+  bool _weatherEverEnteredSpeedZone = false;
+  bool _weatherSpeedPenaltyIssued = false;
+  int? _weatherSpeedLimit;
+  String? _weatherSpeedMessage;
+  bool _weatherRequireHeadlights = true;
+  bool _weatherRequireWindshield = true;
+  String _weatherPopupTitle = 'Prepare for rain';
+  String _weatherPopupMessage =
+      'Turn on headlights and windshield wipers before continuing.';
+  final ValueNotifier<String?> weatherSpeedHint = ValueNotifier<String?>(null);
 
   // --- Emergency ambulance scenario (`scenarioId: emergency_ambulance`) ---
 
@@ -117,6 +140,9 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
 
   /// Optional: called when a non-fatal penalty is recorded (e.g. dashed-lines signalling).
   final void Function(String description)? onPenaltyRecorded;
+
+  /// Adverse weather: show lights/wipers popup when entering [Check_Layer].
+  final void Function(WeatherCheckPromptRequest request)? onWeatherCheckPrompt;
 
   /// Optional: approximate distance driven this session (metres) for profile / stats.
   final void Function(double deltaMeters)? onOdometerDeltaMeters;
@@ -189,6 +215,7 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     this.onTestFailed,
     this.onTestPassed,
     this.onPenaltyRecorded,
+    this.onWeatherCheckPrompt,
     this.onOdometerDeltaMeters,
     this.turnSignalLeft,
     this.turnSignalRight,
@@ -289,9 +316,6 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     world.add(newCar);
     await newCar.loaded;
     car = newCar;
-    if (_isEmergencyWeatherScenario) {
-      newCar.weatherHeadlightsEnabled = true;
-    }
     _applyPlayerSpawnToWorld();
     print('[DEBUG] onLoad() - Car added to WORLD at position: ${car!.position}');
 
@@ -493,6 +517,13 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     _drivingZones.clear();
     if (drivingRulesEnabled) {
       for (final layer in tiled.layers.whereType<ObjectGroup>()) {
+        final layerNameNorm =
+            layer.name.trim().toLowerCase().replaceAll(' ', '_');
+        if (_isEmergencyWeatherScenario &&
+            (layerNameNorm == 'check_layer' ||
+                layerNameNorm == 'speed_layer')) {
+          continue;
+        }
         final layerClass = (layer.class_ ?? '').trim();
         final layerClassLower = layerClass.toLowerCase();
         final layerNameLower = layer.name.trim().toLowerCase();
@@ -529,6 +560,12 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
           final effectiveZoneClass = layerIsZoneCheck
               ? (layerClass.isNotEmpty ? layerClass : 'Zone_Check')
               : (zoneClassLower.isNotEmpty ? zoneClass : layerClass);
+          if (_isEmergencyWeatherScenario) {
+            final kind = _zoneKindForScenario(effectiveZoneClass.toLowerCase());
+            if (kind == 'zone_fail_wt' || kind == 'wrong_layer') {
+              continue;
+            }
+          }
           final stepId = obj.properties.getValue<int>('step_id') ?? layerStepId;
           final failMessage =
               obj.properties.getValue<String>('fail_message') ?? layerFailMessage;
@@ -552,10 +589,14 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
         }
       }
       print('[DEBUG] _setupRoad() - Loaded driving zones: ${_drivingZones.length}');
+      if (_isEmergencyWeatherScenario) {
+        _loadWeatherScenarioZones(tiled);
+      }
       _rebuildZigZagRows();
       _loadSpawnSignZones(tiledMap);
 
       _midTurnZones.clear();
+      if (!_isEmergencyWeatherScenario) {
       for (final layer in tiled.layers.whereType<ObjectGroup>()) {
         for (final obj in layer.objects) {
           if (!_isMidTurnValidationObject(obj, layer)) continue;
@@ -577,6 +618,7 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
         }
       }
       print('[DEBUG] _setupRoad() - MidTurn validation zones: ${_midTurnZones.length}');
+      }
     } else {
       _midTurnZones.clear();
       print('[DEBUG] _setupRoad() - Driving rules disabled; skipping TMX zones');
@@ -627,7 +669,11 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
       c.position.setFrom(spawn);
     }
     if (!snapCamera) return;
-    if (c != null && c.isMounted) {
+    // Always attach follow when the car exists. Do not gate on [isMounted]:
+    // [Component.onMount] runs before the mounted flag is set, and
+    // `await car.loaded` completes before mount — so a strict isMounted check
+    // leaves the viewfinder stuck at the spawn with no [FollowBehavior].
+    if (c != null) {
       camera.follow(c, snap: true);
     } else {
       camera.viewfinder.position = spawn.clone();
@@ -706,6 +752,7 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     pedestrianCrossingDistanceMeters.value = null;
     _junctionBoxStoppedElapsedSec = 0.0;
     _resetEmergencyWeatherForRestart();
+    _resetWeatherRuleStateForRestart();
     _resetEmergencyAmbulanceForRestart();
     _resetAmbulanceDecorationForRestart();
     final c = car;
@@ -779,13 +826,16 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     _enforceSpeedLimitZones();
     _updateMarkingsDashedYellowZoneRules();
     _updateMidTurnSignalValidation();
-    _updateDrivingRuleZones();
+    if (_isEmergencyWeatherScenario) {
+      _updateWeatherRuleZones();
+    } else {
+      _updateDrivingRuleZones();
+    }
     _updateJunctionBoxStopFail(dt);
     // Checkpoints before pull-over (CP overlap can occur same frame as pull-over update).
     _updateAmbulanceCheckpoints(dt);
     _updateAmbulancePullOverState();
     _updateAmbulanceLevelSuccess();
-    _updateAdverseWeatherRules();
     _tickWeatherMountRetry(dt);
     _tickWeatherHealthLog(dt);
     _tickThunder(dt);
@@ -806,6 +856,7 @@ class RealisticCarGame extends RealisticCarGameBase {
     super.onTestFailed,
     super.onTestPassed,
     super.onPenaltyRecorded,
+    super.onWeatherCheckPrompt,
     super.onOdometerDeltaMeters,
     super.turnSignalLeft,
     super.turnSignalRight,

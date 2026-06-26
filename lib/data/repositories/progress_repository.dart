@@ -79,6 +79,22 @@ class ProgressRepository {
     return tests.map((e) => e.testId).toSet();
   }
 
+  /// Module-final node ids (learning path) that the player has passed.
+  Future<Set<String>> getPassedModuleFinalIds(Set<String> moduleFinalNodeIds) async {
+    final passed = await getCompletedTestIds();
+    return moduleFinalNodeIds.where(passed.contains).toSet();
+  }
+
+  /// Records a passed module-final assessment ([nodeId] matches learning-path node id).
+  Future<void> recordModuleFinalPassed(String nodeId) async {
+    await recordTheoryAttempt(
+      testId: nodeId,
+      totalQuestions: 1,
+      correctCount: 1,
+      score: 100,
+    );
+  }
+
   Future<void> recordTheoryAttempt({
     required String testId,
     required int totalQuestions,

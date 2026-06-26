@@ -56,6 +56,11 @@ extension AttemptScoring on RealisticCarGameBase {
         _penalties.isNotEmpty) {
       effectivePassed = false;
     }
+    if (_usesPenaltyModeWeather &&
+        effectivePassed &&
+        _penalties.isNotEmpty) {
+      effectivePassed = false;
+    }
     String? failureOut = resolvedFailure;
     if (!effectivePassed &&
         failureOut == null &&
@@ -66,7 +71,18 @@ extension AttemptScoring on RealisticCarGameBase {
       failureOut =
           'You reached the finish but had driving rule penalties — attempt did not pass.';
     }
+    if (!effectivePassed &&
+        failureOut == null &&
+        _usesPenaltyModeWeather &&
+        _penalties.isNotEmpty &&
+        _testFinished &&
+        _reachedFinishZone) {
+      failureOut =
+          'You reached the finish but broke wet-weather rules — see penalties in your report.';
+    }
     final ambSnap = _buildAmbulanceAttemptSnapshot();
+    final weatherSnap =
+        _isEmergencyWeatherScenario ? _buildWeatherAttemptSnapshot() : null;
 
     return DrivingAttemptSummary(
       passed: effectivePassed,
@@ -83,6 +99,7 @@ extension AttemptScoring on RealisticCarGameBase {
       score: _computeScore(elapsed),
       penalties: List<String>.unmodifiable(_penalties),
       ambulance: ambSnap,
+      weather: weatherSnap,
     );
   }
 
@@ -99,7 +116,8 @@ extension AttemptScoring on RealisticCarGameBase {
   void _recordPenalty(String description, {bool playWhistle = true}) {
     if (_testFinished) return;
     _penalties.add(description);
-    if (playWhistle && _usesPenaltyModeMarkingsDashed) {
+    if (playWhistle &&
+        (_usesPenaltyModeMarkingsDashed || _usesPenaltyModeWeather)) {
       unawaited(_playRuleBreakWhistle());
     }
     onPenaltyRecorded?.call(description);

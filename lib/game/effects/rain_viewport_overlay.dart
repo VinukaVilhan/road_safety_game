@@ -20,6 +20,9 @@ class RainViewportOverlay extends Component with HasGameReference<FlameGame> {
   final math.Random _random = math.Random(42);
   final List<_RainDrop> _drops = [];
 
+  /// 1.0 = full rain; lower when windshield wipers are on.
+  double dropOpacityScale = 1.0;
+
   bool _loggedFirstRender = false;
   int renderFrameCount = 0;
 
@@ -155,7 +158,9 @@ class RainViewportOverlay extends Component with HasGameReference<FlameGame> {
 
     for (final drop in _drops) {
       final paint = Paint()
-        ..color = drop.color
+        ..color = drop.color.withValues(
+          alpha: (drop.color.a * dropOpacityScale).clamp(0.0, 1.0),
+        )
         ..strokeWidth = drop.strokeWidth
         ..strokeCap = StrokeCap.round;
 

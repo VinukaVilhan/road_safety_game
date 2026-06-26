@@ -19,6 +19,12 @@ import '../../theme/landscape_layout.dart';
 import '../../theme/swiss_theme.dart';
 import '../../utils/app_fonts.dart';
 import '../../services/audio/ui_sound_service.dart';
+import '../../widgets/assistant/assistant_chat_composer.dart';
+import '../../widgets/assistant/attached_report_banner.dart';
+import '../../widgets/assistant/chat_image_preview.dart';
+import '../../widgets/assistant/chat_message_bubble.dart';
+import '../../widgets/assistant/chats_history_sidebar.dart';
+import 'assistant_chat_constants.dart';
 import 'instructor_chats_list_screen.dart';
 
 /// Full-screen chat with the Gemini-backed virtual instructor.
@@ -58,19 +64,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   List<InstructorChatSession> _chatSessions = [];
   bool _loadingChatSessions = true;
 
-  static const List<String> _defaultQuickChips = [
-    'What are the rules for practical levels?',
-    'Explain road signs from this app.',
-    'How do I read my last level report?',
-    'What does this sign mean? (attach a photo)',
-  ];
-
-  static const List<String> _reportQuickChips = [
-    'What do the checklist lines mean for this attempt?',
-    'What should I practise before trying again?',
-    'How does this score relate to passing?',
-  ];
-
   AssistantLaunchContext _contextForModel() {
     return AssistantLaunchContext(
       screenTitle: widget.launchContext.screenTitle,
@@ -86,8 +79,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   }
 
   List<String> _quickChipsForLaunch() {
-    if (_effectiveReport != null) return _reportQuickChips;
-    return _defaultQuickChips;
+    if (_effectiveReport != null) return AssistantChatConstants.reportQuickChips;
+    return AssistantChatConstants.defaultQuickChips;
   }
 
   AssistantMessage _welcomeForLaunch() {
@@ -106,8 +99,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       role: AssistantMessageRole.assistant,
       text:
           "Hi — I'm your Road Rules instructor. Ask about signs, procedures, "
-            'in-game checklists, or your latest level reports. Use the gallery or camera '
-            'button to attach a photo of a real road sign.',
+          'in-game checklists, or your latest level reports. Use the gallery or camera '
+          'button to attach a photo of a real road sign.',
       at: DateTime.now(),
     );
   }
@@ -155,7 +148,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
   Future<void> _switchToSession(InstructorChatSession s) async {
     if (s.id == _sessionId) return;
     UiSoundService().playMenuTap();
-    await Navigator.of(context).pushReplacement<void>(
+    await Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => AssistantChatScreen(launchContext: _launchForSession(s)),
       ),
@@ -435,49 +428,9 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     });
   }
 
-  void _openImagePreview(BuildContext context, Uint8List bytes) {
-    UiSoundService().playMenuTap();
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: SwissTheme.backgroundWhite,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.sizeOf(ctx).width * 0.75,
-            maxHeight: MediaQuery.sizeOf(ctx).height * 0.8,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: IconButton(
-                  onPressed: () {
-                    UiSoundService().playMenuTap();
-                    Navigator.pop(ctx);
-                  },
-                  icon: const Icon(Icons.close),
-                ),
-              ),
-              Flexible(
-                child: InteractiveViewer(
-                  minScale: 0.5,
-                  maxScale: 3,
-                  child: Image.memory(bytes, fit: BoxFit.contain),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _send(String text) async {
+  Future<void> _send([String? textOverride]) async {
     if (_sending || _bootstrapping || _preparingImage) return;
-    final trimmed = text.trim();
+    final trimmed = (textOverride ?? _controller.text).trim();
     final imageBytes = _pendingImageFull;
     final previewBytes = _pendingImagePreview;
     final imageMime = _pendingMimeType;
@@ -528,6 +481,7 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
       _sending = false;
     });
     await _persistMessages();
+    _loadChatSessions();
     _scrollToBottom();
   }
 
@@ -607,21 +561,53 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _ChatContextSidebar(
+                ChatsHistorySidebar(
                   width: LandscapeLayout.chatSidebarWidth(context),
-                  report: _effectiveReport,
-                  quickChips: _quickChipsForLaunch(),
-                  showQuickChips: !_bootstrapping &&
-                      AssistantService.instance.isReady &&
-                      _messages.length <= 1,
-                  sending: _sending,
-                  onChipTap: _send,
-                  bodyStyle: bodyStyle,
+                  sessions: _chatSessions,
+                  currentSessionId: _sessionId,
+                  loading: _loadingChatSessions,
+                  onNewChat: _sending || _bootstrapping ? null : () => unawaited(_newChat()),
+                  onSelect: _switchToSession,
                 ),
                 const VerticalDivider(width: 1, thickness: 1, color: SwissTheme.dividerBlack),
                 Expanded(
                   child: Column(
                     children: [
+                      if (_effectiveReport != null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                          child: AttachedReportBanner(report: _effectiveReport!),
+                        ),
+                      if (!_bootstrapping &&
+                          AssistantService.instance.isReady &&
+                          _messages.length <= 1)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                          child: SizedBox(
+                            height: 34,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _quickChipsForLaunch().length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 6),
+                              itemBuilder: (context, i) {
+                                final c = _quickChipsForLaunch()[i];
+                                return ActionChip(
+                                  label: Text(
+                                    c,
+                                    style: AppFonts.pixelifySans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                  backgroundColor: SwissTheme.backgroundLightGrey,
+                                  side: const BorderSide(color: SwissTheme.borderBlack),
+                                  onPressed: (_sending || _preparingImage) ? null : () => _send(c),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
                       Expanded(
                         child: ListView.builder(
                           controller: _scrollController,
@@ -629,11 +615,11 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                           itemCount: _messages.length,
                           itemBuilder: (context, index) {
                             final m = _messages[index];
-                            return _ChatMessageBubble(
+                            return ChatMessageBubble(
                               message: m,
                               bodyStyle: bodyStyle,
                               maxWidth: LandscapeLayout.chatBubbleMaxWidth(context),
-                              onImageTap: (bytes) => _openImagePreview(context, bytes),
+                              onImageTap: (bytes) => showAssistantChatImagePreview(context, bytes),
                             );
                           },
                         ),
@@ -660,134 +646,20 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                             ],
                           ),
                         ),
-                      const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
-                      if (_pendingImageBytes != null)
-                        Material(
-                          color: SwissTheme.backgroundLightGrey,
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _ChatImagePreview(
-                                  bytes: _pendingImageBytes!,
-                                  maxHeight: 72,
-                                  onTap: () => _openImagePreview(context, _pendingImageBytes!),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Photo ready to send',
-                                        style: bodyStyle.copyWith(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Add a message or tap send.',
-                                        style: bodyStyle.copyWith(
-                                          fontSize: 11,
-                                          color: SwissTheme.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: 'Remove photo',
-                                  onPressed: _sending ? null : _clearPendingImage,
-                                  icon: const Icon(Icons.close, size: 18),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      SafeArea(
-                        top: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              _ComposerIconButton(
-                                tooltip: 'Photo from gallery',
-                                icon: Icons.add_photo_alternate_outlined,
-                                onPressed: (_sending ||
-                                        _bootstrapping ||
-                                        !AssistantService.instance.isReady)
-                                    ? null
-                                    : _pickRoadSignPhoto,
-                              ),
-                              if (!kIsWeb)
-                                _ComposerIconButton(
-                                  tooltip: 'Take photo with camera',
-                                  icon: Icons.photo_camera_outlined,
-                                  onPressed: (_sending ||
-                                          _bootstrapping ||
-                                          !AssistantService.instance.isReady)
-                                      ? null
-                                      : _takeRoadSignPhotoWithCamera,
-                                ),
-                              Expanded(
-                                child: TextField(
-                                  controller: _controller,
-                                  minLines: 1,
-                                  maxLines: 2,
-                                  textInputAction: TextInputAction.send,
-                                  onSubmitted: (_) {
-                                    final t = _controller.text;
-                                    if (t.trim().isNotEmpty || _pendingImageBytes != null) {
-                                      _send(t);
-                                    }
-                                  },
-                                  style: bodyStyle.copyWith(fontSize: 13),
-                                  decoration: InputDecoration(
-                                    hintText: 'Ask about signs, rules, or your last run…',
-                                    hintStyle: bodyStyle.copyWith(
-                                      fontSize: 12,
-                                      color: SwissTheme.textSecondary,
-                                    ),
-                                    filled: true,
-                                    fillColor: SwissTheme.backgroundWhite,
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
-                                    ),
-                                    enabledBorder: const OutlineInputBorder(
-                                      borderSide: BorderSide(color: SwissTheme.borderBlack, width: 1),
-                                    ),
-                                    focusedBorder: const OutlineInputBorder(
-                                      borderSide: BorderSide(color: SwissTheme.accentBlue, width: 2),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton.filled(
-                                onPressed: (_sending ||
-                                        _bootstrapping ||
-                                        !AssistantService.instance.isReady ||
-                                        (_controller.text.trim().isEmpty &&
-                                            _pendingImageBytes == null))
-                                    ? null
-                                    : () => _send(_controller.text),
-                                style: IconButton.styleFrom(
-                                  backgroundColor: SwissTheme.textPrimary,
-                                  foregroundColor: Colors.white,
-                                  minimumSize: const Size(44, 44),
-                                ),
-                                icon: const Icon(Icons.send, size: 20),
-                              ),
-                            ],
-                          ),
-                        ),
+                      AssistantChatComposer(
+                        controller: _controller,
+                        bodyStyle: bodyStyle,
+                        preparingImage: _preparingImage,
+                        pendingImagePreview: _pendingImagePreview,
+                        sending: _sending,
+                        bootstrapping: _bootstrapping,
+                        assistantReady: AssistantService.instance.isReady,
+                        hasPendingImage: _pendingImageFull != null,
+                        onPickGallery: _pickRoadSignPhoto,
+                        onTakePhoto: _takeRoadSignPhotoWithCamera,
+                        onClearPendingImage: _clearPendingImage,
+                        onPreviewImage: (bytes) => showAssistantChatImagePreview(context, bytes),
+                        onSend: () => _send(),
                       ),
                     ],
                   ),
@@ -797,401 +669,6 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// Minimal “this chat is tied to a saved run” hint (full report stays in the model context).
-class _AttachedReportBanner extends StatelessWidget {
-  const _AttachedReportBanner({required this.report, this.compact = false});
-
-  final LastDrivingReport report;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: SwissTheme.backgroundLightGrey,
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12, vertical: compact ? 8 : 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.description_outlined, size: compact ? 18 : 22, color: SwissTheme.accentBlue),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'ATTACHED RUN',
-                    style: AppFonts.pixelifySans(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: SwissTheme.textSecondary,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    report.levelName,
-                    style: AppFonts.pixelifySans(
-                      fontSize: compact ? 12 : 15,
-                      fontWeight: FontWeight.w700,
-                      color: SwissTheme.textPrimary,
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ChatContextSidebar extends StatelessWidget {
-  final double width;
-  final LastDrivingReport? report;
-  final List<String> quickChips;
-  final bool showQuickChips;
-  final bool sending;
-  final void Function(String) onChipTap;
-  final TextStyle bodyStyle;
-
-  const _ChatContextSidebar({
-    required this.width,
-    required this.report,
-    required this.quickChips,
-    required this.showQuickChips,
-    required this.sending,
-    required this.onChipTap,
-    required this.bodyStyle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: ColoredBox(
-        color: SwissTheme.backgroundWhite,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-              child: Text(
-                'CONTEXT',
-                style: AppFonts.pixelifySans(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                  color: SwissTheme.textSecondary,
-                ),
-              ),
-            ),
-            if (report != null) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: _AttachedReportBanner(report: report!, compact: true),
-              ),
-              const SizedBox(height: 10),
-            ],
-            if (showQuickChips) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
-                child: Text(
-                  'SUGGESTED',
-                  style: AppFonts.pixelifySans(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.6,
-                    color: SwissTheme.textSecondary,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
-                  itemCount: quickChips.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 6),
-                  itemBuilder: (context, i) {
-                    final c = quickChips[i];
-                    return Material(
-                      color: SwissTheme.backgroundLightGrey,
-                      child: InkWell(
-                        onTap: sending ? null : () => onChipTap(c),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: SwissTheme.borderBlack, width: 1),
-                          ),
-                          child: Text(
-                            c,
-                            style: AppFonts.pixelifySans(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              height: 1.25,
-                              color: SwissTheme.textPrimary,
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ] else
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Text(
-                    report != null
-                        ? 'Ask about checklist lines, mistakes, or how to improve on this run.'
-                        : 'Ask about road signs, in-game rules, theory topics, or attach a photo.',
-                    style: bodyStyle.copyWith(fontSize: 11, color: SwissTheme.textSecondary, height: 1.35),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ChatMessageBubble extends StatelessWidget {
-  final AssistantMessage message;
-  final TextStyle bodyStyle;
-  final double maxWidth;
-  final void Function(Uint8List bytes)? onImageTap;
-
-  const _ChatMessageBubble({
-    required this.message,
-    required this.bodyStyle,
-    required this.maxWidth,
-    this.onImageTap,
-  });
-
-  Uint8List? get _imageBytes {
-    final b64 = message.userImageBase64;
-    if (b64 == null || b64.isEmpty) return null;
-    try {
-      return base64Decode(b64);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isUser = message.role == AssistantMessageRole.user;
-    final label = isUser ? 'YOU' : 'INSTRUCTOR';
-    final bubbleColor =
-        isUser ? SwissTheme.accentBlue.withValues(alpha: 0.1) : SwissTheme.backgroundLightGrey;
-    final imageBytes = _imageBytes;
-    final showImage = isUser && (imageBytes != null || message.hasUserImage);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (!isUser) ...[
-            _ChatAvatar(isUser: false),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxWidth),
-              child: Column(
-                crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: AppFonts.pixelifySans(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
-                      color: SwissTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: bubbleColor,
-                      border: Border.all(color: SwissTheme.borderBlack, width: 1),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (showImage) ...[
-                          if (imageBytes != null)
-                            _ChatImagePreview(
-                              bytes: imageBytes,
-                              maxHeight: 100,
-                              onTap: onImageTap == null ? null : () => onImageTap!(imageBytes),
-                            )
-                          else
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.image_outlined, size: 14, color: SwissTheme.textSecondary),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Photo sent',
-                                  style: bodyStyle.copyWith(
-                                    fontSize: 11,
-                                    color: SwissTheme.textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          if (message.text.isNotEmpty &&
-                              message.text != AssistantService.imageOnlyDisplayPlaceholder)
-                            const SizedBox(height: 8),
-                        ],
-                        if (message.text.isNotEmpty &&
-                            message.text != AssistantService.imageOnlyDisplayPlaceholder)
-                          Text(
-                            message.text,
-                            style: bodyStyle.copyWith(
-                              fontSize: 13,
-                              color: SwissTheme.textPrimary,
-                              fontWeight: isUser ? FontWeight.w600 : FontWeight.w400,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (isUser) ...[
-            const SizedBox(width: 8),
-            _ChatAvatar(isUser: true),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ChatImagePreview extends StatelessWidget {
-  final Uint8List bytes;
-  final double maxHeight;
-  final VoidCallback? onTap;
-
-  const _ChatImagePreview({
-    required this.bytes,
-    required this.maxHeight,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final image = ClipRRect(
-      borderRadius: BorderRadius.circular(2),
-      child: Image.memory(
-        bytes,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: maxHeight,
-        errorBuilder: (_, __, ___) => Container(
-          height: maxHeight,
-          alignment: Alignment.center,
-          color: SwissTheme.backgroundLightGrey,
-          child: const Icon(Icons.broken_image_outlined, size: 24),
-        ),
-      ),
-    );
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: SwissTheme.borderBlack, width: 1),
-          ),
-          child: onTap != null
-              ? Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    image,
-                    Padding(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        Icons.zoom_in,
-                        size: 16,
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shadows: const [Shadow(color: Colors.black54, blurRadius: 4)],
-                      ),
-                    ),
-                  ],
-                )
-              : image,
-        ),
-      ),
-    );
-  }
-}
-
-class _ChatAvatar extends StatelessWidget {
-  final bool isUser;
-
-  const _ChatAvatar({required this.isUser});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 28,
-      height: 28,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: isUser ? SwissTheme.accentBlue.withValues(alpha: 0.15) : SwissTheme.textPrimary,
-        border: const Border.fromBorderSide(BorderSide(color: SwissTheme.borderBlack)),
-      ),
-      child: Icon(
-        isUser ? Icons.person_outline : Icons.school_outlined,
-        size: 16,
-        color: isUser ? SwissTheme.accentBlue : SwissTheme.backgroundWhite,
-      ),
-    );
-  }
-}
-
-class _ComposerIconButton extends StatelessWidget {
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback? onPressed;
-
-  const _ComposerIconButton({
-    required this.tooltip,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      icon: Icon(icon, size: 22, color: SwissTheme.textPrimary),
-      padding: const EdgeInsets.all(8),
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
     );
   }
 }

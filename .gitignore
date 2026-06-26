@@ -123,6 +123,13 @@ lib/config/assistant_secrets.json
 lib/config/*.secret.dart
 assets/config/developer_env.json
 
+# Local theory intro carousel images (AI-generated / user-supplied — not pushed to GitHub)
+assets/images/theory/intro/**/*.png
+assets/images/theory/intro/**/*.jpg
+assets/images/theory/intro/**/*.jpeg
+assets/images/theory/intro/**/*.webp
+!assets/images/theory/intro/README.md
+
 # Generated files
 *.g.dart
 *.freezed.dart

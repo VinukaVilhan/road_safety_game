@@ -109,13 +109,13 @@ Optional object/layer property: `fail_message` (custom fail text).
 |------|--------|
 | **Scenario id** | `emergency_weather` — rain visuals + wet-road physics on any linked map |
 | **Map** | `cross_junction.tmx` (standard junction zones; same pass flow as cross junction basics) |
-| **Rain visuals** | Viewport-space vertical streaks via `RainViewportOverlay`; periodic lightning flash via `ThunderFlashOverlay` (~32–58s random gap; ~35% double-flash) |
+| **Rain visuals** | Viewport-space vertical streaks via `RainViewportOverlay`; periodic lightning flash via `ThunderFlashOverlay` (~32–58s random gap; ~35% double-flash); world-space low-beam cones on the player car via `CarWeatherHeadlightsPainter` |
 | **Weather audio** | Looping `rain_ambience.mp3`; one-shot `thunder_clap.mp3` per lightning event (once even for double-flash) |
 | **Wet grip** | Friction ×0.55, braking ×0.6, steering grip ×0.72; slight lateral slide on sharp steer at speed |
 | **Speed cap** | ~72 world units/sec while raining; exceeding records one non-fatal penalty: *Driving too fast for wet road conditions* |
 | **Unlock** | Open by default (first level in topic **Weather Conditions** on Driving test main menu) |
 
-**Code:** `lib/game/scenarios/emergency_weather.dart`, `Car` weather multipliers, `level_briefing_registry.dart`
+**Code:** `lib/game/scenarios/emergency_weather.dart`, `lib/game/entities/car_facing.dart` (`CarFacing` / `CarZones`), `Car` weather multipliers, `level_briefing_registry.dart`
 
 ---
 

@@ -34,7 +34,7 @@ Teach safe driving in rain: visible downpour, reduced grip, longer braking, and 
 
 ### Functional
 
-1. When `scenarioId == emergency_weather`, show diagonal rain streaks and a light visibility dim overlay.
+1. When `scenarioId == emergency_weather`, show diagonal rain streaks, a light visibility dim overlay, and low-beam headlight cones in front of the player car.
 2. Car friction, braking, and steering grip are reduced; sharp steering at speed adds slight slide.
 3. Speed above ~72 world units/sec is clamped and records one penalty.
 4. Looping rain ambience and one thunder clap per lightning event (double-flash still uses one clap).
@@ -60,6 +60,7 @@ Teach safe driving in rain: visible downpour, reduced grip, longer braking, and 
 | Item | Detail |
 |------|--------|
 | Rain overlay | `lib/game/effects/rain_viewport_overlay.dart` — `ParticleSystemComponent` + cycling custom `Particle` (~130 drops) |
+| Headlights | `lib/game/effects/car_headlights.dart` — warm cone beams + lens highlights on [Car] when `weatherHeadlightsEnabled` |
 | Scenario logic | `lib/game/scenarios/emergency_weather.dart` |
 | Physics | `lib/game/entities/car.dart` reads `weatherFrictionMultiplier`, `weatherBrakeMultiplier`, `weatherSteerGripMultiplier` |
 | Level row | `driving_levels_service.dart` — `mapAsset: cross_junction.tmx`, `scenarioId: emergency_weather` |
@@ -70,6 +71,7 @@ Teach safe driving in rain: visible downpour, reduced grip, longer braking, and 
 ## Acceptance criteria
 
 - [x] Rain visible in landscape on `emergency_weather`; streaks are diagonal, not vertical scratches.
+- [x] Low-beam headlight cones visible in front of the car during adverse weather.
 - [x] Braking and steering feel slipperier than dry cross junction.
 - [x] Exceeding wet speed cap records penalty once per attempt.
 - [x] Level playable when `junctions_cross_basics` is completed.
@@ -114,3 +116,4 @@ Run the **agent completion gate** in [`.cursor/rules/spec-driven.mdc`](../../.cu
 | 2026-06-26 | Unlock fix: `emergency_weather` open by default — no `junctions_cross_basics` prerequisite |
 | 2026-06-26 | Rain audio: `invalidate()` on lesson end + `PopScope` on `GameScreen` — stops loop on back/quit |
 | 2026-06-26 | Rain audio: app-wide `WeatherSfxService` singleton; `endLesson()` on back/route pop (fixed player id) |
+| 2026-06-26 | Weather headlights: `CarWeatherHeadlightsPainter` — warm cones + lens glow on player car |

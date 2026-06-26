@@ -69,13 +69,20 @@ class VehicleSfx {
     }
   }
 
+  /// Stops reverse loop immediately (e.g. UI shifted to P or a forward gear).
+  void cancelReverseAudio() {
+    if (!_wantReverse && _reverse == null) return;
+    _wantReverse = false;
+    unawaited(_stopReverse());
+  }
+
   void tick(double dt, Car? car) {
     if (car == null) return;
 
     final speed = car.getCurrentSpeed();
     final wantForward = !car.isInPark && car.currentGear > 0;
-    final wantReverse = car.currentGear == -1 &&
-        !car.isInPark &&
+    final wantReverse = !car.isInPark &&
+        car.currentGear == -1 &&
         (car.isAccelerating || speed > 6);
 
     // ── Forward engine state machine ──
@@ -111,6 +118,10 @@ class VehicleSfx {
       } else {
         unawaited(_stopReverse());
       }
+    } else if (_reverse != null && !wantReverse) {
+      // Async _startReverse can finish after gear already left R/P — stop orphaned loop.
+      _wantReverse = false;
+      unawaited(_stopReverse());
     }
 
     // ── Brake tick ──
@@ -260,6 +271,10 @@ class VehicleSfx {
       await p.setReleaseMode(ReleaseMode.loop);
       await p.play(AssetSource(_reverseLoopAsset), volume: _reverseVol);
       if (seq != _reverseSeq) {
+        _disposePlayer(p);
+        return;
+      }
+      if (!_wantReverse) {
         _disposePlayer(p);
         return;
       }

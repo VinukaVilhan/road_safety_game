@@ -637,6 +637,10 @@ class GameScreenState extends State<GameScreen> {
       car.currentGear = gear;
       car.isInPark = false;
     }
+
+    if (currentGearString != 'R') {
+      game.cancelReverseAudio();
+    }
   }
 
   // Steering wheel control methods

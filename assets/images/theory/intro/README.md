@@ -1,45 +1,43 @@
 # Theory intro images (carousel)
 
-One PNG/JPEG per scenario slide. Folder name matches category id in `theory_curriculum.json`.
+Configured paths match `assets/config/theory_curriculum.json`.
 
-## `best_practices/`
-| File | Scenario |
-|------|----------|
-| `seatbelt.png` | Seatbelt |
-| `mirrors.png` | Mirrors |
-| `following_distance.png` | Following distance |
-| `stay_alert.png` | Stay alert |
+## Layout
 
-## `traffic_rules/`
-| File | Scenario |
-|------|----------|
-| `driving_licence.png` | Driving licence |
-| `vehicle_documents.png` | Vehicle documents |
-| `speed_limits.png` | Speed limits |
-| `right_of_way.png` | Right of way |
+```
+intro/
+  best_practices/       (4 slides)
+  traffic_rules/        (4 slides)
+  parking/              (4 slides)
+  vehicle_control/      (4 slides)
+  safety_procedures/    (4 slides)
+```
 
-## `parking/`
-| File | Scenario |
-|------|----------|
-| `where_not_to_park.png` | Where not to park |
-| `parallel_angle_parking.png` | Parallel / angle parking |
-| `hill_parking.png` | Hill parking |
-| `clearance.png` | Clearance |
+## Source mapping (AI batch `image-N.png` → final path)
 
-## `vehicle_control/`
-| File | Scenario |
-|------|----------|
-| `steering.png` | Steering |
-| `braking.png` | Braking |
-| `gears.png` | Gears |
-| `mirrors_manoeuvres.png` | Mirrors before manoeuvres |
+| Source | Destination |
+|--------|-------------|
+| image-1.png | best_practices/seatbelt.png |
+| image-2.png | best_practices/mirrors.png |
+| image-3.png | best_practices/following_distance.png |
+| image-4.png | best_practices/stay_alert.png |
+| image-5.png | traffic_rules/driving_licence.png |
+| image-6.png | traffic_rules/vehicle_documents.png |
+| image-7.png | traffic_rules/speed_limits.png |
+| image-8.png | traffic_rules/right_of_way.png |
+| image-9.png | parking/where_not_to_park.png |
+| image-10.png | parking/parallel_angle_parking.png |
+| image-11.png | parking/hill_parking.png |
+| image-12.png | parking/clearance.png |
+| image-13.png | vehicle_control/steering.png |
+| image-14.png | vehicle_control/braking.png |
+| image-15.png | vehicle_control/gears.png |
+| image-16.png | vehicle_control/mirrors_manoeuvres.png |
+| image-17.png | safety_procedures/hazard_lights.png |
+| image-18.png | safety_procedures/warning_triangle.png |
+| image-19.png | safety_procedures/breakdown.png |
+| image-20.png | safety_procedures/accidents.png |
 
-## `safety_procedures/`
-| File | Scenario |
-|------|----------|
-| `hazard_lights.png` | Hazard lights |
-| `warning_triangle.png` | Warning triangle |
-| `breakdown.png` | Breakdown |
-| `accidents.png` | Accidents |
+Hot restart Flutter after adding or replacing assets.
 
-**Total: 20 images** (4 per category × 5 categories). Hot restart after adding assets.
+**Git:** PNG/JPEG/WebP files here are **gitignored** — add locally after clone; do not commit or push to GitHub. Only this README and `theory_curriculum.json` stay in the repo.

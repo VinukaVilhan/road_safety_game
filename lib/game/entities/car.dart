@@ -1,50 +1,5 @@
 part of '../driving_game.dart';
 
-/// Named attachment points on the player car sprite in **local** coordinates.
-/// With [Car.anchor] center and default angle, `y = 0` is the **front** of the car.
-/// Kept next to [Car] as the single place that maps sprite space to logical zones.
-class CarZones {
-  final Vector2 size;
-  const CarZones(this.size);
-
-  // Wheels (inset 12% from sides, 18% from ends)
-  Vector2 get frontLeft => Vector2(size.x * 0.12, size.y * 0.18);
-  Vector2 get frontRight => Vector2(size.x * 0.88, size.y * 0.18);
-  Vector2 get rearLeft => Vector2(size.x * 0.12, size.y * 0.82);
-  Vector2 get rearRight => Vector2(size.x * 0.88, size.y * 0.82);
-
-  // Bumpers (center of front/rear edge)
-  Vector2 get frontBumper => Vector2(size.x / 2, 0);
-  Vector2 get rearBumper => Vector2(size.x / 2, size.y);
-
-  // Side midpoints
-  Vector2 get leftSide => Vector2(0, size.y / 2);
-  Vector2 get rightSide => Vector2(size.x, size.y / 2);
-
-  /// Which named zone is closest to [localPoint] (for diagnostics / impacts).
-  String closestZoneName(Vector2 localPoint) {
-    var bestName = 'frontLeft';
-    var bestDist = double.infinity;
-    void consider(String name, Vector2 p) {
-      final d = localPoint.distanceToSquared(p);
-      if (d < bestDist) {
-        bestDist = d;
-        bestName = name;
-      }
-    }
-
-    consider('frontLeft', frontLeft);
-    consider('frontRight', frontRight);
-    consider('rearLeft', rearLeft);
-    consider('rearRight', rearRight);
-    consider('frontBumper', frontBumper);
-    consider('rearBumper', rearBumper);
-    consider('leftSide', leftSide);
-    consider('rightSide', rightSide);
-    return bestName;
-  }
-}
-
 class Car extends SpriteComponent {
   // Physics properties
   Vector2 velocity = Vector2.zero();
@@ -101,11 +56,30 @@ class Car extends SpriteComponent {
 
   late CarZones zones;
 
+  /// World-space driving forward (same axis as forward acceleration).
+  Vector2 get worldForward => Vector2(math.cos(angle), math.sin(angle));
+
+  Vector2 get worldBack => Vector2(math.cos(angle + math.pi), math.sin(angle + math.pi));
+
+  Vector2 get worldLeft =>
+      Vector2(math.cos(angle + math.pi / 2), math.sin(angle + math.pi / 2));
+
+  Vector2 get worldRight =>
+      Vector2(math.cos(angle - math.pi / 2), math.sin(angle - math.pi / 2));
+
+  Vector2 worldPoint(Vector2 localPoint) => absolutePositionOf(localPoint);
+
+  Vector2 worldPointOnSide(CarSide side, {double along = 0.5}) =>
+      absolutePositionOf(CarFacing.edgePoint(size, side, along: along));
+
   /// Validated breadcrumbs for tethered ambulance AI ([PathNode.isSafe] from wall overlap).
   final List<PathNode> pathHistory = [];
   double _breadcrumbTimer = 0;
   bool isCurrentlyOffRoad = false;
   double _offRoadResetTimer = 0;
+
+  /// Warm low-beam cones drawn on the road during `emergency_weather`.
+  bool weatherHeadlightsEnabled = false;
 
   @override
   Future<void> onLoad() async {
@@ -119,6 +93,17 @@ class Car extends SpriteComponent {
     anchor = Anchor.center;
     angle = -math.pi / 2; // Car starts facing up (negative Y direction)
     zones = CarZones(size);
+  }
+
+  @override
+  void render(Canvas canvas) {
+    if (weatherHeadlightsEnabled) {
+      CarWeatherHeadlightsPainter.drawBeams(canvas, zones);
+    }
+    super.render(canvas);
+    if (weatherHeadlightsEnabled) {
+      CarWeatherHeadlightsPainter.drawLenses(canvas, zones);
+    }
   }
 
   @override

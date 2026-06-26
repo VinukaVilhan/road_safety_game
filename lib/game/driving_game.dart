@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui'
-    show Canvas, Color, Offset, Paint, Path, PictureRecorder, Radius, Rect, RRect;
+    show BlurStyle, BlendMode, Canvas, Color, MaskFilter, Offset, Paint, Path, PictureRecorder, Radius, Rect, RRect;
 
 import 'package:flame/components.dart';
 import 'package:flame/experimental.dart';
@@ -9,6 +9,7 @@ import 'package:flame/game.dart';
 import 'package:flame_audio/flame_audio.dart';
 import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart' show Alignment, LinearGradient, RadialGradient;
 import 'package:flutter/services.dart';
 
 import '../constants/media_assets.dart';
@@ -25,8 +26,10 @@ part 'map/ambulance_map_loaders.dart';
 part 'scenarios/ambulance_decoration.dart';
 part 'scenarios/emergency_ambulance.dart';
 part 'scenarios/emergency_weather.dart';
+part 'entities/car_facing.dart';
 part 'entities/car.dart';
 part 'entities/ambulance.dart';
+part 'effects/car_headlights.dart';
 part 'audio/vehicle_sfx.dart';
 part 'zones/zone_helpers.dart';
 part 'zones/road_crossing_zones.dart';
@@ -286,6 +289,9 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     world.add(newCar);
     await newCar.loaded;
     car = newCar;
+    if (_isEmergencyWeatherScenario) {
+      newCar.weatherHeadlightsEnabled = true;
+    }
     _applyPlayerSpawnToWorld();
     print('[DEBUG] onLoad() - Car added to WORLD at position: ${car!.position}');
 
@@ -737,6 +743,11 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     if (_isEmergencyWeatherScenario && !paused && WeatherSfxService.instance.isLessonActive) {
       unawaited(WeatherSfxService.instance.ensureRainLoop());
     }
+  }
+
+  /// Gear UI left reverse or entered park — stop reverse beep without waiting for next tick.
+  void cancelReverseAudio() {
+    _vehicleSfx.cancelReverseAudio();
   }
 
   @override

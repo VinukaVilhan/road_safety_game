@@ -112,8 +112,8 @@ Optional object/layer property: `fail_message` (custom fail text).
 | **Rain visuals** | Viewport-space vertical streaks via `RainViewportOverlay`; periodic lightning flash via `ThunderFlashOverlay` (~32–58s random gap; ~35% double-flash); world-space low-beam cones on the player car via `CarWeatherHeadlightsPainter` |
 | **Weather audio** | Looping `rain_ambience.mp3`; one-shot `thunder_clap.mp3` per lightning event (once even for double-flash) |
 | **Wet grip** | Friction ×0.55, braking ×0.6, steering grip ×0.72; slight lateral slide on sharp steer at speed |
-| **Check zone** | Yellow `Check_Layer` — popup to turn on headlights + wipers (`require_headlights`, `require_windshield_wipers`, `popup_title`, `popup_message`) |
-| **Speed zone** | Purple `Speed_Layer` — `max_speed` (HUD units) + optional `speed_message`; penalty if exceeded after check zone |
+| **Check zone** | Yellow `Check_Layer` — **Prepare for rain** popup only when the car **enters** the zone (edge crossing); object rects include TMX layer `offsetx`/`offsety`. Headlights stay off until the player confirms them in the popup |
+| **Speed zone** | Purple `Speed_Layer` — while inside: left-bottom HUD advises low speed + recommended gear (`speed_message`, TMX `max_speed`); speed is checked **after leaving** the zone (penalty if max speed in section exceeded limit) |
 | **Pass** | Green `Zone_Finish` with check complete and **no** wet-weather penalties |
 | **Unlock** | Open by default (first level in topic **Weather Conditions** on Driving test main menu) |
 

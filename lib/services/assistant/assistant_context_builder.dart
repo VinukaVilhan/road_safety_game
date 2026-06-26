@@ -34,7 +34,7 @@ Road-crossing (zebra-style) level checklist:
   static const String adverseWeatherRubric = '''
 Adverse weather level checklist:
 1) Check zone — Enter the yellow Check_Layer and confirm headlights + windshield wipers in the popup.
-2) Speed section — Enter the purple Speed_Layer and stay at or below the TMX `max_speed` (shown on HUD).
+2) Speed section — Enter the purple Speed_Layer: follow the left-bottom HUD (low speed + recommended gear). Speed is checked when you **leave** the zone — stay at or below TMX `max_speed` while inside.
 3) Route completion — Reach the green finish zone with no wet-weather penalties.
 4) Obstacle discipline — Avoid minor non-crash contacts; a clean run requires zero.
 ''';

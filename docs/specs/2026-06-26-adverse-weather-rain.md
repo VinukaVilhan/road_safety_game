@@ -119,3 +119,5 @@ Run the **agent completion gate** in [`.cursor/rules/spec-driven.mdc`](../../.cu
 | 2026-06-26 | Weather headlights: `CarWeatherHeadlightsPainter` — warm cones + lens glow on player car |
 | 2026-06-26 | Dedicated map `adverse_weather.tmx` (copy of `cross_junction.tmx`) for weather level |
 | 2026-06-26 | TMX `Check_Layer` / `Speed_Layer` rules, lights/wipers popup, speed HUD, weather-only AI report rubric |
+| 2026-06-26 | Check zone: apply TMX layer offset; popup on enter only; headlights off until popup confirmed |
+| 2026-06-26 | Speed zone: left-bottom HUD (low speed + gear tip); penalty on exit if too fast in section |

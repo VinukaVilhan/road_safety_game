@@ -1,5 +1,16 @@
 part of '../driving_game.dart';
 
+/// HUD copy shown while the player is inside [Speed_Layer] on adverse weather maps.
+class WeatherSpeedHudHint {
+  final String message;
+  final int recommendedGear;
+
+  const WeatherSpeedHudHint({
+    required this.message,
+    required this.recommendedGear,
+  });
+}
+
 /// Prompt shown when the car enters [Check_Layer] on `adverse_weather.tmx`.
 class WeatherCheckPromptRequest {
   final bool requireHeadlights;
@@ -24,6 +35,16 @@ class _WeatherRectZone {
   const _WeatherRectZone({required this.rect, this.stepId});
 }
 
+/// TMX object rects must include the parent [ObjectGroup] offset (Tiled layer drag).
+Rect _weatherZoneRect(ObjectGroup layer, TiledObject obj) {
+  return Rect.fromLTWH(
+    obj.x + layer.offsetX,
+    obj.y + layer.offsetY,
+    obj.width,
+    obj.height,
+  );
+}
+
 extension _WeatherRuleZones on RealisticCarGameBase {
   bool get _usesPenaltyModeWeather => _isEmergencyWeatherScenario;
 
@@ -33,11 +54,13 @@ extension _WeatherRuleZones on RealisticCarGameBase {
     _weatherHeadlightsActive = false;
     _weatherWindshieldActive = false;
     _weatherCheckPromptShown = false;
+    _weatherCheckPromptArmed = true;
     _weatherInsideCheckZone = false;
     _weatherInsideSpeedZone = false;
     _weatherEverEnteredSpeedZone = false;
     _weatherSpeedPenaltyIssued = false;
-    weatherSpeedHint.value = null;
+    _weatherMaxSpeedInSpeedZone = 0;
+    weatherSpeedHud.value = null;
     _applyWeatherVisualEffects();
     car?.weatherHeadlightsEnabled = false;
   }
@@ -60,7 +83,7 @@ extension _WeatherRuleZones on RealisticCarGameBase {
         }
         if (obj.rotation != 0) continue;
 
-        final rect = Rect.fromLTWH(obj.x, obj.y, obj.width, obj.height);
+        final rect = _weatherZoneRect(layer, obj);
         if (layerName == 'check_layer') {
           _weatherRequireHeadlights = _readBoolProperty(
             layer.properties,
@@ -170,15 +193,53 @@ extension _WeatherRuleZones on RealisticCarGameBase {
   void _updateWeatherRuleZones() {
     if (!_isEmergencyWeatherScenario || _testFinished || car == null) return;
 
-    final carRect = Rect.fromCenter(
-      center: Offset(car!.position.x, car!.position.y),
-      width: car!.size.x,
-      height: car!.size.y,
-    );
+    final carRect = _weatherCarRect();
+    if (carRect == null) return;
+
+    // Headlights only after the player confirms them in the check-zone popup.
+    if (!_weatherCheckRequirementsMet && car!.weatherHeadlightsEnabled) {
+      car!.weatherHeadlightsEnabled = false;
+    }
 
     _updateWeatherCheckZone(carRect);
     _updateWeatherSpeedZone(carRect);
     _updateWeatherFinishZone(carRect);
+  }
+
+  Rect? _weatherCarRect() {
+    final c = car;
+    if (c == null) return null;
+    return Rect.fromCenter(
+      center: Offset(c.position.x, c.position.y),
+      width: c.size.x,
+      height: c.size.y,
+    );
+  }
+
+  /// If the car spawns overlapping the check zone, suppress the popup until it
+  /// leaves and drives back in. Headlights stay off until the popup is confirmed.
+  void _seedWeatherRuleZonesAtSpawn() {
+    if (!_isEmergencyWeatherScenario || car == null) return;
+
+    car!.weatherHeadlightsEnabled = false;
+    _weatherHeadlightsActive = false;
+    _applyWeatherVisualEffects();
+
+    final zone = _weatherCheckZone;
+    final carRect = _weatherCarRect();
+    if (zone == null || carRect == null) {
+      _weatherCheckPromptArmed = true;
+      _weatherInsideCheckZone = false;
+      return;
+    }
+
+    if (carRect.overlaps(zone.rect)) {
+      _weatherInsideCheckZone = true;
+      _weatherCheckPromptArmed = false;
+    } else {
+      _weatherInsideCheckZone = false;
+      _weatherCheckPromptArmed = true;
+    }
   }
 
   void _updateWeatherCheckZone(Rect carRect) {
@@ -188,7 +249,9 @@ extension _WeatherRuleZones on RealisticCarGameBase {
     final inside = carRect.overlaps(zone.rect);
     if (inside && !_weatherInsideCheckZone) {
       _weatherEnteredCheckZone = true;
-      _showWeatherCheckPromptIfNeeded();
+      if (_weatherCheckPromptArmed) {
+        _showWeatherCheckPromptIfNeeded();
+      }
     } else if (!inside && _weatherInsideCheckZone) {
       if (_weatherEnteredCheckZone &&
           !_weatherCheckRequirementsMet &&
@@ -198,45 +261,73 @@ extension _WeatherRuleZones on RealisticCarGameBase {
           playWhistle: true,
         );
       }
+      if (!_weatherCheckRequirementsMet) {
+        _weatherCheckPromptArmed = true;
+      }
     }
     _weatherInsideCheckZone = inside;
+  }
+
+  int _recommendedGearForSpeedLimit(int limit) {
+    final c = car;
+    if (c == null) return 1;
+    var best = 1;
+    for (var gear = 1; gear <= 4; gear++) {
+      final cap = c.maxSpeed * (c.gearSpeedMultipliers[gear] ?? 0);
+      if (cap <= limit) best = gear;
+    }
+    return best;
+  }
+
+  void _evaluateWeatherSpeedAfterLeavingZone(int limit) {
+    if (_weatherSpeedPenaltyIssued || !_weatherEverEnteredSpeedZone) return;
+    if (_weatherMaxSpeedInSpeedZone <= limit) return;
+
+    _weatherSpeedPenaltyIssued = true;
+    _recordPenalty(
+      'Drove too fast through the wet speed section (limit $limit).',
+      playWhistle: true,
+    );
   }
 
   void _updateWeatherSpeedZone(Rect carRect) {
     final zone = _weatherSpeedZone;
     final limit = _weatherSpeedLimit;
     if (zone == null || limit == null || limit <= 0) {
-      weatherSpeedHint.value = null;
+      weatherSpeedHud.value = null;
+      _weatherInsideSpeedZone = false;
+      return;
+    }
+
+    if (!_weatherCheckRequirementsMet) {
+      weatherSpeedHud.value = null;
       _weatherInsideSpeedZone = false;
       return;
     }
 
     final inside = carRect.overlaps(zone.rect);
-    if (inside && !_weatherInsideSpeedZone) {
-      _weatherEverEnteredSpeedZone = true;
-    }
     if (inside) {
-      weatherSpeedHint.value = _weatherSpeedMessage ??
-          'Maintain $limit or below in this wet section';
+      if (!_weatherInsideSpeedZone) {
+        _weatherEverEnteredSpeedZone = true;
+        _weatherMaxSpeedInSpeedZone = 0;
+      }
+      final speed = car!.velocity.length;
+      if (speed > _weatherMaxSpeedInSpeedZone) {
+        _weatherMaxSpeedInSpeedZone = speed;
+      }
+
+      weatherSpeedHud.value = WeatherSpeedHudHint(
+        message: _weatherSpeedMessage ??
+            'Maintain a low speed in this wet section',
+        recommendedGear: _recommendedGearForSpeedLimit(limit),
+      );
     } else if (_weatherInsideSpeedZone) {
-      weatherSpeedHint.value = null;
+      weatherSpeedHud.value = null;
+      _evaluateWeatherSpeedAfterLeavingZone(limit);
+    } else {
+      weatherSpeedHud.value = null;
     }
     _weatherInsideSpeedZone = inside;
-
-    if (!inside) return;
-    if (!_weatherCheckRequirementsMet) return;
-
-    final speed = car!.velocity.length;
-    if (speed <= limit) return;
-
-    car!.velocity = car!.velocity.normalized() * limit.toDouble();
-    if (!_weatherSpeedPenaltyIssued) {
-      _weatherSpeedPenaltyIssued = true;
-      _recordPenalty(
-        'Exceeded wet-road speed limit ($limit) after the check zone.',
-        playWhistle: true,
-      );
-    }
   }
 
   void _updateWeatherFinishZone(Rect carRect) {

@@ -231,9 +231,9 @@ class Car extends SpriteComponent {
       }
     }
 
-    // Apply velocity to position
+    // Apply velocity to position (HUD speed stays [velocity.length]; scale map travel only).
     final oldPosition = position.clone();
-    position += velocity * dt;
+    position += velocity * dt * RealisticCarGameBase.worldTravelScale;
 
     // Simple wall collision: push car out of any wall rect and stop movement into it
     if (realisticGame._wallRects.isNotEmpty) {

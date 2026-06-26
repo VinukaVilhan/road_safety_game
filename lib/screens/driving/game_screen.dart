@@ -372,35 +372,50 @@ class GameScreenState extends State<GameScreen> {
                   ),
                 ),
 
-                // Wet-road speed hint from Speed_Layer (adverse weather)
-                ValueListenableBuilder<String?>(
-                  valueListenable: game.weatherSpeedHint,
+                // Wet-road advisory while inside Speed_Layer (adverse weather)
+                ValueListenableBuilder<WeatherSpeedHudHint?>(
+                  valueListenable: game.weatherSpeedHud,
                   builder: (context, hint, _) {
-                    if (hint == null || hint.isEmpty) {
+                    if (hint == null) {
                       return const SizedBox.shrink();
                     }
+                    final theme = Theme.of(context).textTheme;
                     return Positioned(
-                      top: 68,
-                      right: 20,
+                      bottom: 20,
+                      left: 20,
                       child: Container(
-                        constraints: const BoxConstraints(maxWidth: 280),
+                        constraints: const BoxConstraints(maxWidth: 300),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
+                          horizontal: 14,
+                          vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.indigo.withValues(alpha: 0.82),
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.indigo.withValues(alpha: 0.88),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.25),
+                            color: Colors.white.withValues(alpha: 0.28),
                           ),
                         ),
-                        child: Text(
-                          hint,
-                          style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              hint.message,
+                              style: theme.labelLarge!.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
                               ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Use ${_gearLabel(hint.recommendedGear)} gear',
+                              style: theme.labelMedium!.copyWith(
+                                color: Colors.amber.shade200,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -635,6 +650,21 @@ class GameScreenState extends State<GameScreen> {
     while (mounted) {
       await Future.delayed(const Duration(milliseconds: 100));
       yield game.car?.getCurrentSpeed() ?? 0.0;
+    }
+  }
+
+  String _gearLabel(int gear) {
+    switch (gear) {
+      case 1:
+        return '1st';
+      case 2:
+        return '2nd';
+      case 3:
+        return '3rd';
+      case 4:
+        return '4th';
+      default:
+        return '$gear';
     }
   }
 

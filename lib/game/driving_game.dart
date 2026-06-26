@@ -77,10 +77,14 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
   bool _weatherHeadlightsActive = false;
   bool _weatherWindshieldActive = false;
   bool _weatherCheckPromptShown = false;
+  /// When false, the car is treated as already inside the check zone (e.g. spawn
+  /// overlap) and the popup waits until the player leaves and re-enters.
+  bool _weatherCheckPromptArmed = true;
   bool _weatherInsideCheckZone = false;
   bool _weatherInsideSpeedZone = false;
   bool _weatherEverEnteredSpeedZone = false;
   bool _weatherSpeedPenaltyIssued = false;
+  double _weatherMaxSpeedInSpeedZone = 0;
   int? _weatherSpeedLimit;
   String? _weatherSpeedMessage;
   bool _weatherRequireHeadlights = true;
@@ -88,7 +92,8 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
   String _weatherPopupTitle = 'Prepare for rain';
   String _weatherPopupMessage =
       'Turn on headlights and windshield wipers before continuing.';
-  final ValueNotifier<String?> weatherSpeedHint = ValueNotifier<String?>(null);
+  final ValueNotifier<WeatherSpeedHudHint?> weatherSpeedHud =
+      ValueNotifier<WeatherSpeedHudHint?>(null);
 
   // --- Emergency ambulance scenario (`scenarioId: emergency_ambulance`) ---
 
@@ -126,6 +131,9 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
 
   /// Converts world-space travel (same units as [Car.velocity]) to metres for the odometer.
   static const double worldUnitsToMeters = 0.022;
+
+  /// Multiplier on map travel only — [Car.getCurrentSpeed] / HUD still use raw [Car.velocity].
+  static const double worldTravelScale = 2.0;
 
   /// Optional TMX map path (e.g. 'assets/tiles/T-junction-left.tmx'). If null, default map is used.
   final String? mapAsset;
@@ -702,6 +710,7 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     _applyCameraBounds();
     _applyPlayerSpawnToWorld();
     _seedDrivingZonesAtSpawn();
+    _seedWeatherRuleZonesAtSpawn();
     if (_isEmergencyWeatherScenario && !_weatherComponentsHealthy()) {
       unawaited(_setupAdverseWeatherEffects(reason: 'finalize_map'));
     }
@@ -767,6 +776,7 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     c.pathHistory.clear();
     _applyPlayerSpawnToWorld();
     _seedDrivingZonesAtSpawn();
+    _seedWeatherRuleZonesAtSpawn();
     resumeEngine();
     resumeAmbientAudioAfterUiOverlay();
   }

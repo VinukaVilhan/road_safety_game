@@ -267,9 +267,9 @@ class _SteeringLessonBodyState extends State<_SteeringLessonBody> {
     return _LessonScaffold(
       title: 'Steering Wheel',
       bullets: const [
-        'Turn left -> car goes left.',
-        'Turn right -> car goes right.',
-        'Keep wheel near center for straight driving.',
+        'Turn left: the car goes left.',
+        'Turn right: the car goes right.',
+        'Keep the wheel near center for straight driving.',
       ],
       child: Center(
         child: ValueListenableBuilder<double>(
@@ -395,9 +395,9 @@ class _TurnSignalsLessonBodyState extends State<_TurnSignalsLessonBody> {
     return _LessonScaffold(
       title: 'Turn Signals',
       bullets: const [
-        'Double tap empty area -> LEFT signal.',
-        'Triple tap empty area -> RIGHT signal.',
-        'Single tap while signal is ON -> turn it OFF.',
+        'Double tap empty area for the left signal.',
+        'Triple tap empty area for the right signal.',
+        'Single tap while a signal is on to turn it off.',
       ],
       child: Stack(
         fit: StackFit.expand,
@@ -501,8 +501,8 @@ class _PedalsLessonBodyState extends State<_PedalsLessonBody> {
     return _LessonScaffold(
       title: 'Pedals',
       bullets: const [
-        'Accelerator (green): speed up.',
-        'Brake (red): slow down.',
+        'Accelerator: speed up.',
+        'Brake: slow down.',
         'Release both: car coasts.',
       ],
       child: Align(

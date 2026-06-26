@@ -67,13 +67,6 @@ class _RoadSignsHubScreenState extends State<RoadSignsHubScreen> {
                 includeFullRoadSignCatalog: true,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text(
-                'Pick a track, then open each module in order. Traffic lights (intro, quiz, mini game) are under Traffic and signals.',
-                style: SwissTheme.monospacedText.copyWith(fontSize: 12, color: SwissTheme.textSecondary),
-              ),
-            ),
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
             Expanded(
               child: _buildBody(),

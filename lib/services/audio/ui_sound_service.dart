@@ -130,6 +130,16 @@ class UiSoundService {
     await _playEngineStartSound();
   }
 
+  bool _appOpenEngineStartPlayed = false;
+
+  /// Car engine start once per cold start when the app first opens.
+  void playAppOpenEngineStart() {
+    if (_appOpenEngineStartPlayed) return;
+    _appOpenEngineStartPlayed = true;
+    if (!soundEnabled) return;
+    unawaited(_playEngineStartSound());
+  }
+
   Future<void> _playTapSound() async {
     try {
       if (!_tapReady) {

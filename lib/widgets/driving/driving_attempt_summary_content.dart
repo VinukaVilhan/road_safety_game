@@ -61,35 +61,35 @@ class DrivingAttemptSummaryContent extends StatelessWidget {
           ],
           if (level.isRoadCrossingLevel) ...[
             _CheckRow(
-              label: 'Entered speed limit zone (yellow).',
+              label: 'Entered speed limit zone.',
               ok: summary.enteredApproachZone,
             ),
             const SizedBox(height: 6),
             _CheckRow(
               label:
-                  'Stopped in gear and completed zebra crossing wait (grey zig-zag zone).',
+                  'Stopped in gear and completed zebra crossing wait in the grey zig-zag zone.',
               ok: summary.waitedAtRoadCrossing,
             ),
             const SizedBox(height: 6),
             _CheckRow(
-              label: 'Reached finish zone (green).',
+              label: 'Reached finish zone.',
               ok: summary.reachedFinishZone,
             ),
           ] else if (level.isMarkingsDashedLevel) ...[
             _CheckRow(
-              label: 'Right turn signal used in approach zone (yellow).',
+              label: 'Right turn signal used in approach zone.',
               ok: summary.signaledCorrectlyInApproachZone,
             ),
             const SizedBox(height: 6),
             _CheckRow(
-              label: 'Entered turn execution zone (purple).',
+              label: 'Entered turn execution zone.',
               ok: summary.enteredMidTurnZone,
             ),
             const SizedBox(height: 6),
             _CheckRow(label: midTurnLabel, ok: summary.hadCorrectSignalInMidTurnZone),
             const SizedBox(height: 6),
             _CheckRow(
-              label: 'Reached finish zone (green).',
+              label: 'Reached finish zone.',
               ok: summary.reachedFinishZone,
             ),
           ] else if (level.scenarioId == 'emergency_ambulance') ...[
@@ -101,7 +101,7 @@ class DrivingAttemptSummaryContent extends StatelessWidget {
             ),
           ] else ...[
             _CheckRow(
-              label: 'Entered approach zone (yellow).',
+              label: 'Entered approach zone.',
               ok: summary.enteredApproachZone,
             ),
             const SizedBox(height: 6),
@@ -111,14 +111,14 @@ class DrivingAttemptSummaryContent extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             _CheckRow(
-              label: 'Entered turn execution zone (purple).',
+              label: 'Entered turn execution zone.',
               ok: summary.enteredMidTurnZone,
             ),
             const SizedBox(height: 6),
             _CheckRow(label: midTurnLabel, ok: summary.hadCorrectSignalInMidTurnZone),
             const SizedBox(height: 6),
             _CheckRow(
-              label: 'Reached finish zone (green).',
+              label: 'Reached finish zone.',
               ok: summary.reachedFinishZone,
             ),
           ],

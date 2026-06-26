@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/assistant/assistant_launch_context.dart';
 import '../../services/audio/ui_sound_service.dart';
+import '../../services/audio/weather_sfx_service.dart';
 import '../../theme/swiss_theme.dart';
 import '../../theme/landscape_layout.dart';
 import '../../utils/app_fonts.dart';
@@ -94,7 +95,10 @@ class _DrivingTopicSelectionScreenState extends State<DrivingTopicSelectionScree
             BrowseScreenHeader(
               title: 'DRIVING TEST',
               titleStyle: _headerStyle,
-              onBack: () => Navigator.pop(context),
+              onBack: () async {
+                await WeatherSfxService.instance.endLesson();
+                if (context.mounted) Navigator.pop(context);
+              },
               heroTag: 'assistant_driving_topics',
               launchContext: const AssistantLaunchContext(
                 screenTitle: 'Driving test — choose topic',

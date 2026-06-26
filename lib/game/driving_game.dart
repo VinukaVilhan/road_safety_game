@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import '../constants/media_assets.dart';
 import '../models/driving/last_driving_report.dart';
 import '../services/audio/driving_audio_levels.dart';
+import '../services/audio/weather_sfx_service.dart';
 import 'effects/rain_viewport_overlay.dart';
 import 'effects/thunder_flash_overlay.dart';
 import 'effects/weather_effects_log.dart';
@@ -27,7 +28,6 @@ part 'scenarios/emergency_weather.dart';
 part 'entities/car.dart';
 part 'entities/ambulance.dart';
 part 'audio/vehicle_sfx.dart';
-part 'audio/weather_sfx.dart';
 part 'zones/zone_helpers.dart';
 part 'zones/road_crossing_zones.dart';
 part 'zones/mid_turn_zones.dart';
@@ -58,7 +58,6 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
   RainVisibilityDimOverlay? _weatherDimOverlay;
   RainViewportOverlay? _weatherRainOverlay;
   ThunderFlashOverlay? _weatherThunderOverlay;
-  final WeatherSfx _weatherSfx = WeatherSfx();
   double _thunderCountdownSec = 8.0;
   final math.Random _thunderRandom = math.Random();
   String? _weatherLevelId;
@@ -725,7 +724,7 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     _lessonAudioActive = false;
     pauseEngine();
     _vehicleSfx.dispose();
-    _weatherSfx.invalidate();
+    WeatherSfxService.instance.invalidate();
     unawaited(_stopAmbulanceSiren());
   }
 
@@ -735,10 +734,8 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
     if (!_lessonAudioActive) return;
     _vehicleSfx.resumePausedOutputs();
     _resumeAmbulanceSirenIfPaused();
-    if (_isEmergencyWeatherScenario) {
-      unawaited(_weatherSfx.ensureRainLoop());
-    } else {
-      _weatherSfx.resumePausedRain();
+    if (_isEmergencyWeatherScenario && !paused && WeatherSfxService.instance.isLessonActive) {
+      unawaited(WeatherSfxService.instance.ensureRainLoop());
     }
   }
 

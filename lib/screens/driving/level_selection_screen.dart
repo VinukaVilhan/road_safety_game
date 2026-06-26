@@ -8,6 +8,7 @@ import '../../models/driving/game_level.dart';
 import '../../services/content/driving_levels_service.dart';
 import '../../services/progress/level_progress_service.dart';
 import '../../services/audio/ui_sound_service.dart';
+import '../../services/audio/weather_sfx_service.dart';
 import '../../services/progress/last_driving_report_service.dart';
 import '../../widgets/last_driving_report_dialog.dart';
 import 'game_screen.dart';
@@ -212,7 +213,10 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
             BrowseScreenHeader(
               title: headerTitle,
               titleStyle: _headerStyle,
-              onBack: () => Navigator.pop(context),
+              onBack: () async {
+                await WeatherSfxService.instance.endLesson();
+                if (context.mounted) Navigator.pop(context);
+              },
               heroTag: 'assistant_level_select',
               launchContext: AssistantLaunchContext(
                 screenTitle: 'Level list — $headerTitle',
@@ -475,6 +479,8 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
         builder: (context) => GameScreen(level: level),
       ),
     );
+
+    await WeatherSfxService.instance.endLesson();
 
     if (!mounted) return;
 

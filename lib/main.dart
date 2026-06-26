@@ -27,10 +27,25 @@ void main() async {
   await SyncService.instance.initialize();
   await MusicService.loadSavedMusicFolderPath();
   await uiSoundsPreload;
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      UiSoundService().playAppOpenEngineStart();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

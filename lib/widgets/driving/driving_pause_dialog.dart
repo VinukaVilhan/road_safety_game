@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../game/driving_game.dart';
 import '../../services/audio/music_service.dart';
 import '../../services/audio/ui_sound_service.dart';
+import '../../services/audio/weather_sfx_service.dart';
 
 /// Pause menu for the practical driving test.
 Future<void> showDrivingPauseDialog({
@@ -44,9 +45,12 @@ Future<void> showDrivingPauseDialog({
             onPressed: () {
               UiSoundService().playMenuTap();
               game.endLessonAudio();
-              unawaited(MusicService().endDrivingLesson());
-              Navigator.of(dialogContext).pop();
-              Navigator.of(context).pop();
+              unawaited(() async {
+                await WeatherSfxService.instance.endLesson();
+                await MusicService().endDrivingLesson();
+                if (dialogContext.mounted) Navigator.of(dialogContext).pop();
+                if (context.mounted) Navigator.of(context).pop();
+              }());
             },
             child: Text(
               'Quit',

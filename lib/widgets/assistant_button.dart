@@ -53,7 +53,7 @@ class AssistantButton extends StatelessWidget {
         message: tooltip,
         child: FloatingActionButton.small(
           heroTag: tag,
-          backgroundColor: SwissTheme.accentBlue,
+          backgroundColor: SwissTheme.textPrimary,
           foregroundColor: Colors.white,
           onPressed: () => _open(context),
           child: const Icon(Icons.smart_toy_outlined),
@@ -65,7 +65,7 @@ class AssistantButton extends StatelessWidget {
       message: tooltip,
       child: FloatingActionButton.extended(
         heroTag: tag,
-        backgroundColor: SwissTheme.accentBlue,
+        backgroundColor: SwissTheme.textPrimary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.smart_toy_outlined),
         label: Text(
@@ -95,11 +95,11 @@ class _NavBarButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = onDarkBackground ? Colors.white : SwissTheme.accentBlue;
-    final border = onDarkBackground ? Colors.white70 : SwissTheme.accentBlue;
+    final fg = onDarkBackground ? Colors.white : SwissTheme.textPrimary;
+    final border = onDarkBackground ? Colors.white70 : SwissTheme.borderBlack;
     final fill = onDarkBackground
         ? Colors.black.withValues(alpha: 0.45)
-        : SwissTheme.accentBlue.withValues(alpha: 0.08);
+        : SwissTheme.backgroundWhite;
 
     return Tooltip(
       message: tooltip,

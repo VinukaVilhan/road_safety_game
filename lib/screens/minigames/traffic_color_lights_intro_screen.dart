@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../constants/media_assets.dart';
@@ -46,23 +48,15 @@ class TrafficColorLightsIntroScreen extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              onBack: () => Navigator.pop(context),
+              onBack: () {
+                UiSoundService().playMenuTap();
+                unawaited(_markViewedAndLeave(context, module.id));
+              },
               heroTag: 'assistant_traffic_color_lights_intro',
               launchContext: AssistantLaunchContext(
                 screenTitle: 'Traffic and signals — intro',
                 theoryTestName: module.title,
                 includeFullRoadSignCatalog: true,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-              child: Text(
-                module.title.toUpperCase(),
-                style: AppFonts.pixelifySans(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: SwissTheme.textPrimary,
-                ),
               ),
             ),
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
@@ -77,55 +71,15 @@ class TrafficColorLightsIntroScreen extends StatelessWidget {
                 ),
               ),
             ),
-            Container(
-              padding: LandscapeLayout.bodyPadding(context).copyWith(top: 12, bottom: 16),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: SwissTheme.borderBlack, width: 1)),
-              ),
-              child: LandscapeLayout.bodyMaxWidth(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'When you have read this sheet, tap Done to unlock the MCQ for this track.',
-                        style: AppFonts.pixelifySans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: SwissTheme.textSecondary,
-                          height: 1.45,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 180,
-                      child: TextButton(
-                        onPressed: () async {
-                          UiSoundService().playMenuTap();
-                          await ProgressRepository.instance.markRoadSignsLearnModuleViewed(module.id);
-                          if (context.mounted) Navigator.pop(context, true);
-                        },
-                        style: TextButton.styleFrom(
-                          backgroundColor: SwissTheme.textPrimary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                        ),
-                        child: Text(
-                          'DONE',
-                          style: AppFonts.pixelifySans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  static Future<void> _markViewedAndLeave(BuildContext context, String moduleId) async {
+    await ProgressRepository.instance.markRoadSignsLearnModuleViewed(moduleId);
+    if (context.mounted) Navigator.pop(context, true);
   }
 }
 
@@ -163,16 +117,6 @@ class _ReferenceSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'REFERENCE',
-                    style: AppFonts.pixelifySans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.0,
-                      color: SwissTheme.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
                   Text(
                     'Traffic lights',
                     style: AppFonts.pixelifySans(
@@ -212,19 +156,19 @@ class _ReferenceSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   const _Bullet(
-                    title: 'Red (top)',
+                    title: 'Red',
                     body:
                         'Stop before the stop line or crossing and wait until the phase changes, unless someone authorised directs you otherwise.',
                   ),
                   const SizedBox(height: 10),
                   const _Bullet(
-                    title: 'Amber (middle)',
+                    title: 'Amber',
                     body:
                         'Prepare to stop — red is next. If you are already past the stop line or stopping would be unsafe, clear the junction carefully.',
                   ),
                   const SizedBox(height: 10),
                   const _Bullet(
-                    title: 'Green (bottom)',
+                    title: 'Green',
                     body:
                         'You may proceed only when the way ahead is safe; still watch for pedestrians, other vehicles, and any arrows or signs.',
                   ),
@@ -262,17 +206,6 @@ class _SignalFigure extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: AppFonts.pixelifySans(fontSize: 12, color: SwissTheme.textSecondary),
               ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Fig. 1 — Standard vertical signal (red, amber, green)',
-            textAlign: TextAlign.center,
-            style: AppFonts.pixelifySans(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: SwissTheme.textSecondary,
-              height: 1.35,
             ),
           ),
         ],

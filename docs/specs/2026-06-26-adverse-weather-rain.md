@@ -113,3 +113,4 @@ Run the **agent completion gate** in [`.cursor/rules/spec-driven.mdc`](../../.cu
 | 2026-06-26 | Rain audio: `ensureRainLoop` on viewport mount and game resume; volume via `DrivingAudioLevels.rainAmbience` |
 | 2026-06-26 | Unlock fix: `emergency_weather` open by default — no `junctions_cross_basics` prerequisite |
 | 2026-06-26 | Rain audio: `invalidate()` on lesson end + `PopScope` on `GameScreen` — stops loop on back/quit |
+| 2026-06-26 | Rain audio: app-wide `WeatherSfxService` singleton; `endLesson()` on back/route pop (fixed player id) |

@@ -104,6 +104,7 @@ class _RoadSignsModulesScreenState extends State<RoadSignsModulesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isTrafficAndSignals = widget.group.id == 'traffic_and_signals';
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
       body: SafeArea(
@@ -111,34 +112,47 @@ class _RoadSignsModulesScreenState extends State<RoadSignsModulesScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             BrowseScreenHeader(
-              titleWidget: Text(
-                _breadcrumb.toUpperCase(),
-                style: AppFonts.pixelifySans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.4,
-                  color: SwissTheme.textSecondary,
-                ),
-                maxLines: 3,
-              ),
+              title: isTrafficAndSignals ? widget.group.title.toUpperCase() : null,
+              titleWidget: isTrafficAndSignals
+                  ? null
+                  : Text(
+                      _breadcrumb.toUpperCase(),
+                      style: AppFonts.pixelifySans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                        color: SwissTheme.textSecondary,
+                      ),
+                      maxLines: 3,
+                    ),
+              titleStyle: isTrafficAndSignals
+                  ? AppFonts.pixelifySans(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: SwissTheme.textPrimary,
+                    )
+                  : null,
               onBack: () => Navigator.pop(context),
               heroTag: 'assistant_road_signs_modules_${widget.group.id}_${widget.subgroup?.id ?? 'root'}',
               launchContext: AssistantLaunchContext(
-                screenTitle: 'Road signs — modules',
+                screenTitle: isTrafficAndSignals
+                    ? 'Traffic and signals'
+                    : 'Road signs — modules',
                 includeFullRoadSignCatalog: true,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
-              child: Text(
-                'MODULES',
-                style: AppFonts.pixelifySans(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: SwissTheme.textPrimary,
+            if (!isTrafficAndSignals)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+                child: Text(
+                  'MODULES',
+                  style: AppFonts.pixelifySans(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: SwissTheme.textPrimary,
+                  ),
                 ),
               ),
-            ),
             const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
             Expanded(child: _buildModuleBody()),
           ],
@@ -229,6 +243,7 @@ class _RoadSignsModulesScreenState extends State<RoadSignsModulesScreen> {
           unlocked: unlocked,
           passedMcq: _passedMcqIds.contains(m.id),
           learnViewed: _viewedLearnIds.contains(m.id),
+          showKindLabel: widget.group.id != 'traffic_and_signals',
           onTap: () => _onModuleTap(m, unlocked),
         );
       },
@@ -322,6 +337,7 @@ class _ModuleTile extends StatelessWidget {
   final bool unlocked;
   final bool passedMcq;
   final bool learnViewed;
+  final bool showKindLabel;
   final VoidCallback onTap;
 
   const _ModuleTile({
@@ -329,6 +345,7 @@ class _ModuleTile extends StatelessWidget {
     required this.unlocked,
     required this.passedMcq,
     required this.learnViewed,
+    this.showKindLabel = true,
     required this.onTap,
   });
 
@@ -411,14 +428,16 @@ class _ModuleTile extends StatelessWidget {
                                 : SwissTheme.textSecondary.withValues(alpha: 0.5),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          kindLabel,
-                          style: SwissTheme.monospacedText.copyWith(
-                            fontSize: 9,
-                            color: SwissTheme.textSecondary.withValues(alpha: 0.75),
+                        if (showKindLabel) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            kindLabel,
+                            style: SwissTheme.monospacedText.copyWith(
+                              fontSize: 9,
+                              color: SwissTheme.textSecondary.withValues(alpha: 0.75),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),

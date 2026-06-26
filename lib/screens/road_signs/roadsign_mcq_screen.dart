@@ -130,11 +130,18 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeader(),
-            const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 1),
+            LinearProgressIndicator(
+              value: (_currentIndex + (_hasAnswered ? 1 : 0)) / _questions.length,
+              minHeight: 3,
+              backgroundColor: SwissTheme.backgroundLightGrey,
+              color: SwissTheme.accentBlue,
+            ),
             Expanded(
-              child: SingleChildScrollView(
+              child: Padding(
                 padding: LandscapeLayout.bodyPadding(context),
-                child: _buildQuestionContent(),
+                child: LandscapeLayout.bodyMaxWidth(
+                  child: _buildQuestionContent(),
+                ),
               ),
             ),
             if (_hasAnswered) _buildNextButton(),
@@ -146,7 +153,7 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      padding: LandscapeLayout.headerPadding(context),
       child: Row(
         children: [
           IconButton(
@@ -160,13 +167,8 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
           ),
           const SizedBox(width: 8),
           Text(
-            'Question ${_currentIndex + 1} of ${_questions.length}',
+            'Question ${_currentIndex + 1} / ${_questions.length}',
             style: _headerStyle,
-          ),
-          const Spacer(),
-          Text(
-            '$_correctCount correct',
-            style: _headerStyle.copyWith(color: SwissTheme.accentGreen),
           ),
         ],
       ),
@@ -175,31 +177,28 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
 
   Widget _buildQuestionContent() {
     final q = _questions[_currentIndex];
-    final questionPane = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(q.questionText, style: _questionStyle),
-        const SizedBox(height: 16),
-        ...List.generate(q.options.length, (i) => _buildOption(q, i)),
-      ],
-    );
-
-    if (!q.hasImage) return questionPane;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(width: 200, child: _buildQuestionImage(q)),
-        const SizedBox(width: 20),
-        Expanded(child: questionPane),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (q.hasImage) ...[
+            Center(child: _buildQuestionImage(q)),
+            const SizedBox(height: 16),
+          ],
+          Text(q.questionText, style: _questionStyle),
+          const SizedBox(height: 16),
+          ...List.generate(q.options.length, (i) => _buildOption(q, i)),
+        ],
+      ),
     );
   }
 
   Widget _buildQuestionImage(McqQuestion q) {
+    const w = 200.0;
+    const h = 160.0;
     return Container(
-      width: 200,
-      height: 160,
+      width: w,
+      height: h,
       decoration: BoxDecoration(
         color: SwissTheme.backgroundLightGrey,
         border: Border.all(color: SwissTheme.borderBlack, width: 1),
@@ -251,7 +250,7 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
         child: InkWell(
           onTap: () => _onOptionSelected(index),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
             decoration: BoxDecoration(
               color: bgColor ?? SwissTheme.backgroundWhite,
               border: Border.all(
@@ -264,8 +263,8 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
             child: Row(
               children: [
                 Container(
-                  width: 28,
-                  height: 28,
+                  width: 26,
+                  height: 26,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
@@ -285,11 +284,13 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
                           style: _optionStyle.copyWith(fontSize: 12),
                         ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     q.options[index],
                     style: _optionStyle,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -302,26 +303,32 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
 
   Widget _buildNextButton() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: LandscapeLayout.bodyPadding(context).copyWith(top: 8, bottom: 12),
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: SwissTheme.borderBlack, width: 1)),
       ),
-      child: SizedBox(
-        width: double.infinity,
-        child: TextButton(
-          onPressed: () {
-            UiSoundService().playMenuTap();
-            _nextQuestion();
-          },
-          style: TextButton.styleFrom(
-            backgroundColor: SwissTheme.accentBlue,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-          ),
-          child: Text(
-            _currentIndex + 1 >= _questions.length ? 'SEE RESULTS' : 'NEXT',
-            style: AppFonts.pixelifySans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+      child: LandscapeLayout.bodyMaxWidth(
+        alignment: Alignment.center,
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            width: 220,
+            child: TextButton(
+              onPressed: () {
+                UiSoundService().playMenuTap();
+                _nextQuestion();
+              },
+              style: TextButton.styleFrom(
+                backgroundColor: SwissTheme.accentBlue,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              ),
+              child: Text(
+                _currentIndex + 1 >= _questions.length ? 'SEE RESULTS' : 'NEXT',
+                style: AppFonts.pixelifySans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+              ),
+            ),
           ),
         ),
       ),
@@ -330,67 +337,86 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
 
   Widget _buildResultScreen() {
     final score = _questions.isEmpty ? 0 : ((_correctCount / _questions.length) * 100).round();
+    final passed = score >= 70;
     return Scaffold(
       backgroundColor: SwissTheme.backgroundWhite,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: _exitTest,
-                    icon: const Icon(Icons.arrow_back_sharp, color: SwissTheme.textPrimary, size: 24),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                  const SizedBox(width: 8),
-                  Text('RESULT', style: _resultTitleStyle),
-                ],
-              ),
-              const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 24),
-              const SizedBox(height: 24),
-              Text(
-                '${widget.test.name}',
-                style: _resultTitleStyle.copyWith(fontSize: 22),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'You got $_correctCount out of ${_questions.length} correct.',
-                style: _resultBodyStyle,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Score: $score%',
-                style: AppFonts.pixelifySans(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w800,
-                  color: score >= 70 ? SwissTheme.accentGreen : SwissTheme.accentRed,
+          padding: LandscapeLayout.screenPadding(context),
+          child: LandscapeLayout.bodyMaxWidth(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: _exitTest,
+                      icon: const Icon(Icons.arrow_back_sharp, color: SwissTheme.textPrimary, size: 24),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('RESULT', style: _resultTitleStyle),
+                  ],
                 ),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () async {
-                    await _persistResultIfNeeded();
-                    _exitTest();
-                  },
-                  style: TextButton.styleFrom(
-                    backgroundColor: SwissTheme.textPrimary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                  ),
-                  child: Text(
-                    'BACK TO TESTS',
-                    style: AppFonts.pixelifySans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                const Divider(color: SwissTheme.dividerBlack, thickness: 1, height: 24),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.test.name,
+                              style: _resultTitleStyle.copyWith(fontSize: 22),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'You got $_correctCount out of ${_questions.length} correct.',
+                              style: _resultBodyStyle,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 32),
+                      Text(
+                        '$score%',
+                        style: AppFonts.pixelifySans(
+                          fontSize: 48,
+                          fontWeight: FontWeight.w800,
+                          color: passed ? SwissTheme.accentGreen : SwissTheme.accentRed,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: SizedBox(
+                    width: 220,
+                    child: TextButton(
+                      onPressed: () async {
+                        await _persistResultIfNeeded();
+                        _exitTest();
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: SwissTheme.textPrimary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                      ),
+                      child: Text(
+                        'BACK TO TESTS',
+                        style: AppFonts.pixelifySans(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

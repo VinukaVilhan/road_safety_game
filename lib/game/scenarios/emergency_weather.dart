@@ -72,8 +72,8 @@ extension _EmergencyWeatherScenario on RealisticCarGameBase {
     if (_weatherComponentsHealthy()) {
       _weatherEffectsMounted = true;
       WeatherEffectsLog.info('SETUP skipped — components already healthy');
-      if (_lessonAudioActive) {
-        unawaited(_weatherSfx.ensureRainLoop());
+      if (_lessonAudioActive && !paused && WeatherSfxService.instance.isLessonActive) {
+        unawaited(WeatherSfxService.instance.ensureRainLoop());
       }
       return;
     }
@@ -123,8 +123,8 @@ extension _EmergencyWeatherScenario on RealisticCarGameBase {
           'drops=${rain.activeDropCount} '
           'nextThunder=${_thunderCountdownSec.toStringAsFixed(1)}s',
         );
-        if (_lessonAudioActive) {
-          unawaited(_weatherSfx.ensureRainLoop());
+        if (_lessonAudioActive && !paused && WeatherSfxService.instance.isLessonActive) {
+          unawaited(WeatherSfxService.instance.ensureRainLoop());
         }
       } else {
         WeatherEffectsLog.error(
@@ -162,7 +162,7 @@ extension _EmergencyWeatherScenario on RealisticCarGameBase {
     final doubleFlash =
         _thunderRandom.nextDouble() < ThunderFlashOverlay.doubleFlashChance;
     overlay.strike(strength: strength, doubleFlash: doubleFlash);
-    unawaited(_weatherSfx.playThunderOnce());
+    unawaited(WeatherSfxService.instance.playThunderOnce());
 
     try {
       HapticFeedback.heavyImpact();
@@ -190,8 +190,8 @@ extension _EmergencyWeatherScenario on RealisticCarGameBase {
 
     if (_weatherComponentsHealthy()) {
       _weatherEffectsMounted = true;
-      if (_lessonAudioActive) {
-        unawaited(_weatherSfx.ensureRainLoop());
+      if (_lessonAudioActive && !paused && WeatherSfxService.instance.isLessonActive) {
+        unawaited(WeatherSfxService.instance.ensureRainLoop());
       }
       return;
     }

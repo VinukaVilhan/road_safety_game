@@ -307,7 +307,7 @@ class RoadSignsQuestionsService {
       ),
       McqQuestion(
         id: 'cl_amber_role',
-        questionText: 'The steady amber (yellow) light after green mainly tells you to:',
+        questionText: 'The steady amber light after green mainly tells you to:',
         options: [
           'Speed up before it turns red',
           'Slow down and prepare to stop if you can do so safely',

@@ -18,6 +18,7 @@ import '../../services/progress/last_driving_report_service.dart';
 import '../../services/progress/odometer_service.dart';
 import '../../services/audio/music_service.dart';
 import '../../services/audio/ui_sound_service.dart';
+import '../../services/audio/weather_sfx_service.dart';
 import '../../widgets/driving/driving_attempt_summary_content.dart';
 import '../../widgets/driving/driving_pause_dialog.dart';
 import '../../widgets/driving/driving_radio_icon.dart';
@@ -68,9 +69,13 @@ class GameScreenState extends State<GameScreen> {
 
   Timer? _odometerFlushTimer;
 
+  bool _lessonExiting = false;
+  bool _leaveInProgress = false;
+
   @override
   void initState() {
     super.initState();
+    WeatherSfxService.instance.beginLesson();
     game = RealisticCarGame(
       mapAsset: widget.level.mapAsset,
       levelId: widget.level.id,
@@ -145,14 +150,41 @@ class GameScreenState extends State<GameScreen> {
     _turnSignalRightNotifier.value = _rightTurnSignalOn;
   }
 
-  void _leaveDrivingLesson() {
+  Future<void> _leaveDrivingLesson() async {
+    if (_lessonExiting) return;
+    _lessonExiting = true;
     game.endLessonAudio();
-    unawaited(MusicService().endDrivingLesson());
+    if (mounted) setState(() {});
+    await WeatherSfxService.instance.endLesson();
+    await MusicService().endDrivingLesson();
+  }
+
+  Future<void> _handleUserLeave() async {
+    if (_leaveInProgress || _lessonExiting) return;
+    _leaveInProgress = true;
+    try {
+      await _leaveDrivingLesson();
+      if (mounted) Navigator.of(context).pop();
+    } finally {
+      _leaveInProgress = false;
+    }
+  }
+
+  @override
+  void deactivate() {
+    if (!_lessonExiting) {
+      game.endLessonAudio();
+      unawaited(WeatherSfxService.instance.endLesson());
+    }
+    super.deactivate();
   }
 
   @override
   void dispose() {
-    _leaveDrivingLesson();
+    game.endLessonAudio();
+    WeatherSfxService.instance.invalidate();
+    unawaited(WeatherSfxService.instance.endLesson());
+    unawaited(MusicService().endDrivingLesson());
     _odometerFlushTimer?.cancel();
     unawaited(OdometerService.instance.flushPendingToPersistence());
     _turnSignalTapTimer?.cancel();
@@ -174,8 +206,7 @@ class GameScreenState extends State<GameScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        _leaveDrivingLesson();
-        Navigator.of(context).pop();
+        unawaited(_handleUserLeave());
       },
       child: Theme(
       data: drivingTheme,
@@ -186,7 +217,9 @@ class GameScreenState extends State<GameScreen> {
           // The game widget (RepaintBoundary enables failure-time screenshots)
           RepaintBoundary(
             key: _gameRepaintKey,
-            child: GameWidget(game: game),
+            child: _lessonExiting
+                ? const ColoredBox(color: Colors.black)
+                : GameWidget(game: game),
           ),
           
           // UI overlay - Using Positioned widgets for better control

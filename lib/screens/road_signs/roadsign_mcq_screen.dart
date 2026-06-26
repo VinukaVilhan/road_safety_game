@@ -5,7 +5,7 @@ import '../../utils/app_fonts.dart';
 import '../../data/repositories/progress_repository.dart';
 import '../../models/theory/theory_test.dart';
 import '../../models/theory/mcq_question.dart';
-import '../../services/content/road_signs_questions_service.dart';
+import '../../services/content/mcq_questions_service.dart';
 import '../../services/audio/ui_sound_service.dart';
 
 /// Full-screen MCQ test for road signs. Shows one question at a time with optional image.
@@ -37,13 +37,10 @@ class _RoadSignMcqScreenState extends State<RoadSignMcqScreen> {
   void initState() {
     super.initState();
     final poolId = widget.test.mcqQuestionPoolId ?? widget.test.id;
-    _questions = RoadSignsQuestionsService.getQuestionsForTest(
+    _questions = McqQuestionsService.getQuestionsForTest(
       poolId,
       count: widget.test.questionCount,
     );
-    if (_questions.isEmpty) {
-      _questions = RoadSignsQuestionsService.getQuestionsForTest('warning_signs_mcq', count: 10);
-    }
     _initStyles();
   }
 

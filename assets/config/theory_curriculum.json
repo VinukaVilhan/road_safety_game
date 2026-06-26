@@ -1,0 +1,249 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "best_practices",
+      "title": "Best Practices",
+      "description": "Essential driving rules and safety tips",
+      "introImageAsset": "",
+      "introHeading": "Safe driving habits",
+      "introLead": "Swipe through each scenario. Good habits reduce risk for you, your passengers, and everyone on the road.",
+      "bullets": [],
+      "introSlides": [
+        {
+          "id": "seatbelt",
+          "title": "Seatbelt",
+          "body": "Fasten your seatbelt before moving off and make sure every passenger is belted too. A seatbelt keeps you in place if you brake hard or are involved in a collision.",
+          "imageAsset": "assets/images/theory/intro/best_practices/seatbelt.png"
+        },
+        {
+          "id": "mirrors",
+          "title": "Mirrors",
+          "body": "Adjust your mirrors before you start. Check them — and your blind spots — before changing speed, direction, or lane.",
+          "imageAsset": "assets/images/theory/intro/best_practices/mirrors.png"
+        },
+        {
+          "id": "following_distance",
+          "title": "Following distance",
+          "body": "Keep a safe gap behind the vehicle in front so you can stop in time if it brakes suddenly. Increase the gap in rain or at higher speeds.",
+          "imageAsset": "assets/images/theory/intro/best_practices/following_distance.png"
+        },
+        {
+          "id": "stay_alert",
+          "title": "Stay alert",
+          "body": "Avoid phone use and other distractions. Scan ahead for pedestrians, cyclists, and hazards — especially near crossings and junctions.",
+          "imageAsset": "assets/images/theory/intro/best_practices/stay_alert.png"
+        }
+      ],
+      "modules": [
+        {
+          "id": "best_practices_intro",
+          "kind": "intro",
+          "order": 1,
+          "title": "Intro: safe driving habits",
+          "description": "Short reference on everyday safe driving practices.",
+          "unlockRequirementIds": []
+        },
+        {
+          "id": "best_practices_mcq",
+          "kind": "mcq",
+          "order": 2,
+          "title": "MCQ: best practices",
+          "description": "Six questions on habits every driver should follow.",
+          "mcqTestId": "best_practices_mcq",
+          "questionCount": 6,
+          "difficulty": "easy",
+          "unlockRequirementIds": ["best_practices_intro"]
+        }
+      ]
+    },
+    {
+      "id": "traffic_rules",
+      "title": "Traffic Rules",
+      "description": "Sri Lankan traffic regulations and laws",
+      "introImageAsset": "assets/images/theory/intro/traffic_rules_reference.png",
+      "introHeading": "Traffic rules and documents",
+      "introLead": "Knowing the law helps you drive legally and avoid fines. Carry the right documents and follow posted limits and signs.",
+      "bullets": [
+        {
+          "title": "Driving licence",
+          "body": "You must hold a valid licence for the class of vehicle you drive and carry it when driving."
+        },
+        {
+          "title": "Vehicle documents",
+          "body": "Keep insurance, revenue licence, and other required papers up to date and available if asked."
+        },
+        {
+          "title": "Speed limits",
+          "body": "Obey posted limits and drive at a speed safe for conditions — even when below the limit."
+        },
+        {
+          "title": "Right of way",
+          "body": "Give way where signs, markings, or rules require it. Never assume other drivers will stop."
+        }
+      ],
+      "modules": [
+        {
+          "id": "traffic_rules_intro",
+          "kind": "intro",
+          "order": 1,
+          "title": "Intro: traffic rules",
+          "description": "Licence, documents, and basic legal duties on the road.",
+          "unlockRequirementIds": []
+        },
+        {
+          "id": "traffic_rules_mcq",
+          "kind": "mcq",
+          "order": 2,
+          "title": "MCQ: traffic rules",
+          "description": "Six questions on regulations and required documents.",
+          "mcqTestId": "traffic_rules_mcq",
+          "questionCount": 6,
+          "difficulty": "easy",
+          "unlockRequirementIds": ["traffic_rules_intro"]
+        }
+      ]
+    },
+    {
+      "id": "parking",
+      "title": "Parking",
+      "description": "Parking rules, zones, and restrictions",
+      "introImageAsset": "assets/images/theory/intro/parking_reference.png",
+      "introHeading": "Parking safely and legally",
+      "introLead": "Park only where allowed, without blocking traffic or endangering others. Check signs and road markings before you stop.",
+      "bullets": [
+        {
+          "title": "Where not to park",
+          "body": "Do not park on crossings, junctions, bus stops, or where signs or lines prohibit stopping."
+        },
+        {
+          "title": "Parallel and angle parking",
+          "body": "Park within marked bays, close to the kerb, and leave room for other vehicles to pass."
+        },
+        {
+          "title": "Hill parking",
+          "body": "Use the handbrake and, where needed, turn wheels toward the kerb so the car cannot roll."
+        },
+        {
+          "title": "Clearance",
+          "body": "Leave enough space at driveways, fire hydrants, and pedestrian routes."
+        }
+      ],
+      "modules": [
+        {
+          "id": "parking_intro",
+          "kind": "intro",
+          "order": 1,
+          "title": "Intro: parking rules",
+          "description": "Where you may park and common restrictions.",
+          "unlockRequirementIds": []
+        },
+        {
+          "id": "parking_mcq",
+          "kind": "mcq",
+          "order": 2,
+          "title": "MCQ: parking",
+          "description": "Six questions on parking regulations.",
+          "mcqTestId": "parking_mcq",
+          "questionCount": 6,
+          "difficulty": "easy",
+          "unlockRequirementIds": ["parking_intro"]
+        }
+      ]
+    },
+    {
+      "id": "vehicle_control",
+      "title": "Vehicle Control",
+      "description": "Steering, braking, and gear operations",
+      "introImageAsset": "assets/images/theory/intro/vehicle_control_reference.png",
+      "introHeading": "Controlling the vehicle",
+      "introLead": "Smooth steering, braking, and gear use keep you in control. Practice these skills until they feel natural.",
+      "bullets": [
+        {
+          "title": "Steering",
+          "body": "Hold the wheel securely and steer smoothly. Look where you want to go, not just at the bonnet."
+        },
+        {
+          "title": "Braking",
+          "body": "Brake early and progressively. Sudden hard braking can surprise traffic behind you."
+        },
+        {
+          "title": "Gears",
+          "body": "Select the right gear for your speed and terrain. Use lower gears on hills or when you need more engine braking."
+        },
+        {
+          "title": "Mirrors before manoeuvres",
+          "body": "Signal and check mirrors and blind spots before turning, changing lane, or pulling away."
+        }
+      ],
+      "modules": [
+        {
+          "id": "vehicle_control_intro",
+          "kind": "intro",
+          "order": 1,
+          "title": "Intro: vehicle control",
+          "description": "Steering, pedals, and gears — the basics.",
+          "unlockRequirementIds": []
+        },
+        {
+          "id": "vehicle_control_mcq",
+          "kind": "mcq",
+          "order": 2,
+          "title": "MCQ: vehicle control",
+          "description": "Six questions on operating the vehicle safely.",
+          "mcqTestId": "vehicle_control_mcq",
+          "questionCount": 6,
+          "difficulty": "easy",
+          "unlockRequirementIds": ["vehicle_control_intro"]
+        }
+      ]
+    },
+    {
+      "id": "safety_procedures",
+      "title": "Safety Procedures",
+      "description": "Emergency situations and safe responses",
+      "introImageAsset": "assets/images/theory/intro/safety_procedures_reference.png",
+      "introHeading": "Emergencies and breakdowns",
+      "introLead": "If something goes wrong, stay calm. Get to a safe place, warn other road users, and get help when needed.",
+      "bullets": [
+        {
+          "title": "Hazard lights",
+          "body": "Switch on hazard warning lights when stopped in a dangerous place or when your vehicle is a hazard."
+        },
+        {
+          "title": "Warning triangle",
+          "body": "Place a warning triangle behind your vehicle on busy roads when it is safe to do so."
+        },
+        {
+          "title": "Breakdown",
+          "body": "Move off the carriageway if possible. Stay out of live traffic while waiting for assistance."
+        },
+        {
+          "title": "Accidents",
+          "body": "Stop if required. Check for injuries, call emergency services if needed, and exchange details."
+        }
+      ],
+      "modules": [
+        {
+          "id": "safety_procedures_intro",
+          "kind": "intro",
+          "order": 1,
+          "title": "Intro: safety procedures",
+          "description": "What to do in breakdowns and emergencies.",
+          "unlockRequirementIds": []
+        },
+        {
+          "id": "safety_procedures_mcq",
+          "kind": "mcq",
+          "order": 2,
+          "title": "MCQ: safety procedures",
+          "description": "Six questions on emergency responses.",
+          "mcqTestId": "safety_procedures_mcq",
+          "questionCount": 6,
+          "difficulty": "easy",
+          "unlockRequirementIds": ["safety_procedures_intro"]
+        }
+      ]
+    }
+  ]
+}

@@ -42,4 +42,22 @@ abstract final class MediaAssets {
 
   static const String pedestrianCrossingSign =
       'assets/roadsigns/pedestrian_crossing.jpeg';
+
+  // ── Theory category intro reference sheets ──
+  static const String theoryBpSeatbelt =
+      'assets/images/theory/intro/best_practices/seatbelt.png';
+  static const String theoryBpMirrors =
+      'assets/images/theory/intro/best_practices/mirrors.png';
+  static const String theoryBpFollowingDistance =
+      'assets/images/theory/intro/best_practices/following_distance.png';
+  static const String theoryBpStayAlert =
+      'assets/images/theory/intro/best_practices/stay_alert.png';
+  static const String theoryIntroTrafficRules =
+      'assets/images/theory/intro/traffic_rules_reference.png';
+  static const String theoryIntroParking =
+      'assets/images/theory/intro/parking_reference.png';
+  static const String theoryIntroVehicleControl =
+      'assets/images/theory/intro/vehicle_control_reference.png';
+  static const String theoryIntroSafetyProcedures =
+      'assets/images/theory/intro/safety_procedures_reference.png';
 }

@@ -139,6 +139,22 @@ Practical levels have **no** Easy/Medium/Hard tier. Progression is module order 
 
 ---
 
+## 8. Theory test categories (intro + MCQ)
+
+| Rule | Detail |
+|------|--------|
+| **Hub** | Six categories on Theory Test screen; Road Signs uses `road_signs_curriculum.json`; other five use `theory_curriculum.json` |
+| **Module kinds** | `intro` (reference sheet + image) then `mcq` (text-only for these five categories) |
+| **Unlock** | View intro module → MCQ unlocks; MCQ pass (≥70%) stored by module/test id |
+| **Intro images** | `assets/images/theory/intro/` — Best Practices uses a **carousel** (`introSlides` in JSON, one image per scenario under `best_practices/`); other categories use a single reference image until migrated |
+| **Questions** | `TheoryQuestionsService` pools; shared MCQ UI via `RoadSignMcqScreen` + `McqQuestionsService` |
+
+Spec: [`specs/2026-06-26-theory-category-intro-mcq.md`](./specs/2026-06-26-theory-category-intro-mcq.md)
+
+**Code:** `theory_test_categories_screen.dart`, `theory_category_modules_screen.dart`, `theory_intro_screen.dart`, `theory_curriculum_service.dart`
+
+---
+
 ## 9. Level briefings
 
 | Rule | Detail |

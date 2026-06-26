@@ -7,7 +7,7 @@ import '../../utils/app_fonts.dart';
 import '../../widgets/browse_screen_header.dart';
 import '../driving/level_selection_screen.dart' show HatchingPainter;
 import '../road_signs/road_signs_hub_screen.dart';
-import 'theory_test_selection_screen.dart' hide HatchingPainter;
+import 'theory_category_modules_screen.dart';
 
 class TheoryTestCategory {
   final String id;
@@ -91,35 +91,30 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
       title: 'BEST PRACTICES',
       description: 'Essential driving rules and safety tips',
       icon: Icons.check_circle_outline,
-      isUnderDevelopment: true,
     ),
     TheoryTestCategory(
       id: 'traffic_rules',
       title: 'TRAFFIC RULES',
       description: 'Sri Lankan traffic regulations and laws',
       icon: Icons.gavel,
-      isUnderDevelopment: true,
     ),
     TheoryTestCategory(
       id: 'parking',
       title: 'PARKING',
       description: 'Parking rules, zones, and restrictions',
       icon: Icons.local_parking,
-      isUnderDevelopment: true,
     ),
     TheoryTestCategory(
       id: 'vehicle_control',
       title: 'VEHICLE CONTROL',
       description: 'Steering, braking, and gear operations',
       icon: Icons.settings,
-      isUnderDevelopment: true,
     ),
     TheoryTestCategory(
       id: 'safety_procedures',
       title: 'SAFETY PROCEDURES',
       description: 'Emergency situations and safe responses',
       icon: Icons.warning_amber_rounded,
-      isUnderDevelopment: true,
     ),
   ];
 
@@ -343,7 +338,7 @@ class _TheoryTestCategoriesScreenState extends State<TheoryTestCategoriesScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TheoryTestSelectionScreen(categoryId: category.id),
+        builder: (context) => TheoryCategoryModulesScreen(categoryId: category.id),
       ),
     );
   }

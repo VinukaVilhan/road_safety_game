@@ -25,7 +25,6 @@ import '../../widgets/assistant/chat_image_preview.dart';
 import '../../widgets/assistant/chat_message_bubble.dart';
 import '../../widgets/assistant/retractable_chats_sidebar.dart';
 import 'assistant_chat_constants.dart';
-import 'instructor_chats_list_screen.dart';
 
 /// Full-screen chat with the Gemini-backed virtual instructor.
 class AssistantChatScreen extends StatefulWidget {
@@ -262,10 +261,10 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     }
   }
 
-  Future<void> _renameThisChat() async {
+  Future<void> _renameSession(InstructorChatSession session) async {
     if (_bootstrapping || _sending) return;
     UiSoundService().playMenuTap();
-    final controller = TextEditingController(text: _sessionMeta?.title ?? _appBarTitle);
+    final controller = TextEditingController(text: session.title);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -289,7 +288,9 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     final t = controller.text.trim();
     controller.dispose();
     if (t.isEmpty) return;
-    await InstructorChatSessionsService.instance.renameSession(_sessionId, t);
+    await InstructorChatSessionsService.instance.renameSession(session.id, t);
+    await _loadChatSessions();
+    if (session.id != _sessionId || !mounted) return;
     final m = await InstructorChatSessionsService.instance.getSession(_sessionId);
     if (!mounted) return;
     setState(() {
@@ -298,13 +299,54 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
     });
   }
 
-  void _openChatsList() {
+  Future<void> _deleteSession(InstructorChatSession session) async {
+    if (_bootstrapping || _sending) return;
     UiSoundService().playMenuTap();
-    Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(builder: (_) => const InstructorChatsListScreen()),
-    ).then((_) {
-      if (mounted) _loadChatSessions();
-    });
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete chat?', style: AppFonts.pixelifySans(fontSize: 18, fontWeight: FontWeight.w700)),
+        content: Text(
+          '“${session.title}” will be removed. This cannot be undone.',
+          style: AppFonts.pixelifySans(fontSize: 14, height: 1.35),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: SwissTheme.accentRed),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final deletingCurrent = session.id == _sessionId;
+    await InstructorChatSessionsService.instance.deleteSession(session.id);
+    if (!mounted) return;
+    if (!deletingCurrent) {
+      await _loadChatSessions();
+      return;
+    }
+    final remaining = await InstructorChatSessionsService.instance.listSessions();
+    if (!mounted) return;
+    if (remaining.isNotEmpty) {
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => AssistantChatScreen(launchContext: _launchForSession(remaining.first)),
+        ),
+      );
+      return;
+    }
+    final id = await InstructorChatSessionsService.instance.createGeneralSession();
+    if (!mounted) return;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => AssistantChatScreen(
+          launchContext: AssistantLaunchContext(assistantSessionId: id),
+        ),
+      ),
+    );
   }
 
   Future<void> _newChat() async {
@@ -530,16 +572,26 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
-              if (value == 'new_chat') unawaited(_newChat());
-              if (value == 'chats') _openChatsList();
-              if (value == 'rename') unawaited(_renameThisChat());
+              if (value == 'rename') {
+                unawaited(_renameSession(
+                  _sessionMeta ??
+                      InstructorChatSession(
+                        id: _sessionId,
+                        title: _appBarTitle,
+                        kind: _sessionId.startsWith('report_')
+                            ? InstructorChatSession.kindLevelReport
+                            : InstructorChatSession.kindGeneral,
+                        createdAt: DateTime.now(),
+                        updatedAt: DateTime.now(),
+                        messageCount: _messages.length,
+                      ),
+                ));
+              }
               if (value == 'clear') _clearHistory();
             },
             itemBuilder: (context) => const [
-              PopupMenuItem<String>(value: 'new_chat', child: Text('New chat')),
-              PopupMenuItem<String>(value: 'chats', child: Text('Your chats')),
-              PopupMenuItem<String>(value: 'rename', child: Text('Rename this chat')),
-              PopupMenuItem<String>(value: 'clear', child: Text('Clear this chat')),
+              PopupMenuItem<String>(value: 'rename', child: Text('Rename')),
+              PopupMenuItem<String>(value: 'clear', child: Text('Clear')),
             ],
           ),
         ],
@@ -584,6 +636,8 @@ class _AssistantChatScreenState extends State<AssistantChatScreen> {
                   loading: _loadingChatSessions,
                   onNewChat: _sending || _bootstrapping ? null : () => unawaited(_newChat()),
                   onSelect: _switchToSession,
+                  onRename: _sending || _bootstrapping ? null : (s) => unawaited(_renameSession(s)),
+                  onDelete: _sending || _bootstrapping ? null : (s) => unawaited(_deleteSession(s)),
                   onToggle: () => setState(() => _sidebarExpanded = !_sidebarExpanded),
                 ),
                 const VerticalDivider(width: 1, thickness: 1, color: SwissTheme.dividerBlack),

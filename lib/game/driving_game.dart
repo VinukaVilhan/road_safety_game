@@ -163,6 +163,7 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
   /// Pairs of zig-zag zone object ids on the same horizontal row (road-crossing).
   List<List<int>> _zigZagRowZoneIds = [];
   final List<Rect> _spawnSignRects = [];
+  final List<Rect> _removeSignRects = [];
   String _spawnSignAssetPath = MediaAssets.pedestrianCrossingSign;
   final Set<int> _zonesInsidePreviousFrame = <int>{};
   final List<_MidTurnZone> _midTurnZones = [];
@@ -190,7 +191,7 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
   final ValueNotifier<int?> roadCrossingCountdown = ValueNotifier<int?>(null);
   final ValueNotifier<bool> pedestrianCrossingSignVisible =
       ValueNotifier<bool>(false);
-  /// Metres to the nearest zebra [Zig_Zag] zone while the spawn sign HUD is shown.
+  /// Metres to the nearest zebra [Zig_Zag] zone while the pedestrian-crossing HUD is shown.
   final ValueNotifier<int?> pedestrianCrossingDistanceMeters =
       ValueNotifier<int?>(null);
 
@@ -601,7 +602,7 @@ abstract class RealisticCarGameBase extends FlameGame with KeyboardHandler {
         _loadWeatherScenarioZones(tiled);
       }
       _rebuildZigZagRows();
-      _loadSpawnSignZones(tiledMap);
+      _loadRoadCrossingSignHudZones(tiledMap);
 
       _midTurnZones.clear();
       if (!_isEmergencyWeatherScenario) {

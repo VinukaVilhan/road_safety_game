@@ -460,4 +460,7 @@
   </properties>
   <object id="27" name="Spawn_Sign" type="Spawn_Sign" x="420" y="728" width="118.667" height="17.3333"/>
  </objectgroup>
+ <objectgroup color="#aa55ff" id="18" name="Remove_Sign" class="Remove_Sign">
+  <object id="28" name="Remove_Sign" type="Remove_Sign" x="420" y="228" width="118.667" height="17.3333"/>
+ </objectgroup>
 </map>

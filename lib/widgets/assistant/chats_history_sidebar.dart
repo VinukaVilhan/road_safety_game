@@ -13,6 +13,8 @@ class ChatsHistorySidebar extends StatelessWidget {
     required this.loading,
     required this.onNewChat,
     required this.onSelect,
+    this.onRename,
+    this.onDelete,
     this.onCollapse,
   });
 
@@ -22,6 +24,8 @@ class ChatsHistorySidebar extends StatelessWidget {
   final bool loading;
   final VoidCallback? onNewChat;
   final void Function(InstructorChatSession session) onSelect;
+  final void Function(InstructorChatSession session)? onRename;
+  final void Function(InstructorChatSession session)? onDelete;
   final VoidCallback? onCollapse;
 
   String _subtitle(InstructorChatSession s) {
@@ -119,51 +123,77 @@ class ChatsHistorySidebar extends StatelessWidget {
                               color: selected
                                   ? SwissTheme.accentBlue.withValues(alpha: 0.1)
                                   : Colors.transparent,
-                              child: InkWell(
-                                onTap: () => onSelect(s),
-                                child: Padding(
-                                  padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Icon(
-                                        s.isReport
-                                            ? Icons.description_outlined
-                                            : Icons.chat_bubble_outline,
-                                        size: 16,
-                                        color: selected
-                                            ? SwissTheme.accentBlue
-                                            : SwissTheme.textSecondary,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              s.title,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: AppFonts.pixelifySans(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: SwissTheme.textPrimary,
-                                                height: 1.2,
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(6, 4, 2, 4),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: InkWell(
+                                        onTap: () => onSelect(s),
+                                        child: Padding(
+                                          padding: const EdgeInsets.fromLTRB(4, 6, 0, 6),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Icon(
+                                                s.isReport
+                                                    ? Icons.description_outlined
+                                                    : Icons.chat_bubble_outline,
+                                                size: 16,
+                                                color: selected
+                                                    ? SwissTheme.accentBlue
+                                                    : SwissTheme.textSecondary,
                                               ),
-                                            ),
-                                            const SizedBox(height: 3),
-                                            Text(
-                                              _subtitle(s),
-                                              style: AppFonts.pixelifySans(
-                                                fontSize: 9,
-                                                color: SwissTheme.textSecondary,
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      s.title,
+                                                      maxLines: 2,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: AppFonts.pixelifySans(
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: SwissTheme.textPrimary,
+                                                        height: 1.2,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 3),
+                                                    Text(
+                                                      _subtitle(s),
+                                                      style: AppFonts.pixelifySans(
+                                                        fontSize: 9,
+                                                        color: SwissTheme.textSecondary,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Rename',
+                                      icon: const Icon(Icons.edit_outlined, size: 16),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: onRename == null ? null : () => onRename!(s),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Delete',
+                                      icon: const Icon(Icons.delete_outline, size: 16),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: onDelete == null ? null : () => onDelete!(s),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Animated HUD sign shown during road-crossing levels after spawn-sign entry.
+/// Animated HUD sign shown during road-crossing levels after [Spawn_Sign] entry;
+/// hidden after [Remove_Sign] entry.
 class PedestrianCrossingSignHud extends StatelessWidget {
   const PedestrianCrossingSignHud({
     super.key,

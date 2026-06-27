@@ -82,8 +82,14 @@ extension RoadCrossingZones on RealisticCarGameBase {
     return v == 'spawn_sign' || v.contains('spawn_sign');
   }
 
-  void _loadSpawnSignZones(TiledComponent tiledMap) {
+  bool _isRemoveSignLabel(String raw) {
+    final v = raw.trim().toLowerCase().replaceAll(' ', '_');
+    return v == 'remove_sign' || v.contains('remove_sign');
+  }
+
+  void _loadRoadCrossingSignHudZones(TiledComponent tiledMap) {
     _spawnSignRects.clear();
+    _removeSignRects.clear();
     _spawnSignAssetPath = MediaAssets.pedestrianCrossingSign;
 
     for (final layer in tiledMap.tileMap.map.layers.whereType<ObjectGroup>()) {
@@ -91,11 +97,15 @@ extension RoadCrossingZones on RealisticCarGameBase {
       final layerNameLower = layer.name.trim().toLowerCase();
       final layerIsSpawnSign = _isSpawnSignLabel(layerClassLower) ||
           _isSpawnSignLabel(layerNameLower);
+      final layerIsRemoveSign = _isRemoveSignLabel(layerClassLower) ||
+          _isRemoveSignLabel(layerNameLower);
 
-      final customAsset = layer.properties.getValue<String>('sign_asset') ??
-          layer.properties.getValue<String>('sign_image');
-      if (customAsset != null && customAsset.trim().isNotEmpty) {
-        _spawnSignAssetPath = customAsset.trim();
+      if (layerIsSpawnSign) {
+        final customAsset = layer.properties.getValue<String>('sign_asset') ??
+            layer.properties.getValue<String>('sign_image');
+        if (customAsset != null && customAsset.trim().isNotEmpty) {
+          _spawnSignAssetPath = customAsset.trim();
+        }
       }
 
       for (final obj in layer.objects) {
@@ -108,37 +118,59 @@ extension RoadCrossingZones on RealisticCarGameBase {
         final objectClass = obj.class_.trim().toLowerCase();
         final objectType = obj.type.trim().toLowerCase();
         final objectName = obj.name.trim().toLowerCase();
-        if (!layerIsSpawnSign &&
-            !_isSpawnSignLabel(objectClass) &&
-            !_isSpawnSignLabel(objectType) &&
-            !_isSpawnSignLabel(objectName)) {
+        final rect = Rect.fromLTWH(obj.x, obj.y, obj.width, obj.height);
+
+        final isSpawnObject = layerIsSpawnSign ||
+            _isSpawnSignLabel(objectClass) ||
+            _isSpawnSignLabel(objectType) ||
+            _isSpawnSignLabel(objectName);
+        if (isSpawnObject) {
+          _spawnSignRects.add(rect);
           continue;
         }
 
-        _spawnSignRects.add(
-          Rect.fromLTWH(obj.x, obj.y, obj.width, obj.height),
-        );
+        final isRemoveObject = layerIsRemoveSign ||
+            _isRemoveSignLabel(objectClass) ||
+            _isRemoveSignLabel(objectType) ||
+            _isRemoveSignLabel(objectName);
+        if (isRemoveObject) {
+          _removeSignRects.add(rect);
+        }
       }
     }
     print(
-      '[DEBUG] _setupRoad() - Spawn sign rects: ${_spawnSignRects.length} asset=$_spawnSignAssetPath',
+      '[DEBUG] _setupRoad() - Spawn sign rects: ${_spawnSignRects.length} '
+      'remove sign rects: ${_removeSignRects.length} asset=$_spawnSignAssetPath',
     );
   }
 
   void _updatePedestrianCrossingSignHud() {
     if (!_isRoadCrossingMap() || _testFinished || car == null) {
+      if (pedestrianCrossingSignVisible.value) {
+        pedestrianCrossingSignVisible.value = false;
+      }
       if (pedestrianCrossingDistanceMeters.value != null) {
         pedestrianCrossingDistanceMeters.value = null;
       }
       return;
     }
 
+    final carRect = Rect.fromCenter(
+      center: Offset(car!.position.x, car!.position.y),
+      width: car!.size.x,
+      height: car!.size.y,
+    );
+
+    if (pedestrianCrossingSignVisible.value && _removeSignRects.isNotEmpty) {
+      for (final rect in _removeSignRects) {
+        if (!carRect.overlaps(rect)) continue;
+        pedestrianCrossingSignVisible.value = false;
+        pedestrianCrossingDistanceMeters.value = null;
+        return;
+      }
+    }
+
     if (!pedestrianCrossingSignVisible.value && _spawnSignRects.isNotEmpty) {
-      final carRect = Rect.fromCenter(
-        center: Offset(car!.position.x, car!.position.y),
-        width: car!.size.x,
-        height: car!.size.y,
-      );
       for (final rect in _spawnSignRects) {
         if (!carRect.overlaps(rect)) continue;
         pedestrianCrossingSignVisible.value = true;

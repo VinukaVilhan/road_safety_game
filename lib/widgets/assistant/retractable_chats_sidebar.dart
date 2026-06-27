@@ -19,6 +19,8 @@ class RetractableChatsSidebar extends StatelessWidget {
     required this.onNewChat,
     required this.onSelect,
     required this.onToggle,
+    this.onRename,
+    this.onDelete,
   });
 
   final bool expanded;
@@ -29,6 +31,8 @@ class RetractableChatsSidebar extends StatelessWidget {
   final VoidCallback? onNewChat;
   final void Function(InstructorChatSession session) onSelect;
   final VoidCallback onToggle;
+  final void Function(InstructorChatSession session)? onRename;
+  final void Function(InstructorChatSession session)? onDelete;
 
   void _toggle() {
     UiSoundService().playMenuTap();
@@ -53,6 +57,8 @@ class RetractableChatsSidebar extends StatelessWidget {
                 loading: loading,
                 onNewChat: onNewChat,
                 onSelect: onSelect,
+                onRename: onRename,
+                onDelete: onDelete,
                 onCollapse: _toggle,
               )
             : Material(

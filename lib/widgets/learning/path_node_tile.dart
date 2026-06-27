@@ -4,6 +4,7 @@ import '../../models/learning/learning_path.dart';
 import '../../theme/swiss_theme.dart';
 import '../../utils/app_fonts.dart';
 import '../../screens/driving/level_selection_screen.dart' show HatchingPainter;
+import '../driving/driving_level_report_icon_button.dart';
 
 /// One step on the consolidated learning path.
 class PathNodeTile extends StatelessWidget {
@@ -12,6 +13,8 @@ class PathNodeTile extends StatelessWidget {
   final bool done;
   final bool isCurrent;
   final VoidCallback onTap;
+  final bool hasDrivingReport;
+  final bool drivingReportPassed;
 
   const PathNodeTile({
     super.key,
@@ -20,6 +23,8 @@ class PathNodeTile extends StatelessWidget {
     required this.done,
     required this.isCurrent,
     required this.onTap,
+    this.hasDrivingReport = false,
+    this.drivingReportPassed = false,
   });
 
   IconData get _icon {
@@ -68,30 +73,35 @@ class PathNodeTile extends StatelessWidget {
             ? SwissTheme.accentRed.withValues(alpha: 0.08)
             : SwissTheme.backgroundWhite;
 
+    final showReport =
+        node.kind == LearningPathNodeKind.drivingLevel && hasDrivingReport;
+    final levelId = node.ref?.trim();
+
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: unlocked ? onTap : null,
-        child: Container(
-          width: 160,
-          height: 100,
-          decoration: BoxDecoration(
-            color: bg,
-            border: Border.all(
-              color: isCurrent ? SwissTheme.accentRed : SwissTheme.borderBlack,
-              width: isCurrent ? 2 : 1,
-            ),
+      child: Container(
+        width: 160,
+        height: 100,
+        decoration: BoxDecoration(
+          color: bg,
+          border: Border.all(
+            color: isCurrent ? SwissTheme.accentRed : SwissTheme.borderBlack,
+            width: isCurrent ? 2 : 1,
           ),
-          child: Stack(
-            children: [
-              if (!unlocked)
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.45,
-                    child: CustomPaint(painter: HatchingPainter()),
-                  ),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (!unlocked)
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.45,
+                  child: CustomPaint(painter: HatchingPainter()),
                 ),
-              Padding(
+              ),
+            InkWell(
+              onTap: unlocked ? onTap : null,
+              child: Padding(
                 padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +114,9 @@ class PathNodeTile extends StatelessWidget {
                           color: unlocked ? SwissTheme.textPrimary : SwissTheme.textSecondary,
                         ),
                         const Spacer(),
-                        if (!unlocked)
+                        if (showReport)
+                          const SizedBox(width: 28, height: 28)
+                        else if (!unlocked)
                           const Icon(Icons.lock_outline, size: 16, color: SwissTheme.textPrimary)
                         else if (done)
                           Icon(Icons.check_circle, size: 16, color: SwissTheme.accentGreen),
@@ -133,8 +145,18 @@ class PathNodeTile extends StatelessWidget {
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+            if (showReport && levelId != null && levelId.isNotEmpty)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: DrivingLevelReportIconButton(
+                  levelId: levelId,
+                  passed: drivingReportPassed,
+                  iconSize: 14,
+                ),
+              ),
+          ],
         ),
       ),
     );

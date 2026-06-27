@@ -100,4 +100,17 @@ abstract final class LandscapeLayout {
     return chatMessagePaneWidth(context, sidebarExpanded: sidebarExpanded).clamp(280.0, 520.0) *
         0.72;
   }
+
+  /// Practical driving session report — uses most of the landscape viewport.
+  static EdgeInsets drivingReportDialogInsetPadding(BuildContext context) {
+    return const EdgeInsets.symmetric(horizontal: 16, vertical: 10);
+  }
+
+  static BoxConstraints drivingReportDialogConstraints(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    return BoxConstraints(
+      maxWidth: (size.width * 0.94).clamp(640.0, 960.0),
+      maxHeight: size.height * 0.9,
+    );
+  }
 }

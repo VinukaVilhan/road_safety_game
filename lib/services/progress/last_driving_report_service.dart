@@ -534,7 +534,7 @@ class LastDrivingReportService {
     }
   }
 
-  Future<void> recordAttempt({
+  Future<LastDrivingReport> recordAttempt({
     required DrivingAttemptSummary summary,
     required GameLevel level,
     Uint8List? screenshotBytes,
@@ -641,6 +641,7 @@ class LastDrivingReportService {
     } else if (!hasMainScreenshot && uid != null && uid.isNotEmpty) {
       await _enqueueDrivingLastRun(uid, level, _firestorePayload(report, level));
     }
+    return report;
   }
 
   Future<LastDrivingReport?> loadReportForLevel(String levelId) async {
@@ -658,5 +659,21 @@ class LastDrivingReportService {
   Future<Set<String>> levelIdsWithSavedReports() async {
     final all = await _readAllRaw();
     return all.keys.toSet();
+  }
+
+  /// Last-run pass/fail per level id (only levels with a saved report).
+  Future<Map<String, bool>> levelPassStatusByLevelId() async {
+    final all = await _readAllRaw();
+    final out = <String, bool>{};
+    for (final entry in all.entries) {
+      if (entry.value is! Map) continue;
+      try {
+        final report = LastDrivingReport.fromJson(
+          Map<String, dynamic>.from(entry.value as Map),
+        );
+        out[report.levelId] = report.passed;
+      } catch (_) {}
+    }
+    return out;
   }
 }

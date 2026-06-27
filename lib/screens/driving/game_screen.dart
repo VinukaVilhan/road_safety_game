@@ -19,9 +19,9 @@ import '../../services/progress/odometer_service.dart';
 import '../../services/audio/music_service.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../services/audio/weather_sfx_service.dart';
-import '../../widgets/driving/driving_attempt_summary_content.dart';
 import '../../widgets/driving/driving_pause_dialog.dart';
 import '../../widgets/driving/driving_radio_icon.dart';
+import '../../widgets/last_driving_report_dialog.dart';
 import '../../widgets/driving/level_briefing.dart';
 import '../../widgets/driving/weather_precheck_dialog.dart';
 import '../../widgets/driving/pedestrian_crossing_sign_hud.dart';
@@ -82,7 +82,7 @@ class GameScreenState extends State<GameScreen> {
       levelId: widget.level.id,
       scenarioId: widget.level.scenarioId,
       drivingRulesEnabled: widget.level.enableDrivingRules,
-      onTestPassed: _handleTestPassed,
+      onTestPassed: () => unawaited(_handleTestPassed()),
       onTestFailed: (message) => unawaited(_handleTestFailed(message)),
       onPenaltyRecorded: (description) => unawaited(_onPenaltyRecorded(description)),
       onWeatherCheckPrompt: (request) {
@@ -784,11 +784,11 @@ class GameScreenState extends State<GameScreen> {
     _penaltyCaptures.add((description: description, bytes: bytes));
   }
 
-  void _handleTestPassed() {
+  Future<void> _handleTestPassed() async {
     if (!mounted || _resultDialogVisible) return;
     _resultDialogVisible = true;
     game.endLessonAudio();
-    unawaited(MusicService().endDrivingLesson());
+    await MusicService().endDrivingLesson();
     final summary = game.getAttemptSummary();
     final penaltyPayload =
         List<({String description, Uint8List bytes})>.from(_penaltyCaptures);
@@ -798,51 +798,35 @@ class GameScreenState extends State<GameScreen> {
     } else {
       UiSoundService().playLevelFailed();
     }
-    unawaited(
-      LastDrivingReportService.instance.recordAttempt(
-        summary: summary,
-        level: widget.level,
-        penaltyCaptures: penaltyPayload,
-      ),
+
+    final report = await LastDrivingReportService.instance.recordAttempt(
+      summary: summary,
+      level: widget.level,
+      penaltyCaptures: penaltyPayload,
     );
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        final title = summary.passed
-            ? 'Test Passed!'
-            : 'Attempt not passed';
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1a1a2e),
-          title: Text(title, style: const TextStyle(color: Colors.white)),
-          content: DrivingAttemptSummaryContent(
-            summary: summary,
-            level: widget.level,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                UiSoundService().playMenuTap();
-                // Dashed-lines: reaching the green finish unlocks the level even if penalties
-                // prevented a "pass" on the report.
-                if (summary.passed ||
-                    (widget.level.isMarkingsDashedLevel && summary.reachedFinishZone)) {
-                  await LevelProgressService.markLevelCompleted(
-                    widget.level.id,
-                    moduleId: widget.level.moduleId,
-                  );
-                }
-                if (!mounted) return;
-                Navigator.of(context).pop();
-                Navigator.of(context).pop(widget.level.id);
-              },
-              child: const Text('Back to Levels'),
-            ),
-          ],
-        );
+    if (!mounted) return;
+    showDrivingEndReportDialog(
+      context,
+      report: report,
+      onBackToLevels: () {
+        unawaited(_completeLevelAndLeave(summary));
       },
-    ).then((_) => _resultDialogVisible = false);
+    ).then((_) {
+      if (mounted) _resultDialogVisible = false;
+    });
+  }
+
+  Future<void> _completeLevelAndLeave(DrivingAttemptSummary summary) async {
+    if (summary.passed ||
+        (widget.level.isMarkingsDashedLevel && summary.reachedFinishZone)) {
+      await LevelProgressService.markLevelCompleted(
+        widget.level.id,
+        moduleId: widget.level.moduleId,
+      );
+    }
+    if (!mounted) return;
+    Navigator.of(context).pop(widget.level.id);
   }
 
   Future<void> _handleTestFailed(String message) async {
@@ -856,54 +840,34 @@ class GameScreenState extends State<GameScreen> {
     final penaltyPayload =
         List<({String description, Uint8List bytes})>.from(_penaltyCaptures);
     _penaltyCaptures.clear();
-    await LastDrivingReportService.instance.recordAttempt(
+    final report = await LastDrivingReportService.instance.recordAttempt(
       summary: summary,
       level: widget.level,
       screenshotBytes: screenshotBytes,
       penaltyCaptures: penaltyPayload,
     );
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1a1a2e),
-          title: const Text('Test Failed', style: TextStyle(color: Colors.white)),
-          content: DrivingAttemptSummaryContent(
-            summary: summary,
-            level: widget.level,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                UiSoundService().playMenuTap();
-                Navigator.of(context).pop();
-                if (!mounted) return;
-                // Restart in place so this route is not disposed (dispose forces
-                // portrait and races with the new GameScreen on pushReplacement).
-                game.restartLevel();
-                _penaltyCaptures.clear();
-                _steeringRotation.value = 0.0;
-                setState(() => _currentGear = 1);
-                _applyGearChange();
-                MusicService().beginDrivingLesson();
-                unawaited(_beginLevelStart());
-              },
-              child: const Text('Retry'),
-            ),
-            TextButton(
-              onPressed: () {
-                UiSoundService().playMenuTap();
-                Navigator.of(context).pop();
-                Navigator.of(context).pop();
-              },
-              child: const Text('Back to Levels'),
-            ),
-          ],
-        );
+    if (!mounted) return;
+    showDrivingEndReportDialog(
+      context,
+      report: report,
+      onRetry: () {
+        game.restartLevel();
+        _penaltyCaptures.clear();
+        _steeringRotation.value = 0.0;
+        setState(() => _currentGear = 1);
+        _applyGearChange();
+        MusicService().beginDrivingLesson();
+        unawaited(_beginLevelStart());
+        _resultDialogVisible = false;
       },
-    ).then((_) => _resultDialogVisible = false);
+      onBackToLevels: () {
+        if (!mounted) return;
+        Navigator.of(context).pop();
+      },
+    ).then((_) {
+      if (mounted) _resultDialogVisible = false;
+    });
   }
 
   void _showMusicSheet() {

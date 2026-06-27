@@ -7,6 +7,7 @@ import '../models/driving/last_driving_report.dart';
 import '../screens/assistant/assistant_chat_screen.dart';
 import '../services/assistant/instructor_chat_sessions_service.dart';
 import '../services/audio/ui_sound_service.dart';
+import '../theme/landscape_layout.dart';
 
 /// Paper-like colours and typography for the session report (distinct from game HUD).
 class _DocTheme {
@@ -63,7 +64,7 @@ String _ambulanceTimeGateLabel(double sec) {
   return '${sec.toStringAsFixed(0)} s to reach';
 }
 
-List<Widget> _ambulanceReportRows(AmbulanceAttemptSnapshot a) {
+List<Widget> _ambulanceReportRows(AmbulanceAttemptSnapshot a, {double labelWidth = 118}) {
   String yn(bool v) => v ? 'Yes' : 'No';
   String side(bool? y) {
     if (y == null) return '—';
@@ -75,22 +76,23 @@ List<Widget> _ambulanceReportRows(AmbulanceAttemptSnapshot a) {
       label: 'Elapsed / level timeout',
       value:
           '${a.elapsedSecs.toStringAsFixed(1)} s / ${a.levelTimeoutSecs.toStringAsFixed(0)} s max',
+      labelWidth: labelWidth,
     ),
-    _DocRow(label: 'CP1 on map', value: yn(a.mapHasCp1)),
+    _DocRow(label: 'CP1 on map', value: yn(a.mapHasCp1), labelWidth: labelWidth),
     if (a.mapHasCp1) ...[
-      _DocRow(label: 'CP1 cleared', value: yn(a.cp1Cleared)),
-      _DocRow(label: 'CP1 time gate', value: _ambulanceTimeGateLabel(a.cp1TimeLimitSecs)),
+      _DocRow(label: 'CP1 cleared', value: yn(a.cp1Cleared), labelWidth: labelWidth),
+      _DocRow(label: 'CP1 time gate', value: _ambulanceTimeGateLabel(a.cp1TimeLimitSecs), labelWidth: labelWidth),
     ],
-    _DocRow(label: 'CP2 on map', value: yn(a.mapHasCp2)),
+    _DocRow(label: 'CP2 on map', value: yn(a.mapHasCp2), labelWidth: labelWidth),
     if (a.mapHasCp2) ...[
-      _DocRow(label: 'CP2 cleared', value: yn(a.cp2Cleared)),
-      _DocRow(label: 'CP2 time gate', value: _ambulanceTimeGateLabel(a.cp2TimeLimitSecs)),
+      _DocRow(label: 'CP2 cleared', value: yn(a.cp2Cleared), labelWidth: labelWidth),
+      _DocRow(label: 'CP2 time gate', value: _ambulanceTimeGateLabel(a.cp2TimeLimitSecs), labelWidth: labelWidth),
     ],
-    _DocRow(label: 'Final gate (CPF) on map', value: yn(a.mapHasCpf)),
-    _DocRow(label: 'Pull-over done (P + zone + signal)', value: yn(a.pullOverCompleted)),
-    _DocRow(label: 'Yield side', value: side(a.yieldLeftSide)),
-    _DocRow(label: 'Ambulance AI (end)', value: a.ambulanceAiState),
-    _DocRow(label: 'Ambulance route finished', value: yn(a.ambulanceRouteCompleted)),
+    _DocRow(label: 'Final gate (CPF) on map', value: yn(a.mapHasCpf), labelWidth: labelWidth),
+    _DocRow(label: 'Pull-over done (P + zone + signal)', value: yn(a.pullOverCompleted), labelWidth: labelWidth),
+    _DocRow(label: 'Yield side', value: side(a.yieldLeftSide), labelWidth: labelWidth),
+    _DocRow(label: 'Ambulance AI (end)', value: a.ambulanceAiState, labelWidth: labelWidth),
+    _DocRow(label: 'Ambulance route finished', value: yn(a.ambulanceRouteCompleted), labelWidth: labelWidth),
   ];
 }
 
@@ -222,10 +224,75 @@ class _PenaltyScreenshotImage extends StatelessWidget {
   }
 }
 
+/// Full session report when a practical level ends (pass or fail).
+Future<void> showDrivingEndReportDialog(
+  BuildContext context, {
+  required LastDrivingReport report,
+  required VoidCallback onBackToLevels,
+  VoidCallback? onRetry,
+}) {
+  final constraints = LandscapeLayout.drivingReportDialogConstraints(context);
+  final navigator = Navigator.of(context);
+
+  return showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black54,
+    builder: (dialogContext) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        insetPadding: LandscapeLayout.drivingReportDialogInsetPadding(context),
+        child: Material(
+          color: Colors.transparent,
+          child: ConstrainedBox(
+            constraints: constraints,
+            child: _DrivingReportDocument(
+              report: report,
+              onClose: () {
+                UiSoundService().playMenuTap();
+                Navigator.of(dialogContext).pop();
+                onBackToLevels();
+              },
+              onAskFromAi: () {
+                UiSoundService().playMenuTap();
+                Navigator.of(dialogContext).pop();
+                navigator.push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => AssistantChatScreen(
+                      launchContext: AssistantLaunchContext(
+                        screenTitle: 'Last run report — ${report.levelName}',
+                        lastReport: report,
+                        assistantSessionId:
+                            InstructorChatSessionsService.sessionIdForReport(report),
+                      ),
+                    ),
+                  ),
+                );
+              },
+              onRetry: onRetry == null
+                  ? null
+                  : () {
+                      UiSoundService().playMenuTap();
+                      Navigator.of(dialogContext).pop();
+                      onRetry();
+                    },
+              onBackToLevels: () {
+                UiSoundService().playMenuTap();
+                Navigator.of(dialogContext).pop();
+                onBackToLevels();
+              },
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
+
 /// Read-only session report shown from the level card (document-style layout).
 void showLastDrivingReportDialog(BuildContext context, LastDrivingReport report) {
-  final maxH = MediaQuery.sizeOf(context).height * 0.86;
-  final maxW = 420.0;
+  final constraints = LandscapeLayout.drivingReportDialogConstraints(context);
   final navigator = Navigator.of(context);
 
   showDialog<void>(
@@ -235,11 +302,11 @@ void showLastDrivingReportDialog(BuildContext context, LastDrivingReport report)
       return Dialog(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        insetPadding: LandscapeLayout.drivingReportDialogInsetPadding(context),
         child: Material(
           color: Colors.transparent,
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxW, maxHeight: maxH),
+            constraints: constraints,
             child: _DrivingReportDocument(
               report: report,
               onClose: () {
@@ -273,11 +340,15 @@ class _DrivingReportDocument extends StatelessWidget {
   final LastDrivingReport report;
   final VoidCallback onClose;
   final VoidCallback onAskFromAi;
+  final VoidCallback? onRetry;
+  final VoidCallback? onBackToLevels;
 
   const _DrivingReportDocument({
     required this.report,
     required this.onClose,
     required this.onAskFromAi,
+    this.onRetry,
+    this.onBackToLevels,
   });
 
   String _formatDurationMs(int ms) {
@@ -312,6 +383,170 @@ class _DrivingReportDocument extends StatelessWidget {
   bool get _isLegacyMistakePlaceholder =>
       report.mistakeDetails.isEmpty && report.mistakes > 0;
 
+  Widget _sectionTitle(String text) {
+    return Text(
+      text,
+      style: _DocTheme.label.copyWith(
+        fontWeight: FontWeight.w600,
+        color: _DocTheme.ink,
+      ),
+    );
+  }
+
+  Widget _buildSummaryColumn(int total) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Session summary'),
+          const SizedBox(height: 8),
+          _DocRow(
+            label: 'Score',
+            value: '${report.score} / 100',
+            labelWidth: 132,
+          ),
+          _DocRow(
+            label: 'Checklist correct',
+            value: '${report.correctMoves} of $total',
+            labelWidth: 132,
+          ),
+          _DocRow(
+            label: 'Time on attempt',
+            value: _formatDurationMs(report.timeSpentMs),
+            labelWidth: 132,
+          ),
+          if (report.ambulance != null) ...[
+            const SizedBox(height: 12),
+            _sectionTitle('Ambulance checkpoints'),
+            const SizedBox(height: 8),
+            ..._ambulanceReportRows(report.ambulance!, labelWidth: 132),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsColumn(List<String> lines, bool hasExpandableFindings) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(12, 12, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('Checklist findings'),
+          const SizedBox(height: 6),
+          if (hasExpandableFindings)
+            _MistakesExpansion(
+              mistakeCount: report.mistakes,
+              lines: lines,
+              isLegacyPlaceholder: _isLegacyMistakePlaceholder,
+            )
+          else
+            Text(
+              'No checklist deductions on file for this attempt.',
+              style: _DocTheme.small,
+            ),
+          if (_hasFailureScreenshot(report)) ...[
+            const SizedBox(height: 12),
+            _sectionTitle('Screenshot at failure'),
+            const SizedBox(height: 6),
+            _ReportScreenshotTile(
+              caption: null,
+              child: _FailureScreenshotImage(report: report),
+            ),
+          ],
+          if (report.penaltyRecords.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _sectionTitle('Penalty screenshots'),
+            const SizedBox(height: 8),
+            _PenaltyScreenshotStrip(records: report.penaltyRecords),
+          ],
+          if (report.failureMessage != null &&
+              report.failureMessage!.trim().isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _sectionTitle('Examiner note'),
+            const SizedBox(height: 6),
+            Text(
+              report.failureMessage!.trim(),
+              style: _DocTheme.body.copyWith(fontStyle: FontStyle.italic),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Row(
+        children: [
+          TextButton.icon(
+            onPressed: onAskFromAi,
+            style: TextButton.styleFrom(
+              foregroundColor: _DocTheme.ink,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+            icon: Icon(Icons.smart_toy_outlined, size: 20, color: _DocTheme.marginLine),
+            label: Text(
+              'Ask from AI',
+              style: _DocTheme.body.copyWith(
+                fontWeight: FontWeight.w600,
+                decoration: TextDecoration.underline,
+                decorationColor: _DocTheme.inkMuted,
+              ),
+            ),
+          ),
+          const Spacer(),
+          if (onRetry != null)
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                foregroundColor: _DocTheme.ink,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+              child: Text(
+                'Retry',
+                style: _DocTheme.body.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+          if (onBackToLevels != null)
+            TextButton(
+              onPressed: onBackToLevels,
+              style: TextButton.styleFrom(
+                foregroundColor: _DocTheme.ink,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              child: Text(
+                'Back to Levels',
+                style: _DocTheme.body.copyWith(
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                  decorationColor: _DocTheme.inkMuted,
+                ),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: onClose,
+              style: TextButton.styleFrom(
+                foregroundColor: _DocTheme.ink,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              child: Text(
+                'Close',
+                style: _DocTheme.body.copyWith(
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                  decorationColor: _DocTheme.inkMuted,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final total = report.correctMoves + report.mistakes;
@@ -344,198 +579,76 @@ class _DrivingReportDocument extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 18, 14, 8),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         Icon(
                           Icons.article_outlined,
-                          size: 28,
+                          size: 26,
                           color: _DocTheme.inkMuted,
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('PRACTICAL SESSION REPORT', style: _DocTheme.title),
-                              const SizedBox(height: 6),
-                              Text(report.levelName, style: _DocTheme.heading),
                               const SizedBox(height: 4),
-                              Text(_whenLocal(), style: _DocTheme.small),
+                              Text(
+                                report.levelName,
+                                style: _DocTheme.heading.copyWith(fontSize: 18),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ],
                           ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: outcomeColor, width: 1.5),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: Text(
+                                outcome.toUpperCase(),
+                                style: _DocTheme.small.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.8,
+                                  color: outcomeColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(_whenLocal(), style: _DocTheme.small),
+                          ],
                         ),
                       ],
                     ),
                   ),
                   const Divider(height: 1, thickness: 1, color: _DocTheme.rule),
                   Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _DocRow(
-                            label: 'Outcome',
-                            value: outcome,
-                            valueColor: outcomeColor,
-                            valueWeight: FontWeight.w600,
-                          ),
-                          _DocRow(
-                            label: 'Score',
-                            value: '${report.score} / 100',
-                          ),
-                          _DocRow(
-                            label: 'Checklist correct',
-                            value: '${report.correctMoves} of $total',
-                          ),
-                          _DocRow(
-                            label: 'Time on attempt',
-                            value: _formatDurationMs(report.timeSpentMs),
-                          ),
-                          if (report.ambulance != null) ...[
-                            const SizedBox(height: 14),
-                            Text(
-                              'Ambulance level — checkpoints & timers',
-                              style: _DocTheme.label.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: _DocTheme.ink,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            ..._ambulanceReportRows(report.ambulance!),
-                          ],
-                          const SizedBox(height: 14),
-                          Text(
-                            'Checklist findings',
-                            style: _DocTheme.label.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: _DocTheme.ink,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          if (hasExpandableFindings)
-                            _MistakesExpansion(
-                              mistakeCount: report.mistakes,
-                              lines: lines,
-                              isLegacyPlaceholder: _isLegacyMistakePlaceholder,
-                            )
-                          else
-                            Text(
-                              'No checklist deductions on file for this attempt.',
-                              style: _DocTheme.small,
-                            ),
-                          if (_hasFailureScreenshot(report)) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              'Screenshot at failure',
-                              style: _DocTheme.label.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: _DocTheme.ink,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 220),
-                                child: _FailureScreenshotImage(report: report),
-                              ),
-                            ),
-                          ],
-                          if (report.penaltyRecords.isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              'Penalty screenshots',
-                              style: _DocTheme.label.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: _DocTheme.ink,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            for (final rec in report.penaltyRecords) ...[
-                              Text(rec.description, style: _DocTheme.body),
-                              if (_hasPenaltyScreenshot(rec)) ...[
-                                const SizedBox(height: 6),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: ConstrainedBox(
-                                    constraints:
-                                        const BoxConstraints(maxHeight: 220),
-                                    child: _PenaltyScreenshotImage(record: rec),
-                                  ),
-                                ),
-                              ] else ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  'No image on file for this penalty.',
-                                  style: _DocTheme.small,
-                                ),
-                              ],
-                              const SizedBox(height: 12),
-                            ],
-                          ],
-                          if (report.failureMessage != null &&
-                              report.failureMessage!.trim().isNotEmpty) ...[
-                            const SizedBox(height: 16),
-                            Text(
-                              'Examiner note',
-                              style: _DocTheme.label.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: _DocTheme.ink,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              report.failureMessage!.trim(),
-                              style: _DocTheme.body.copyWith(fontStyle: FontStyle.italic),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                  const Divider(height: 1, thickness: 1, color: _DocTheme.rule),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        TextButton.icon(
-                          onPressed: onAskFromAi,
-                          style: TextButton.styleFrom(
-                            foregroundColor: _DocTheme.ink,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          ),
-                          icon: Icon(Icons.smart_toy_outlined, size: 20, color: _DocTheme.marginLine),
-                          label: Text(
-                            'Ask from AI',
-                            style: _DocTheme.body.copyWith(
-                              fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.underline,
-                              decorationColor: _DocTheme.inkMuted,
-                            ),
-                          ),
+                        Expanded(
+                          flex: 2,
+                          child: _buildSummaryColumn(total),
                         ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: onClose,
-                          style: TextButton.styleFrom(
-                            foregroundColor: _DocTheme.ink,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          ),
-                          child: Text(
-                            'Close',
-                            style: _DocTheme.body.copyWith(
-                              fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.underline,
-                              decorationColor: _DocTheme.inkMuted,
-                            ),
-                          ),
+                        const VerticalDivider(width: 1, thickness: 1, color: _DocTheme.rule),
+                        Expanded(
+                          flex: 3,
+                          child: _buildDetailsColumn(lines, hasExpandableFindings),
                         ),
                       ],
                     ),
                   ),
+                  const Divider(height: 1, thickness: 1, color: _DocTheme.rule),
+                  _buildActionBar(),
                 ],
               ),
             ),
@@ -549,37 +662,132 @@ class _DrivingReportDocument extends StatelessWidget {
 class _DocRow extends StatelessWidget {
   final String label;
   final String value;
-  final Color? valueColor;
-  final FontWeight? valueWeight;
+  final double labelWidth;
 
   const _DocRow({
     required this.label,
     required this.value,
-    this.valueColor,
-    this.valueWeight,
+    this.labelWidth = 118,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 118,
+            width: labelWidth,
             child: Text(label, style: _DocTheme.label),
           ),
           Expanded(
             child: Text(
               value,
               style: _DocTheme.body.copyWith(
-                color: valueColor ?? _DocTheme.ink,
-                fontWeight: valueWeight ?? FontWeight.w500,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReportScreenshotTile extends StatelessWidget {
+  final String? caption;
+  final Widget child;
+
+  const _ReportScreenshotTile({
+    required this.child,
+    this.caption,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (caption != null && caption!.isNotEmpty) ...[
+          Text(caption!, style: _DocTheme.small, maxLines: 2, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 4),
+        ],
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: SizedBox(
+            height: 120,
+            width: double.infinity,
+            child: child,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PenaltyScreenshotStrip extends StatelessWidget {
+  final List<PenaltyRecord> records;
+
+  const _PenaltyScreenshotStrip({required this.records});
+
+  @override
+  Widget build(BuildContext context) {
+    final withImages = records.where(_hasPenaltyScreenshot).toList();
+    if (withImages.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final rec in records) ...[
+            Text(rec.description, style: _DocTheme.body),
+            const SizedBox(height: 4),
+            Text('No image on file for this penalty.', style: _DocTheme.small),
+            const SizedBox(height: 8),
+          ],
+        ],
+      );
+    }
+
+    return SizedBox(
+      height: 148,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: records.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final rec = records[index];
+          return SizedBox(
+            width: 200,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  rec.description,
+                  style: _DocTheme.small,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: _hasPenaltyScreenshot(rec)
+                        ? _PenaltyScreenshotImage(record: rec)
+                        : ColoredBox(
+                            color: const Color(0xFFF5EFE8),
+                            child: Center(
+                              child: Text(
+                                'No image',
+                                style: _DocTheme.small,
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

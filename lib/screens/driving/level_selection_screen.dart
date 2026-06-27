@@ -10,7 +10,7 @@ import '../../services/progress/level_progress_service.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../services/audio/weather_sfx_service.dart';
 import '../../services/progress/last_driving_report_service.dart';
-import '../../widgets/last_driving_report_dialog.dart';
+import '../../widgets/driving/driving_level_report_icon_button.dart';
 import 'game_screen.dart';
 import 'emergency_vehicles_category_screen.dart';
 import '../../models/assistant/assistant_launch_context.dart';
@@ -72,6 +72,7 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
 
   /// Levels with a saved "last run" summary (document icon on card).
   Set<String> _levelIdsWithReport = {};
+  Map<String, bool> _levelPassStatus = {};
 
   @override
   void initState() {
@@ -112,6 +113,12 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     );
 
     _loadCompletedLevels();
+    unawaited(_refreshSavedDrivingReports());
+  }
+
+  @override
+  void activate() {
+    super.activate();
     unawaited(_refreshSavedDrivingReports());
   }
 
@@ -279,156 +286,128 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     bool isUnlocked, {
     bool underDevelopment = false,
   }) {
-    return GestureDetector(
-      onTap: () {
-        UiSoundService().playMenuTap();
-        if (isUnlocked) {
-          _startGame(level);
-        } else {
-          _showLockedLevelDialog(level);
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isUnlocked ? SwissTheme.backgroundWhite : SwissTheme.backgroundLightGrey,
-          border: Border.all(
-            color: SwissTheme.borderBlack,
-            width: 1,
-          ),
-          borderRadius: BorderRadius.zero,
+    final hasReport = _levelIdsWithReport.contains(level.id);
+    final passed = _levelPassStatus[level.id] ?? false;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isUnlocked ? SwissTheme.backgroundWhite : SwissTheme.backgroundLightGrey,
+        border: Border.all(
+          color: SwissTheme.borderBlack,
+          width: 1,
         ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // Locked overlay pattern
-            if (!isUnlocked)
-              Opacity(
-                opacity: 0.5,
-                child: CustomPaint(
-                  size: Size.infinite,
-                  painter: HatchingPainter(),
-                ),
+        borderRadius: BorderRadius.zero,
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (!isUnlocked)
+            Opacity(
+              opacity: 0.5,
+              child: CustomPaint(
+                size: Size.infinite,
+                painter: HatchingPainter(),
               ),
-            
-            // Card content
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top row: Level number and lock state
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayLevelNumber(level).toString().padLeft(2, '0'),
-                        style: _levelNumberStyle.copyWith(
-                          color: isUnlocked 
-                            ? SwissTheme.textSecondary.withOpacity(0.5)
-                            : SwissTheme.textSecondary.withOpacity(0.3),
+            ),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                UiSoundService().playMenuTap();
+                if (isUnlocked) {
+                  _startGame(level);
+                } else {
+                  _showLockedLevelDialog(level);
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayLevelNumber(level).toString().padLeft(2, '0'),
+                          style: _levelNumberStyle.copyWith(
+                            color: isUnlocked
+                                ? SwissTheme.textSecondary.withOpacity(0.5)
+                                : SwissTheme.textSecondary.withOpacity(0.3),
+                          ),
                         ),
-                      ),
-                      if (!isUnlocked)
-                        Expanded(
-                          child: Center(
-                            child: Icon(
-                              Icons.lock_outline,
-                              color: SwissTheme.textPrimary,
-                              size: 32,
+                        if (!isUnlocked)
+                          Expanded(
+                            child: Center(
+                              child: Icon(
+                                Icons.lock_outline,
+                                color: SwissTheme.textPrimary,
+                                size: 32,
+                              ),
+                            ),
+                          )
+                        else if (hasReport)
+                          const SizedBox(width: 36, height: 36),
+                      ],
+                    ),
+                    const Spacer(),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          level.name.toUpperCase(),
+                          style: _levelTitleStyle.copyWith(
+                            color: isUnlocked
+                                ? SwissTheme.textPrimary
+                                : SwissTheme.textSecondary.withOpacity(0.5),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.clip,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          level.description,
+                          style: SwissTheme.monospacedText.copyWith(
+                            fontSize: 10,
+                            color: isUnlocked
+                                ? SwissTheme.textSecondary
+                                : SwissTheme.textSecondary.withOpacity(0.4),
+                          ),
+                          softWrap: true,
+                          maxLines: null,
+                          overflow: TextOverflow.clip,
+                        ),
+                        if (underDevelopment && !isUnlocked) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'UNDER DEVELOPMENT',
+                            style: AppFonts.pixelifySans(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                              color: SwissTheme.accentOrange,
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  
-                  const Spacer(),
-                  
-                  // Title and description (bottom left)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        level.name.toUpperCase(),
-                        style: _levelTitleStyle.copyWith(
-                          color: isUnlocked 
-                            ? SwissTheme.textPrimary
-                            : SwissTheme.textSecondary.withOpacity(0.5),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.clip,
-                      ),
-                      
-                      const SizedBox(height: 4),
-                      
-                      // Description (smaller text)
-                      Text(
-                        level.description,
-                        style: SwissTheme.monospacedText.copyWith(
-                          fontSize: 10,
-                          color: isUnlocked
-                            ? SwissTheme.textSecondary
-                            : SwissTheme.textSecondary.withOpacity(0.4),
-                        ),
-                        softWrap: true,
-                        maxLines: null, // Allow unlimited lines
-                        overflow: TextOverflow.clip,
-                      ),
-                      if (underDevelopment && !isUnlocked) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          'UNDER DEVELOPMENT',
-                          style: AppFonts.pixelifySans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
-                            color: SwissTheme.accentOrange,
-                          ),
-                        ),
+                        ],
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (_levelIdsWithReport.contains(level.id))
-              Positioned(
-                top: 4,
-                right: 4,
-                child: _lastRunDocButton(level),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _lastRunDocButton(GameLevel level) {
-    return Tooltip(
-      message: 'Last run summary',
-      child: Material(
-        color: SwissTheme.backgroundWhite,
-        shape: const CircleBorder(
-          side: BorderSide(color: SwissTheme.borderBlack, width: 1),
-        ),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: () async {
-            UiSoundService().playMenuTap();
-            final report = await LastDrivingReportService.instance.loadReportForLevel(level.id);
-            if (!mounted || report == null) return;
-            showLastDrivingReportDialog(context, report);
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: Icon(
-              Icons.description_outlined,
-              size: 18,
-              color: SwissTheme.accentBlue,
             ),
           ),
-        ),
+          if (hasReport)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: DrivingLevelReportIconButton(
+                levelId: level.id,
+                passed: passed,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -449,10 +428,20 @@ class LevelSelectionScreenState extends State<LevelSelectionScreen> {
     try {
       await LastDrivingReportService.instance.mergeRemoteSummariesIfSignedIn();
       final ids = await LastDrivingReportService.instance.levelIdsWithSavedReports();
+      final passStatus =
+          await LastDrivingReportService.instance.levelPassStatusByLevelId();
       if (!mounted) return;
-      setState(() => _levelIdsWithReport = ids);
+      setState(() {
+        _levelIdsWithReport = ids;
+        _levelPassStatus = passStatus;
+      });
     } catch (_) {
-      if (mounted) setState(() => _levelIdsWithReport = {});
+      if (mounted) {
+        setState(() {
+          _levelIdsWithReport = {};
+          _levelPassStatus = {};
+        });
+      }
     }
   }
 

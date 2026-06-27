@@ -15,6 +15,8 @@ class PathSnakeTrack extends StatelessWidget {
   final LearningPathProgress progress;
   final String? focusNodeId;
   final Future<void> Function(LearningPathNode node, bool unlocked) onNodeTap;
+  final Set<String> levelIdsWithReport;
+  final Map<String, bool> levelPassStatus;
 
   const PathSnakeTrack({
     super.key,
@@ -23,9 +25,22 @@ class PathSnakeTrack extends StatelessWidget {
     required this.progress,
     required this.focusNodeId,
     required this.onNodeTap,
+    this.levelIdsWithReport = const {},
+    this.levelPassStatus = const {},
   });
 
   bool _isLeft(int index) => index.isEven;
+
+  bool _hasDrivingReport(LearningPathNode node) {
+    final levelId = node.ref?.trim();
+    return levelId != null && levelIdsWithReport.contains(levelId);
+  }
+
+  bool _drivingReportPassed(LearningPathNode node) {
+    final levelId = node.ref?.trim();
+    if (levelId == null) return false;
+    return levelPassStatus[levelId] ?? false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +64,8 @@ class PathSnakeTrack extends StatelessWidget {
               done: service.isNodeComplete(nodes[i], progress),
               isCurrent: nodes[i].id == focusNodeId,
               onTap: () => onNodeTap(nodes[i], service.isNodeUnlocked(nodes[i], progress)),
+              hasDrivingReport: _hasDrivingReport(nodes[i]),
+              drivingReportPassed: _drivingReportPassed(nodes[i]),
             ),
           ),
         ],
@@ -65,6 +82,8 @@ class PathModuleSnakeSection extends StatelessWidget {
   final LearningPathProgress progress;
   final String? focusNodeId;
   final Future<void> Function(LearningPathNode node, bool unlocked) onNodeTap;
+  final Set<String> levelIdsWithReport;
+  final Map<String, bool> levelPassStatus;
 
   const PathModuleSnakeSection({
     super.key,
@@ -74,6 +93,8 @@ class PathModuleSnakeSection extends StatelessWidget {
     required this.progress,
     required this.focusNodeId,
     required this.onNodeTap,
+    this.levelIdsWithReport = const {},
+    this.levelPassStatus = const {},
   });
 
   @override
@@ -142,6 +163,8 @@ class PathModuleSnakeSection extends StatelessWidget {
             progress: progress,
             focusNodeId: focusNodeId,
             onNodeTap: onNodeTap,
+            levelIdsWithReport: levelIdsWithReport,
+            levelPassStatus: levelPassStatus,
           ),
         ],
       ),

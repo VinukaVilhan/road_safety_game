@@ -5,6 +5,7 @@ import '../../models/learning/learning_path.dart';
 import '../../services/audio/ui_sound_service.dart';
 import '../../services/content/learning_path_service.dart';
 import '../../services/learning/learning_path_navigator.dart';
+import '../../services/progress/last_driving_report_service.dart';
 import '../../theme/landscape_layout.dart';
 import '../../theme/swiss_theme.dart';
 import '../../utils/app_fonts.dart';
@@ -24,6 +25,8 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
   LearningPathProgress _progress = LearningPathProgress.empty;
   Object? _loadError;
   bool _loading = true;
+  Set<String> _levelIdsWithReport = {};
+  Map<String, bool> _levelPassStatus = {};
   final ScrollController _scrollController = ScrollController();
 
   late final TextStyle _headerStyle = AppFonts.pixelifySans(
@@ -45,6 +48,12 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
     _load();
   }
 
+  @override
+  void activate() {
+    super.activate();
+    _refreshSavedDrivingReports();
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -59,6 +68,8 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
         _progress = progress;
         _loading = false;
       });
+      await _refreshSavedDrivingReports();
+      if (!mounted) return;
       _scrollToCurrentNode(curriculum, progress);
     } catch (e) {
       if (!mounted) return;
@@ -105,6 +116,27 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
     setState(() => _progress = progress);
   }
 
+  Future<void> _refreshSavedDrivingReports() async {
+    try {
+      await LastDrivingReportService.instance.mergeRemoteSummariesIfSignedIn();
+      final ids = await LastDrivingReportService.instance.levelIdsWithSavedReports();
+      final passStatus =
+          await LastDrivingReportService.instance.levelPassStatusByLevelId();
+      if (!mounted) return;
+      setState(() {
+        _levelIdsWithReport = ids;
+        _levelPassStatus = passStatus;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _levelIdsWithReport = {};
+          _levelPassStatus = {};
+        });
+      }
+    }
+  }
+
   Future<void> _onNodeTap(LearningPathNode node, bool unlocked) async {
     UiSoundService().playMenuTap();
     if (!unlocked) {
@@ -117,6 +149,7 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
     }
     await LearningPathNavigator.openNode(context, node);
     await _refreshProgress();
+    await _refreshSavedDrivingReports();
   }
 
   void _showLockedDialog(LearningPathNode node) {
@@ -228,7 +261,10 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
 
     return RefreshIndicator(
       color: SwissTheme.accentRed,
-      onRefresh: _load,
+      onRefresh: () async {
+        await _load();
+        await _refreshSavedDrivingReports();
+      },
       child: ListView.builder(
         controller: _scrollController,
         padding: LandscapeLayout.bodyPadding(context),
@@ -253,6 +289,8 @@ class _LearningPathScreenState extends State<LearningPathScreen> {
                 progress: _progress,
                 focusNodeId: focus?.id,
                 onNodeTap: _onNodeTap,
+                levelIdsWithReport: _levelIdsWithReport,
+                levelPassStatus: _levelPassStatus,
               ),
             ],
           );
